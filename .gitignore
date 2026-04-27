@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# Test
+htmlcov/
+.coverage
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Editor
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System
+Thumbs.db
+*.keystore
+*.jks
+
+# Uploads
+/data/uploads/
+*.upload
+
+# Temporary
+*.tmp
+*.temp
+*.swp
+
+# Verify code
+verify_code.jpg
