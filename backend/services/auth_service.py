@@ -259,7 +259,6 @@ class RoleService(BaseService):
 
     async def create_role(self, role_data: RoleCreate) -> str:
         """创建角色"""
-        # 检查角色编码是否已存在
         existing_role = await self.find_one({"code": role_data.code})
         if existing_role:
             raise ValueError("角色编码已存在")
@@ -278,8 +277,8 @@ class RoleService(BaseService):
                     raise ValueError(f"权限ID {pid} 不存在")
 
         data = role_data.model_dump()
-
-        return await self.create(data)
+        data["id"] = await self.create(data)
+        return data
 
     async def update_role(self, role_id: str, role_data: RoleUpdate) -> bool:
         """更新角色"""

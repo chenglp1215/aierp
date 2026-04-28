@@ -20,8 +20,8 @@ class StockStatus(str, Enum):
 class WarehouseBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="仓库名称")
     address: str = Field(..., min_length=1, max_length=500, description="仓库地址")
-    manager_name: str = Field(..., min_length=1, max_length=100, description="仓库管理员")
-    manager_phone: str = Field(..., min_length=1, max_length=20, description="仓库管理员电话")
+    manager_id: Optional[str] = Field(None, description="仓库管理员用户ID（关联users表）")
+    manager_name: Optional[str] = Field(None, description="仓库管理员姓名（冗余字段，便于显示）")
     status: WarehouseStatus = Field(default=WarehouseStatus.ACTIVE, description="仓库状态")
     description: Optional[str] = Field(None, description="仓库描述")
 
@@ -33,8 +33,8 @@ class WarehouseCreate(WarehouseBase):
 class WarehouseUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     address: Optional[str] = Field(None, min_length=1, max_length=500)
-    manager_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    manager_phone: Optional[str] = Field(None, min_length=1, max_length=20)
+    manager_id: Optional[str] = Field(None, description="仓库管理员用户ID")
+    manager_name: Optional[str] = Field(None, max_length=100)
     status: Optional[WarehouseStatus] = None
     description: Optional[str] = None
 
@@ -52,6 +52,7 @@ class Warehouse(WarehouseBase):
                 "warehouse_code": "WH20260420001",
                 "name": "深圳中心仓",
                 "address": "深圳市宝安区福永街道128号",
+                "manager_id": "507f1f77bcf86cd799439011",
                 "manager_name": "李明",
                 "manager_phone": "13800138001",
                 "status": "active",
@@ -68,7 +69,7 @@ class WarehouseListResponse(BaseModel):
 
 
 class StockBase(BaseModel):
-    product_id: str = Field(..., description="商品ID")
+    spec_id: str = Field(..., description="规格ID")
     warehouse_id: str = Field(..., description="仓库ID")
     quantity: float = Field(..., ge=0, description="库存数量")
     min_stock: float = Field(default=0, ge=0, description="最小库存警告阈值")
@@ -89,7 +90,7 @@ class StockUpdate(BaseModel):
 
 class Stock(StockBase):
     id: str = Field(..., description="库存ID")
-    product_code: Optional[str] = Field(None, description="商品编号")
+    spec_code: Optional[str] = Field(None, description="规格编号")
     product_name: Optional[str] = Field(None, description="商品名称")
     warehouse_code: Optional[str] = Field(None, description="仓库编码")
     warehouse_name: Optional[str] = Field(None, description="仓库名称")
@@ -100,8 +101,8 @@ class Stock(StockBase):
         json_schema_extra = {
             "example": {
                 "id": "507f1f77bcf86cd799439021",
-                "product_id": "507f1f77bcf86cd799439012",
-                "product_code": "PROD20260420001",
+                "spec_id": "507f1f77bcf86cd799439013",
+                "spec_code": "SPEC20260420001",
                 "product_name": "有机红茶",
                 "warehouse_id": "507f1f77bcf86cd799439020",
                 "warehouse_code": "WH20260420001",

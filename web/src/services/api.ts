@@ -65,27 +65,20 @@ class ApiService {
       config.body = JSON.stringify(body)
     }
 
-    try {
-      const response = await fetch(url, config)
+    const response = await fetch(url, config)
 
-      if (response.status === 401) {
-        this.handleAuthError()
-        const error = await response.json().catch(() => ({ detail: '登录已过期，请重新登录' }))
-        throw new Error(error.detail || '登录已过期，请重新登录')
-      }
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: '请求失败' }))
-        throw new Error(error.detail || `HTTP error! status: ${response.status}`)
-      }
-
-      return response.json()
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('登录已过期')) {
-        this.handleAuthError()
-      }
-      throw error
+    if (response.status === 401 || response.status === 403) {
+      this.handleAuthError()
+      const errorData = await response.json().catch(() => ({ detail: '登录已过期，请重新登录' }))
+      throw new Error(errorData.detail || '登录已过期，请重新登录')
     }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: '请求失败' }))
+      throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+    }
+
+    return response.json()
   }
 
   get<T>(endpoint: string, params?: Record<string, any>, skipAuth = false): Promise<T> {
@@ -125,7 +118,7 @@ class ApiService {
       body: formData
     })
 
-    if (response.status === 401) {
+    if (response.status === 401 || response.status === 403) {
       this.handleAuthError()
       throw new Error('登录已过期，请重新登录')
     }
@@ -367,6 +360,52 @@ export const customerApi = {
   }
 }
 
+export interface ProductSpec {
+  id: string
+  product_id: string
+  spec_code: string
+  packaging?: string
+  sales_spec?: string
+  price: number
+  cas_number?: string
+  is_active: boolean
+  stock_quantity?: number
+  stock_status?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export interface Product {
+  id: string
+  product_code: string
+  name: string
+  image_url?: string
+  brand?: string
+  category?: string
+  tax_code?: string
+  specs: ProductSpec[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ProductFormData {
+  product_code?: string
+  name: string
+  image_url?: string
+  brand?: string
+  category?: string
+  tax_code?: string
+}
+
+export interface ProductSpecFormData {
+  spec_code?: string
+  packaging?: string
+  sales_spec?: string
+  price: number
+  cas_number?: string
+  is_active?: boolean
+}
+
 export const productApi = {
   list: (params: { page?: number; page_size?: number; status?: string; keyword?: string }) => {
     return apiService.get<any>('/products/', params)
@@ -376,20 +415,16 @@ export const productApi = {
     return apiService.get<any>(`/products/${id}`)
   },
 
-  create: (data: any) => {
+  create: (data: ProductFormData) => {
     return apiService.post<any>('/products/', data)
   },
 
-  update: (id: string, data: any) => {
+  update: (id: string, data: Partial<ProductFormData>) => {
     return apiService.put<any>(`/products/${id}`, data)
   },
 
   delete: (id: string) => {
     return apiService.delete<any>(`/products/${id}`)
-  },
-
-  updateStatus: (id: string, status: string) => {
-    return apiService.patch<any>(`/products/${id}/status`, { status })
   },
 
   search: (keyword: string, limit?: number) => {
@@ -398,6 +433,34 @@ export const productApi = {
 
   getStats: () => {
     return apiService.get<any>('/products/stats')
+  },
+
+  getSpecs: (productId: string, params?: { page?: number; page_size?: number }) => {
+    return apiService.get<any>(`/products/${productId}/specs`, params)
+  },
+
+  createSpec: (productId: string, data: ProductSpecFormData) => {
+    return apiService.post<any>(`/products/${productId}/specs`, data)
+  },
+
+  updateSpec: (specId: string, data: Partial<ProductSpecFormData>) => {
+    return apiService.put<any>(`/products/specs/${specId}`, data)
+  },
+
+  deleteSpec: (specId: string) => {
+    return apiService.delete<any>(`/products/specs/${specId}`)
+  },
+
+  toggleSpecActive: (specId: string, isActive: boolean) => {
+    return apiService.patch<any>(`/products/specs/${specId}/toggle-active?is_active=${isActive}`)
+  },
+
+  getSpecStockDetail: (specId: string) => {
+    return apiService.get<any>(`/products/specs/${specId}/stock-detail`)
+  },
+
+  getAllSpecs: (params?: { page?: number; page_size?: number; keyword?: string; category?: string }) => {
+    return apiService.get<any>('/products/all-specs/', params)
   }
 }
 
@@ -551,6 +614,9 @@ export const warehouseApi = {
   },
   search: (keyword: string, limit?: number) => {
     return apiService.get<any>('/warehouses/search', { keyword, limit })
+  },
+  getManagerCandidates: (keyword?: string) => {
+    return apiService.get<any>('/warehouses/manager-candidates', { keyword })
   }
 }
 

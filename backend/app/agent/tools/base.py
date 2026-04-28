@@ -18,7 +18,7 @@ class BaseTool(ABC):
     permission_code: str = ""
 
     @abstractmethod
-    async def execute(self, **kwargs) -> ToolResult:
+    async def execute(self, **kwargs) -> str:
         pass
 
     def get_schema(self) -> Dict[str, Any]:

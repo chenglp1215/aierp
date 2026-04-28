@@ -5,6 +5,7 @@ import SidebarNav from './SidebarNav.vue'
 import DashboardHeader from './DashboardHeader.vue'
 import DashboardFooter from './DashboardFooter.vue'
 import ActionButtons from './ActionButtons.vue'
+import Toast from './common/Toast.vue'
 import DashboardWorkspace from './workspace/DashboardWorkspace.vue'
 import ChatWorkspace from './workspace/ChatWorkspace.vue'
 import SalesWorkspace from './workspace/SalesWorkspace.vue'
@@ -24,6 +25,7 @@ import { usePermission, MENU_PERMISSION_MAP } from '../hooks'
 
 const router = useRouter()
 const { loadPermissions, hasPermission } = usePermission()
+const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
 interface Tab {
   id: string
@@ -148,6 +150,14 @@ const initDefaultTabs = () => {
   }
 }
 
+const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+  if (toastRef.value) {
+    (toastRef.value as any)[type](message)
+  }
+}
+
+window.showToast = showToast
+
 onMounted(async () => {
   const token = localStorage.getItem('token')
   if (!token) {
@@ -225,6 +235,7 @@ onMounted(async () => {
 
       <DashboardFooter />
     </main>
+    <Toast ref="toastRef" />
   </div>
 </template>
 

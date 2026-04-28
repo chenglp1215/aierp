@@ -49,8 +49,8 @@ async def get_llm_model(model_id: str):
 @llm_router.post("/models", response_model=dict)
 async def create_llm_model(model_data: LlmModelCreate):
     """创建 LLM 模型"""
-    model_id = await llm_service.create_model(model_data.model_dump())
-    return {"status": "success", "message": "模型创建成功", "result": {"id": model_id}}
+    model_data = await llm_service.create_model(model_data.model_dump())
+    return {"status": "success", "message": "模型创建成功", "result": {"id": model_data["id"]}}
 
 
 @llm_router.put("/models/{model_id}", response_model=dict)
@@ -235,8 +235,8 @@ async def get_skill(skill_id: str):
 @skill_router.post("", response_model=dict)
 async def create_skill(skill_data: SkillCreate):
     """创建技能"""
-    skill_id = await skill_service.create_skill(skill_data.model_dump())
-    return {"status": "success", "message": "技能创建成功", "result": {"id": skill_id}}
+    skill_data = await skill_service.create_skill(skill_data.model_dump())
+    return {"status": "success", "message": "技能创建成功", "result": skill_data}
 
 
 @skill_router.put("/{skill_id}", response_model=dict)

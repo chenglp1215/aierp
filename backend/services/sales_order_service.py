@@ -85,9 +85,10 @@ class SalesOrderService(BaseService):
 
         data["status"] = OrderStatus.PENDING.value
         data["payment_status"] = PaymentStatus.UNPAID.value
-
-        db_id = await self.create(data)
-        return data["order_no"], db_id
+        data["created_at"] = datetime.now()
+        data["updated_at"] = datetime.now()
+        data["id"] = await self.create(data)
+        return data["order_no"], data["id"]
 
     async def confirm_order(self, order_no: str, supplier_id: Optional[str] = None, supplier_name: Optional[str] = None) -> Dict[str, Any]:
         """确认订单并处理发货"""

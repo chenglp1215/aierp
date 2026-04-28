@@ -1,7 +1,9 @@
 from motor.motor_asyncio import AsyncIOMotorClient
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Type
 from datetime import datetime
 import logging
+
+from validators.base_validator import validate, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +28,7 @@ class BaseService:
         data["created_at"] = datetime.now()
         data["updated_at"] = datetime.now()
         result = await self.collection.insert_one(data)
-        return str(result.inserted_id)
+        return  str(result.inserted_id)
 
     async def get_by_id(self, id: str) -> Optional[Dict[str, Any]]:
         """根据ID获取文档"""
@@ -67,6 +69,15 @@ class BaseService:
             logger.error(f"Error deleting document: {e}")
             return False
 
+    async def delete_many(self, filters: Dict[str, Any]) -> int:
+        """批量删除文档"""
+        try:
+            result = await self.collection.delete_many(filters)
+            return result.deleted_count
+        except Exception as e:
+            logger.error(f"Error deleting documents: {e}")
+            return 0
+
     async def list(
         self,
         page: int = 1,
@@ -100,7 +111,42 @@ class BaseService:
             doc["id"] = str(doc.pop("_id"))
         return doc
 
+    async def find_many(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """查找多个文档"""
+        cursor = self.collection.find(filters)
+        items = await cursor.to_list(length=None)
+        for item in items:
+            item["id"] = str(item.pop("_id"))
+        return items
+
     async def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """统计文档数量"""
         filters = filters or {}
         return await self.collection.count_documents(filters)
+
+    def validate_data(
+        self,
+        data: Dict[str, Any],
+        config: Dict[str, Any],
+        raise_exception: bool = False
+    ) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        success, errors = validate(data, config)
+        if raise_exception and not success:
+            raise ValidationError(errors)
+        return success, errors
+
+    async def validate_unique(
+        self,
+        field: str,
+        value: Any,
+        exclude_id: Optional[str] = None
+    ) -> bool:
+        from bson import ObjectId
+        query = {field: value}
+        if exclude_id:
+            try:
+                query["_id"] = {"$ne": ObjectId(exclude_id)}
+            except Exception:
+                pass
+        exists = await self.collection.find_one(query)
+        return not exists

@@ -128,12 +128,13 @@ const handleDelete = async () => {
   deleteLoading.value = true
   try {
     await procurementOrderApi.delete(deleteTargetId.value)
-    alert('采购单删除成功')
+    window.showToast('采购单删除成功', 'success')
+    orders.value = orders.value.filter(o => o.id !== deleteTargetId.value)
+    total.value--
     showDeleteConfirm.value = false
     deleteTargetId.value = null
-    loadOrders()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     deleteLoading.value = false
   }
@@ -142,14 +143,20 @@ const handleDelete = async () => {
 const handleUpdateStatus = async (orderId: string, status: string) => {
   try {
     await procurementOrderApi.updateStatus(orderId, status)
-    alert('状态更新成功')
-    loadOrders()
+    window.showToast('状态更新成功', 'success')
+    const index = orders.value.findIndex(o => o.id === orderId)
+    if (index !== -1) {
+      orders.value[index] = {
+        ...orders.value[index],
+        status,
+        updated_at: new Date().toISOString()
+      }
+    }
     if (selectedOrder.value?.id === orderId) {
-      const res = await procurementOrderApi.getById(orderId)
-      selectedOrder.value = res
+      selectedOrder.value = { ...selectedOrder.value, status }
     }
   } catch (error: any) {
-    alert(error.message || '状态更新失败')
+    window.showToast(error.message || '状态更新失败', 'error')
   }
 }
 

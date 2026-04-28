@@ -462,12 +462,14 @@ const handleDelete = async () => {
   deleteLoading.value = true
   try {
     await salesOrderApi.delete(deleteTargetOrderNo.value)
-    alert('订单删除成功')
+    window.showToast('订单删除成功', 'success')
+    // 直接从列表中 filter 移除，不整体刷新
+    orders.value = orders.value.filter(o => o.order_no !== deleteTargetOrderNo.value)
+    total.value--
     showDeleteConfirm.value = false
     deleteTargetOrderNo.value = null
-    loadOrders()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     deleteLoading.value = false
   }
@@ -495,32 +497,32 @@ const updateItemSubtotal = (index: number) => {
 
 const handleSaveOrder = async () => {
   if (!orderForm.value.customer_id) {
-    alert('请选择客户')
+    window.showToast('请选择客户', 'warning')
     return
   }
   if (orderForm.value.items.length === 0) {
-    alert('请添加商品明细')
+    window.showToast('请添加商品明细', 'warning')
     return
   }
 
   if (orderForm.value.delivery_type === 'inventory' && !orderForm.value.warehouse_id) {
-    alert('库存发货模式请选择仓库')
+    window.showToast('库存发货模式请选择仓库', 'warning')
     return
   }
 
   if (orderForm.value.pickup_type === 'express' && !orderForm.value.express_type) {
-    alert('快递模式请选择快递方式')
+    window.showToast('快递模式请选择快递方式', 'warning')
     return
   }
 
   for (let i = 0; i < orderForm.value.items.length; i++) {
     const item = orderForm.value.items[i]
     if (!item.product_id) {
-      alert(`第${i + 1}行商品未选择`)
+      window.showToast(`第${i + 1}行商品未选择`, 'warning')
       return
     }
     if (!item.quantity || item.quantity <= 0) {
-      alert(`第${i + 1}行商品数量必须大于0`)
+      window.showToast(`第${i + 1}行商品数量必须大于0`, 'warning')
       return
     }
   }
@@ -538,16 +540,29 @@ const handleSaveOrder = async () => {
     }
 
     if (editingOrder.value) {
+      // 编辑模式：直接更新列表项，不整体刷新
       await salesOrderApi.update(editingOrder.value.order_no, submitData)
-      alert('订单更新成功')
+      window.showToast('订单更新成功', 'success')
+      const index = orders.value.findIndex(o => o.order_no === editingOrder.value!.order_no)
+      if (index !== -1) {
+        const updatedOrder = {
+          ...orders.value[index],
+          ...submitData,
+          total_amount: submitData.items.reduce((sum: number, item: any) => sum + item.subtotal, 0),
+          discount_amount: submitData.items.reduce((sum: number, item: any) => sum + item.subtotal, 0) * (1 - submitData.discount_ratio / 100),
+          final_amount: submitData.items.reduce((sum: number, item: any) => sum + item.subtotal, 0) * (submitData.discount_ratio / 100) + (submitData.express_fee || 0)
+        }
+        orders.value[index] = updatedOrder
+      }
     } else {
+      // 新建模式：整体刷新
       await salesOrderApi.create(submitData)
-      alert('订单创建成功')
+      window.showToast('订单创建成功', 'success')
+      loadOrders()
     }
     showOrderModal.value = false
-    loadOrders()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     formLoading.value = false
   }
@@ -560,10 +575,14 @@ const handleConfirmOrder = async (orderNo: string) => {
   confirmLoading.value = true
   try {
     await salesOrderApi.confirm(orderNo)
-    alert('订单确认成功')
-    loadOrders()
+    window.showToast('订单确认成功', 'success')
+    // 直接更新列表项状态，不整体刷新
+    const index = orders.value.findIndex(o => o.order_no === orderNo)
+    if (index !== -1) {
+      orders.value[index] = { ...orders.value[index], status: 'confirmed' }
+    }
   } catch (error: any) {
-    alert(error.message || '确认失败')
+    window.showToast(error.message || '确认失败', 'error')
   } finally {
     confirmLoading.value = false
   }
@@ -572,14 +591,18 @@ const handleConfirmOrder = async (orderNo: string) => {
 const handleUpdateStatus = async (orderNo: string, status: string) => {
   try {
     await salesOrderApi.updateStatus(orderNo, status)
-    alert('状态更新成功')
-    loadOrders()
+    window.showToast('状态更新成功', 'success')
+    // 直接更新列表项状态，不整体刷新
+    const index = orders.value.findIndex(o => o.order_no === orderNo)
+    if (index !== -1) {
+      orders.value[index] = { ...orders.value[index], status }
+    }
+    // 更新详情弹窗中的订单状态
     if (selectedOrder.value?.order_no === orderNo) {
-      const res = await salesOrderApi.getByOrderNo(orderNo)
-      selectedOrder.value = res
+      selectedOrder.value = { ...selectedOrder.value, status }
     }
   } catch (error: any) {
-    alert(error.message || '状态更新失败')
+    window.showToast(error.message || '状态更新失败', 'error')
   }
 }
 

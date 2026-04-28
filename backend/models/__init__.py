@@ -24,7 +24,6 @@ from .product import (
     ProductCreate,
     ProductUpdate,
     ProductListResponse,
-    ProductStatus,
 )
 from .inventory import (
     Warehouse,
@@ -100,7 +99,6 @@ __all__ = [
     "ProductCreate",
     "ProductUpdate",
     "ProductListResponse",
-    "ProductStatus",
     "Warehouse",
     "WarehouseCreate",
     "WarehouseUpdate",

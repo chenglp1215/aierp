@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Request, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 
 from models.customer import (
@@ -24,11 +24,18 @@ async def create_customer(
     _: dict = Depends(require_permission("customer.create"))
 ):
     """创建客户"""
-    customer_id = await customer_service.create_customer(customer)
+    is_valid, errors = customer_service.validate_customer_create(customer)
+    if not is_valid:
+        return {
+            "status": "error",
+            "message": "客户创建参数验证失败",
+            "validation_errors": errors
+        }
+    customer_data = await customer_service.create_customer(customer)
     return {
         "status": "success",
         "message": "客户创建成功",
-        "result": {"id": customer_id}
+        "result": customer_data
     }
 
 
@@ -95,6 +102,13 @@ async def update_customer(
     _: dict = Depends(require_permission("customer.edit"))
 ):
     """更新客户信息"""
+    is_valid, errors = customer_service.validate_customer_update(customer)
+    if not is_valid:
+        return {
+            "status": "error",
+            "message": "客户更新参数验证失败",
+            "validation_errors": errors
+        }
     success = await customer_service.update_customer(customer_id, customer)
     if not success:
         raise HTTPException(status_code=404, detail="客户不存在或更新失败")
@@ -142,6 +156,13 @@ async def add_shipping_address(
     _: dict = Depends(require_permission("customer.edit"))
 ):
     """添加收货地址"""
+    is_valid, errors = customer_service.validate_shipping_address_create(address)
+    if not is_valid:
+        return {
+            "status": "error",
+            "message": "收货地址参数验证失败",
+            "validation_errors": errors
+        }
     result = await customer_service.add_shipping_address(customer_id, address)
     if not result:
         raise HTTPException(status_code=404, detail="客户不存在")
@@ -160,6 +181,13 @@ async def update_shipping_address(
     _: dict = Depends(require_permission("customer.edit"))
 ):
     """更新收货地址"""
+    is_valid, errors = customer_service.validate_shipping_address_update(address)
+    if not is_valid:
+        return {
+            "status": "error",
+            "message": "收货地址参数验证失败",
+            "validation_errors": errors
+        }
     success = await customer_service.update_shipping_address(customer_id, address_id, address)
     if not success:
         raise HTTPException(status_code=404, detail="客户不存在或地址不存在")

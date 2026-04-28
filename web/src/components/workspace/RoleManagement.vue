@@ -9,6 +9,7 @@ interface Role {
   name: string
   code: string
   description?: string
+  is_fixed?: boolean
   permission_ids?: string[]
   permissions?: { id: string }[]
   created_at?: string
@@ -54,6 +55,7 @@ const columns = [
   { key: 'name', label: '角色名' },
   { key: 'code', label: '角色代码' },
   { key: 'description', label: '描述' },
+  { key: 'is_fixed', label: '类型' },
   { key: 'created_at', label: '创建时间' }
 ]
 
@@ -213,11 +215,11 @@ const confirmDelete = (id: string) => {
 
 const handleSave = async () => {
   if (!roleForm.value.name?.trim()) {
-    alert('请输入角色名')
+    window.showToast('请输入角色名', 'warning')
     return
   }
   if (!roleForm.value.code?.trim()) {
-    alert('请输入角色代码')
+    window.showToast('请输入角色代码', 'warning')
     return
   }
 
@@ -232,15 +234,15 @@ const handleSave = async () => {
 
     if (editingRole.value) {
       await roleApi.update(editingRole.value.id, data)
-      alert('角色更新成功')
+      window.showToast('角色更新成功', 'success')
     } else {
       await roleApi.create(data)
-      alert('角色创建成功')
+      window.showToast('角色创建成功', 'success')
     }
     showModal.value = false
     loadRoles()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     formLoading.value = false
   }
@@ -252,12 +254,13 @@ const handleDelete = async () => {
   deleteLoading.value = true
   try {
     await roleApi.delete(deleteTargetId.value)
-    alert('角色删除成功')
+    window.showToast('角色删除成功', 'success')
+    roles.value = roles.value.filter(r => r.id !== deleteTargetId.value)
+    total.value--
     showDeleteConfirm.value = false
     deleteTargetId.value = null
-    loadRoles()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     deleteLoading.value = false
   }
@@ -327,12 +330,17 @@ onMounted(() => {
             <td>{{ role.name }}</td>
             <td>{{ role.code }}</td>
             <td>{{ role.description || '-' }}</td>
+            <td>
+              <span v-if="role.is_fixed" class="fixed-tag">固化</span>
+              <span v-else class="normal-tag">自定义</span>
+            </td>
             <td>{{ formatDate(role.created_at) }}</td>
             <td>
-              <div class="action-buttons">
+              <div class="action-buttons" v-if="!role.is_fixed">
                 <button class="btn-link" @click="openEdit(role)">编辑</button>
                 <button class="btn-link danger" @click="confirmDelete(role.id)">删除</button>
               </div>
+              <span v-else class="no-action">-</span>
             </td>
           </tr>
         </tbody>
@@ -630,6 +638,28 @@ onMounted(() => {
 
 .btn-link.danger:hover {
   background-color: rgba(239, 68, 68, 0.1);
+}
+
+.no-action {
+  color: var(--text-muted);
+}
+
+.fixed-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--accent-yellow);
+}
+
+.normal-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
 }
 
 .pagination {

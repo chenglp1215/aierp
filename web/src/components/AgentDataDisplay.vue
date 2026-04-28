@@ -167,7 +167,7 @@ const handleAction = (step: string) => {
   const hasSelection = selectedRows.value.size > 0
 
   if (isList && !hasSelection) {
-    alert('请先选中要操作的数据')
+    window.showToast('请先选中要操作的数据', 'warning')
     return
   }
 

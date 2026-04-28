@@ -182,12 +182,13 @@ const handleDelete = async () => {
   deleteLoading.value = true
   try {
     await receivableApi.delete(deleteTargetId.value)
-    alert('应收单删除成功')
+    window.showToast('应收单删除成功', 'success')
+    receivables.value = receivables.value.filter(r => r.id !== deleteTargetId.value)
+    total.value--
     showDeleteConfirm.value = false
     deleteTargetId.value = null
-    loadReceivables()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     deleteLoading.value = false
   }
@@ -196,31 +197,52 @@ const handleDelete = async () => {
 const handleRecordPayment = async () => {
   if (!selectedReceivable.value) return
   if (paymentForm.value.amount <= 0) {
-    alert('请输入正确的付款金额')
+    window.showToast('请输入正确的付款金额', 'warning')
     return
   }
   if (paymentForm.value.amount > selectedReceivable.value.total_amount - selectedReceivable.value.paid_amount) {
-    alert('付款金额不能超过剩余应付金额')
+    window.showToast('付款金额不能超过剩余应付金额', 'warning')
     return
   }
 
   paymentLoading.value = true
   try {
-    await receivableApi.recordPayment(selectedReceivable.value.id, {
+    const paymentData = {
       amount: paymentForm.value.amount,
       payment_method: paymentForm.value.payment_method || undefined,
       remarks: paymentForm.value.remarks || undefined
-    })
-    alert('收款记录成功')
-    closePaymentModal()
-    loadReceivables()
-    // Refresh detail if modal is open
+    }
+    await receivableApi.recordPayment(selectedReceivable.value.id, paymentData)
+    window.showToast('收款记录成功', 'success')
+
+    // 直接更新列表中对应项
+    const index = receivables.value.findIndex(r => r.id === selectedReceivable.value!.id)
+    if (index !== -1) {
+      const newPaidAmount = selectedReceivable.value.paid_amount + paymentForm.value.amount
+      const newStatus = newPaidAmount >= selectedReceivable.value.total_amount ? 'paid' : 'partial'
+      const newRecord = {
+        amount: paymentForm.value.amount,
+        payment_method: paymentForm.value.payment_method || undefined,
+        payment_date: new Date().toISOString(),
+        remarks: paymentForm.value.remarks || undefined
+      }
+      receivables.value[index] = {
+        ...receivables.value[index],
+        paid_amount: newPaidAmount,
+        status: newStatus,
+        records: [...(receivables.value[index].records || []), newRecord]
+      }
+    }
+
+    // 更新详情弹窗数据
     if (showDetailModal.value && selectedReceivable.value) {
       const res = await receivableApi.getById(selectedReceivable.value.id)
       selectedReceivable.value = res
     }
+
+    closePaymentModal()
   } catch (error: any) {
-    alert(error.message || '收款记录失败')
+    window.showToast(error.message || '收款记录失败', 'error')
   } finally {
     paymentLoading.value = false
   }
@@ -229,14 +251,24 @@ const handleRecordPayment = async () => {
 const handleUpdateStatus = async (receivableId: string, status: string) => {
   try {
     await receivableApi.updateStatus(receivableId, status)
-    alert('状态更新成功')
-    loadReceivables()
+    window.showToast('状态更新成功', 'success')
+
+    // 直接更新列表中对应项
+    const index = receivables.value.findIndex(r => r.id === receivableId)
+    if (index !== -1) {
+      receivables.value[index] = {
+        ...receivables.value[index],
+        status
+      }
+    }
+
+    // 更新详情弹窗数据
     if (selectedReceivable.value?.id === receivableId) {
       const res = await receivableApi.getById(receivableId)
       selectedReceivable.value = res
     }
   } catch (error: any) {
-    alert(error.message || '状态更新失败')
+    window.showToast(error.message || '状态更新失败', 'error')
   }
 }
 

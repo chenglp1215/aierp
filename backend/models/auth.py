@@ -60,6 +60,7 @@ class Role(BaseModel):
     code: str = Field(..., description="角色编码")
     name: str = Field(..., description="角色名称")
     description: Optional[str] = Field(None, description="描述")
+    is_fixed: bool = Field(default=False, description="是否固化角色（固化角色不允许删除和修改）")
     permissions: List[Permission] = Field(default=[], description="角色权限列表")
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)

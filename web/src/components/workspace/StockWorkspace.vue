@@ -248,15 +248,15 @@ const confirmDelete = (stockId: string) => {
 
 const handleSaveStock = async () => {
   if (!stockForm.value.product_id) {
-    alert('请选择商品')
+    window.showToast('请选择商品', 'warning')
     return
   }
   if (!stockForm.value.warehouse_id) {
-    alert('请选择仓库')
+    window.showToast('请选择仓库', 'warning')
     return
   }
   if (stockForm.value.quantity === undefined || stockForm.value.quantity < 0) {
-    alert('请输入有效的库存数量')
+    window.showToast('请输入有效的库存数量', 'warning')
     return
   }
 
@@ -264,15 +264,25 @@ const handleSaveStock = async () => {
   try {
     if (editingStock.value) {
       await stockApi.update(editingStock.value.id, stockForm.value)
-      alert('库存更新成功')
+      window.showToast('库存更新成功', 'success')
+      const index = stocks.value.findIndex(s => s.id === editingStock.value!.id)
+      if (index !== -1) {
+        stocks.value[index] = {
+          ...stocks.value[index],
+          ...stockForm.value,
+          product_code: selectedProduct.value?.product_code || stocks.value[index].product_code,
+          product_name: selectedProduct.value?.name || stocks.value[index].product_name,
+          warehouse_name: warehouses.value.find(w => w.id === stockForm.value.warehouse_id)?.name || stocks.value[index].warehouse_name
+        }
+      }
     } else {
       await stockApi.create(stockForm.value)
-      alert('库存创建成功')
+      window.showToast('库存创建成功', 'success')
+      loadStocks()
     }
     showStockModal.value = false
-    loadStocks()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     formLoading.value = false
   }
@@ -281,7 +291,7 @@ const handleSaveStock = async () => {
 const handleAdjustStock = async () => {
   if (!adjustTargetStock.value) return
   if (adjustForm.value.quantity_change <= 0) {
-    alert('请输入有效的调整数量')
+    window.showToast('请输入有效的调整数量', 'warning')
     return
   }
 
@@ -292,11 +302,20 @@ const handleAdjustStock = async () => {
       adjustForm.value.quantity_change,
       adjustForm.value.is_add
     )
-    alert('库存调整成功')
+    window.showToast('库存调整成功', 'success')
+    const index = stocks.value.findIndex(s => s.id === adjustTargetStock.value!.id)
+    if (index !== -1) {
+      const newQuantity = adjustForm.value.is_add
+        ? stocks.value[index].quantity + adjustForm.value.quantity_change
+        : stocks.value[index].quantity - adjustForm.value.quantity_change
+      stocks.value[index] = {
+        ...stocks.value[index],
+        quantity: newQuantity
+      }
+    }
     showAdjustModal.value = false
-    loadStocks()
   } catch (error: any) {
-    alert(error.message || '调整失败')
+    window.showToast(error.message || '调整失败', 'error')
   } finally {
     adjustLoading.value = false
   }
@@ -308,12 +327,13 @@ const handleDelete = async () => {
   deleteLoading.value = true
   try {
     await stockApi.delete(deleteTargetId.value)
-    alert('库存删除成功')
+    window.showToast('库存删除成功', 'success')
+    stocks.value = stocks.value.filter(s => s.id !== deleteTargetId.value)
+    total.value--
     showDeleteConfirm.value = false
     deleteTargetId.value = null
-    loadStocks()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     deleteLoading.value = false
   }

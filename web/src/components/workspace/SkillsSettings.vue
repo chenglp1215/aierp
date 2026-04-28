@@ -78,9 +78,12 @@ const toggleSkill = async (skill: Skill) => {
     } else {
       await skillApi.enable(skill.id!)
     }
-    loadSkills()
+    const index = skills.value.findIndex(s => s.id === skill.id)
+    if (index !== -1) {
+      skills.value[index] = { ...skills.value[index], enabled: !skill.enabled }
+    }
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     togglingId.value = null
   }
@@ -116,7 +119,7 @@ const handleFileSelect = (event: Event) => {
   if (input.files && input.files.length > 0) {
     const file = input.files[0]
     if (!file.name.endsWith('.md')) {
-      alert('请选择 Markdown 文件 (.md)')
+      window.showToast('请选择 Markdown 文件 (.md)', 'warning')
       return
     }
     selectedFile.value = file
@@ -173,7 +176,7 @@ const confirmDelete = (id: string) => {
 
 const handleSaveSkill = async () => {
   if (!skillForm.value.name?.trim()) {
-    alert('请输入技能名称或上传 Markdown 文件')
+    window.showToast('请输入技能名称或上传 Markdown 文件', 'warning')
     return
   }
   saving.value = true
@@ -181,15 +184,19 @@ const handleSaveSkill = async () => {
     const data = { ...skillForm.value }
     if (editingSkill.value?.id) {
       await skillApi.update(editingSkill.value.id, data)
-      alert('技能更新成功')
+      window.showToast('技能更新成功', 'success')
+      const index = skills.value.findIndex(s => s.id === editingSkill.value!.id)
+      if (index !== -1) {
+        skills.value[index] = { ...skills.value[index], ...data }
+      }
     } else {
       await skillApi.create(data)
-      alert('技能创建成功')
+      window.showToast('技能创建成功', 'success')
+      loadSkills()
     }
     showSkillModal.value = false
-    loadSkills()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     saving.value = false
   }
@@ -200,12 +207,12 @@ const handleDelete = async () => {
   saving.value = true
   try {
     await skillApi.delete(deleteTargetId.value)
-    alert('技能删除成功')
+    window.showToast('技能删除成功', 'success')
     showDeleteConfirm.value = false
     deleteTargetId.value = null
     loadSkills()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     saving.value = false
   }

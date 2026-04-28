@@ -142,22 +142,34 @@ const confirmDelete = (type: 'collection' | 'document', id: string) => {
 
 const handleSaveCollection = async () => {
   if (!collectionForm.value.name?.trim()) {
-    alert('请输入知识库名称')
+    window.showToast('请输入知识库名称', 'warning')
     return
   }
   saving.value = true
   try {
     if (editingCollection.value?.id) {
       await knowledgeBaseApi.update(editingCollection.value.id, collectionForm.value)
-      alert('知识库更新成功')
+      window.showToast('知识库更新成功', 'success')
+      // 直接更新列表中对应项
+      const index = collections.value.findIndex(c => c.id === editingCollection.value!.id)
+      if (index !== -1) {
+        collections.value[index] = {
+          ...collections.value[index],
+          ...collectionForm.value
+        }
+        // 如果正在查看该知识库，同步更新 selectedCollection
+        if (selectedCollection.value?.id === editingCollection.value.id) {
+          selectedCollection.value = { ...collections.value[index] }
+        }
+      }
     } else {
       await knowledgeBaseApi.create(collectionForm.value)
-      alert('知识库创建成功')
+      window.showToast('知识库创建成功', 'success')
+      loadCollections()
     }
     showCollectionModal.value = false
-    loadCollections()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     saving.value = false
   }
@@ -165,20 +177,33 @@ const handleSaveCollection = async () => {
 
 const handleSaveDocument = async () => {
   if (!documentForm.value.name?.trim()) {
-    alert('请输入文档名称')
+    window.showToast('请输入文档名称', 'warning')
     return
   }
   if (!selectedCollection.value?.id) return
   saving.value = true
   try {
     await knowledgeBaseApi.addDocument(selectedCollection.value.id, documentForm.value)
-    alert('文档添加成功')
+    window.showToast('文档添加成功', 'success')
+    // 直接在文档列表中添加新文档
+    const newDoc: Document = {
+      id: Date.now().toString(), // 临时ID，实际以服务器返回为准
+      name: documentForm.value.name,
+      status: 'active'
+    }
+    documents.value = [newDoc, ...documents.value]
+    // 更新知识库的文档计数
+    const collIndex = collections.value.findIndex(c => c.id === selectedCollection.value!.id)
+    if (collIndex !== -1) {
+      collections.value[collIndex] = {
+        ...collections.value[collIndex],
+        document_count: (collections.value[collIndex].document_count || 0) + 1
+      }
+    }
     showDocumentModal.value = false
     resetDocumentForm()
-    loadDocuments(selectedCollection.value.id)
-    loadCollections()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     saving.value = false
   }
@@ -190,20 +215,31 @@ const handleDelete = async () => {
   try {
     if (deleteType.value === 'collection') {
       await knowledgeBaseApi.delete(deleteTargetId.value)
-      alert('知识库删除成功')
+      window.showToast('知识库删除成功', 'success')
+      // 直接从列表中 filter 移除该知识库
+      collections.value = collections.value.filter(c => c.id !== deleteTargetId.value)
+      // 如果正在查看该知识库，清空选中状态
       if (selectedCollection.value?.id === deleteTargetId.value) {
         deselectCollection()
       }
     } else if (selectedCollection.value?.id) {
       await knowledgeBaseApi.deleteDocument(selectedCollection.value.id, deleteTargetId.value)
-      alert('文档删除成功')
-      loadDocuments(selectedCollection.value.id)
+      window.showToast('文档删除成功', 'success')
+      // 直接从文档列表中 filter 移除该文档
+      documents.value = documents.value.filter(d => d.id !== deleteTargetId.value)
+      // 更新知识库的文档计数
+      const collIndex = collections.value.findIndex(c => c.id === selectedCollection.value!.id)
+      if (collIndex !== -1) {
+        collections.value[collIndex] = {
+          ...collections.value[collIndex],
+          document_count: Math.max(0, (collections.value[collIndex].document_count || 1) - 1)
+        }
+      }
     }
     showDeleteConfirm.value = false
     deleteTargetId.value = null
-    loadCollections()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     saving.value = false
   }
@@ -212,9 +248,9 @@ const handleDelete = async () => {
 const rebuildIndex = async (collectionId: string) => {
   try {
     await knowledgeBaseApi.rebuildIndex(collectionId)
-    alert('索引重建任务已启动')
+    window.showToast('索引重建任务已启动', 'success')
   } catch (error: any) {
-    alert(error.message || '重建失败')
+    window.showToast(error.message || '重建失败', 'error')
   }
 }
 

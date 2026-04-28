@@ -21,13 +21,13 @@ async def create_procurement_order(
     _: dict = Depends(require_permission("procurement.create"))
 ):
     """创建采购单"""
-    order_id = await procurement_order_service.create_procurement_order(
+    order_data = await procurement_order_service.create_procurement_order(
         order, sales_order_id
     )
     return {
         "status": "success",
         "message": "采购单创建成功",
-        "result": {"id": order_id}
+        "result": {"id": order_data["id"]}
     }
 
 

@@ -7,34 +7,41 @@ from models.customer import (
     CustomerUpdate,
     CustomerType,
     CustomerLevel,
+    Customer,
     CustomerStatus,
     ShippingAddressCreate,
     ShippingAddressUpdate
 )
+from validators.customer_validator import (
+    CUSTOMER_CREATE_CONFIG,
+    CUSTOMER_UPDATE_CONFIG,
+    SHIPPING_ADDRESS_CREATE_CONFIG,
+    SHIPPING_ADDRESS_UPDATE_CONFIG,
+)
 
 
 class CustomerService(BaseService):
-    """客户管理服务"""
-
     def __init__(self):
         super().__init__("customers")
 
     def _generate_customer_code(self) -> str:
-        """生成客户编码"""
         from datetime import datetime
         import random
         import string
-
         date_str = datetime.now().strftime("%Y%m%d")
         random_str = ''.join(random.choices(string.digits, k=4))
         return f"CUST{date_str}{random_str}"
 
     def _generate_address_id(self) -> str:
-        """生成地址ID"""
         return f"ADDR{uuid.uuid4().hex[:12].upper()}"
 
-    async def create_customer(self, customer_data: CustomerCreate) -> str:
-        """创建客户"""
+    def validate_customer_create(self, customer_data: CustomerCreate) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(customer_data.model_dump(), CUSTOMER_CREATE_CONFIG)
+
+    def validate_customer_update(self, customer_data: CustomerUpdate) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(customer_data.model_dump(exclude_unset=True), CUSTOMER_UPDATE_CONFIG)
+
+    async def create_customer(self, customer_data: CustomerCreate) -> Customer:
         data = customer_data.model_dump()
         data["customer_code"] = self._generate_customer_code()
         data["status"] = CustomerStatus.NORMAL.value
@@ -50,12 +57,10 @@ class CustomerService(BaseService):
         return await self.create(data)
 
     async def update_customer(self, id: str, customer_data: CustomerUpdate) -> bool:
-        """更新客户信息"""
         data = customer_data.model_dump(exclude_unset=True)
         return await self.update(id, data)
 
     async def get_customer_by_code(self, customer_code: str) -> Optional[Dict[str, Any]]:
-        """根据客户编码获取客户"""
         return await self.find_one({"customer_code": customer_code})
 
     async def list_customers(
@@ -66,9 +71,7 @@ class CustomerService(BaseService):
         level: Optional[str] = None,
         keyword: Optional[str] = None
     ) -> Dict[str, Any]:
-        """分页查询客户列表"""
         filters = {}
-
         if status:
             filters["status"] = CustomerStatus(status).value
         if level:
@@ -80,19 +83,12 @@ class CustomerService(BaseService):
                 {"contact_person": {"$regex": keyword, "$options": "i"}},
                 {"contact_phone": {"$regex": keyword, "$options": "i"}}
             ]
-
         return await self.list(page, page_size, filters, "created_at", -1)
 
     async def get_customer_stats(self) -> Dict[str, Any]:
-        """获取客户统计信息"""
         total = await self.count({})
-        vip_count = await self.count({
-            "level": CustomerLevel.VIP.value
-        })
-        potential_count = await self.count({
-            "level": CustomerLevel.POTENTIAL.value
-        })
-
+        vip_count = await self.count({"level": CustomerLevel.VIP.value})
+        potential_count = await self.count({"level": CustomerLevel.POTENTIAL.value})
         return {
             "total": total,
             "vip_count": vip_count,
@@ -100,30 +96,30 @@ class CustomerService(BaseService):
         }
 
     async def update_status(self, id: str, status: CustomerStatus) -> bool:
-        """更新客户状态"""
         return await self.update(id, {"status": status.value})
 
     async def search_customers(self, keyword: str, limit: int = 10) -> list:
-        """搜索客户（用于下拉选择等）"""
         filters = {
             "$or": [
                 {"name": {"$regex": keyword, "$options": "i"}},
                 {"customer_code": {"$regex": keyword, "$options": "i"}}
             ]
         }
-
         cursor = self.collection.find(filters).limit(limit)
         items = await cursor.to_list(length=limit)
-
         for item in items:
             item["id"] = str(item.pop("_id"))
-
         return items
+
+    def validate_shipping_address_create(self, address_data: ShippingAddressCreate) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(address_data.model_dump(), SHIPPING_ADDRESS_CREATE_CONFIG)
+
+    def validate_shipping_address_update(self, address_data: ShippingAddressUpdate) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(address_data.model_dump(exclude_unset=True), SHIPPING_ADDRESS_UPDATE_CONFIG)
 
     async def add_shipping_address(
         self, customer_id: str, address_data: ShippingAddressCreate
     ) -> Optional[Dict[str, Any]]:
-        """添加收货地址"""
         from bson import ObjectId
         customer = await self.collection.find_one({"_id": ObjectId(customer_id)})
         if not customer:
@@ -150,7 +146,6 @@ class CustomerService(BaseService):
     async def update_shipping_address(
         self, customer_id: str, address_id: str, address_data: ShippingAddressUpdate
     ) -> bool:
-        """更新收货地址"""
         from bson import ObjectId
         customer = await self.collection.find_one({"_id": ObjectId(customer_id)})
         if not customer:
@@ -178,7 +173,6 @@ class CustomerService(BaseService):
         return result.modified_count > 0 or result.matched_count > 0
 
     async def delete_shipping_address(self, customer_id: str, address_id: str) -> bool:
-        """删除收货地址"""
         from bson import ObjectId
         customer = await self.collection.find_one({"_id": ObjectId(customer_id)})
         if not customer:
@@ -194,7 +188,6 @@ class CustomerService(BaseService):
     async def set_default_shipping_address(
         self, customer_id: str, address_id: str
     ) -> bool:
-        """设置默认收货地址"""
         from bson import ObjectId
         customer = await self.collection.find_one({"_id": ObjectId(customer_id)})
         if not customer:

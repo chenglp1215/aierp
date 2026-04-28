@@ -85,9 +85,9 @@ const saveConfig = async () => {
   saving.value = true
   try {
     await llmApi.updateConfig(config.value)
-    alert('配置保存成功')
+    window.showToast('配置保存成功', 'success')
   } catch (error: any) {
-    alert(error.message || '保存失败')
+    window.showToast(error.message || '保存失败', 'error')
   } finally {
     saving.value = false
   }
@@ -97,9 +97,9 @@ const testConnection = async (modelId: string) => {
   testingModelId.value = modelId
   try {
     await llmApi.testConnection(modelId)
-    alert('连接测试成功')
+    window.showToast('连接测试成功', 'success')
   } catch (error: any) {
-    alert(error.message || '连接测试失败')
+    window.showToast(error.message || '连接测试失败', 'error')
   } finally {
     testingModelId.value = null
   }
@@ -132,22 +132,26 @@ const confirmDelete = (id: string) => {
 
 const handleSaveModel = async () => {
   if (!modelForm.value.name?.trim()) {
-    alert('请输入模型名称')
+    window.showToast('请输入模型名称', 'warning')
     return
   }
   saving.value = true
   try {
     if (editingModel.value?.id) {
       await llmApi.update(editingModel.value.id, modelForm.value)
-      alert('模型更新成功')
+      window.showToast('模型更新成功', 'success')
+      const index = models.value.findIndex(m => m.id === editingModel.value!.id)
+      if (index !== -1) {
+        models.value[index] = { ...models.value[index], ...modelForm.value }
+      }
     } else {
       await llmApi.create(modelForm.value)
-      alert('模型创建成功')
+      window.showToast('模型创建成功', 'success')
+      loadModels()
     }
     showModelModal.value = false
-    loadModels()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     saving.value = false
   }
@@ -158,12 +162,12 @@ const handleDelete = async () => {
   saving.value = true
   try {
     await llmApi.delete(deleteTargetId.value)
-    alert('模型删除成功')
+    window.showToast('模型删除成功', 'success')
+    models.value = models.value.filter(m => m.id !== deleteTargetId.value)
     showDeleteConfirm.value = false
     deleteTargetId.value = null
-    loadModels()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     saving.value = false
   }

@@ -150,22 +150,29 @@ const confirmDelete = (id: string) => {
 
 const handleSaveAgent = async () => {
   if (!agentForm.value.name?.trim()) {
-    alert('请输入Agent名称')
+    window.showToast('请输入Agent名称', 'warning')
     return
   }
   saving.value = true
   try {
     if (editingAgent.value?.id) {
       await agentApi.update(editingAgent.value.id, agentForm.value)
-      alert('Agent更新成功')
+      window.showToast('Agent更新成功', 'success')
+      const index = agents.value.findIndex(a => a.id === editingAgent.value!.id)
+      if (index !== -1) {
+        agents.value[index] = {
+          ...agents.value[index],
+          ...agentForm.value
+        }
+      }
     } else {
       await agentApi.create(agentForm.value)
-      alert('Agent创建成功')
+      window.showToast('Agent创建成功', 'success')
+      loadAgents()
     }
     showAgentModal.value = false
-    loadAgents()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     saving.value = false
   }
@@ -176,12 +183,12 @@ const handleDelete = async () => {
   saving.value = true
   try {
     await agentApi.delete(deleteTargetId.value)
-    alert('Agent删除成功')
+    window.showToast('Agent删除成功', 'success')
+    agents.value = agents.value.filter(a => a.id !== deleteTargetId.value)
     showDeleteConfirm.value = false
     deleteTargetId.value = null
-    loadAgents()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     saving.value = false
   }

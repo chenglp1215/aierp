@@ -315,7 +315,7 @@ const confirmDelete = (type: 'customer' | 'address', customerId: string, address
 
 const handleSaveCustomer = async () => {
   if (!customerForm.value.name?.trim()) {
-    alert('请输入客户名称')
+    window.showToast('请输入客户名称', 'warning')
     return
   }
 
@@ -323,15 +323,28 @@ const handleSaveCustomer = async () => {
   try {
     if (editingCustomer.value) {
       await customerApi.update(editingCustomer.value.id, customerForm.value)
-      alert('客户更新成功')
+      window.showToast('客户更新成功', 'success')
+      const index = customers.value.findIndex(c => c.id === editingCustomer.value!.id)
+      if (index !== -1) {
+        const updated = {
+          ...customers.value[index],
+          ...customerForm.value,
+          customer_type: formatType(customerForm.value.customer_type || ''),
+          level: formatLevel(customerForm.value.level || ''),
+          level_raw: (customerForm.value.level || '').toString().toLowerCase(),
+          status: formatStatus(customerForm.value.status || ''),
+          status_raw: (customerForm.value.status || '').toString().toLowerCase()
+        }
+        customers.value[index] = updated
+      }
     } else {
       await customerApi.create(customerForm.value)
-      alert('客户创建成功')
+      window.showToast('客户创建成功', 'success')
+      loadCustomers()
     }
     showCustomerModal.value = false
-    loadCustomers()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     formLoading.value = false
   }
@@ -339,7 +352,7 @@ const handleSaveCustomer = async () => {
 
 const handleSaveAddress = async () => {
   if (!addressForm.value.recipient_name?.trim() || !addressForm.value.recipient_phone?.trim() || !addressForm.value.address?.trim()) {
-    alert('请填写完整的收货信息')
+    window.showToast('请填写完整的收货信息', 'warning')
     return
   }
 
@@ -347,20 +360,23 @@ const handleSaveAddress = async () => {
   try {
     if (editingAddress.value?.id && selectedCustomerId.value) {
       await customerApi.updateShippingAddress(selectedCustomerId.value, editingAddress.value.id, addressForm.value)
-      alert('收货地址更新成功')
+      window.showToast('收货地址更新成功', 'success')
     } else if (selectedCustomerId.value) {
       await customerApi.addShippingAddress(selectedCustomerId.value, addressForm.value)
-      alert('收货地址添加成功')
+      window.showToast('收货地址添加成功', 'success')
     }
     resetAddressForm()
     editingAddress.value = null
-    loadCustomers()
-    const updated = customers.value.find(c => c.id === selectedCustomerId.value)
-    if (updated) {
-      selectedCustomer.value = updated
+    const custIndex = customers.value.findIndex(c => c.id === selectedCustomerId.value)
+    if (custIndex !== -1) {
+      loadCustomers()
+      const updated = customers.value.find(c => c.id === selectedCustomerId.value)
+      if (updated) {
+        selectedCustomer.value = updated
+      }
     }
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     formLoading.value = false
   }
@@ -373,21 +389,26 @@ const handleDelete = async () => {
   try {
     if (deleteType.value === 'customer') {
       await customerApi.delete(deleteTargetId.value)
-      alert('客户删除成功')
+      window.showToast('客户删除成功', 'success')
+      customers.value = customers.value.filter(c => c.id !== deleteTargetId.value)
+      total.value--
     } else if (selectedCustomerId.value) {
       await customerApi.deleteShippingAddress(selectedCustomerId.value, deleteTargetId.value)
-      alert('收货地址删除成功')
-      loadCustomers()
-      const updated = customers.value.find(c => c.id === selectedCustomerId.value)
-      if (updated) {
-        selectedCustomer.value = updated
+      window.showToast('收货地址删除成功', 'success')
+      const custIndex = customers.value.findIndex(c => c.id === selectedCustomerId.value)
+      if (custIndex !== -1) {
+        loadCustomers()
+        const updated = customers.value.find(c => c.id === selectedCustomerId.value)
+        if (updated) {
+          selectedCustomer.value = updated
+        }
       }
     }
     showDeleteConfirm.value = false
     deleteTargetId.value = null
     loadStats()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     deleteLoading.value = false
   }
@@ -398,14 +419,17 @@ const handleSetDefaultAddress = async (addressId: string) => {
 
   try {
     await customerApi.setDefaultShippingAddress(selectedCustomerId.value, addressId)
-    alert('默认地址设置成功')
-    loadCustomers()
-    const updated = customers.value.find(c => c.id === selectedCustomerId.value)
-    if (updated) {
-      selectedCustomer.value = updated
+    window.showToast('默认地址设置成功', 'success')
+    const custIndex = customers.value.findIndex(c => c.id === selectedCustomerId.value)
+    if (custIndex !== -1) {
+      loadCustomers()
+      const updated = customers.value.find(c => c.id === selectedCustomerId.value)
+      if (updated) {
+        selectedCustomer.value = updated
+      }
     }
   } catch (error: any) {
-    alert(error.message || '设置失败')
+    window.showToast(error.message || '设置失败', 'error')
   }
 }
 

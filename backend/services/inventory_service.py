@@ -1,17 +1,26 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import random
 import string
+import logging
 
 from .base_service import BaseService
 from models.inventory import (
     WarehouseCreate, WarehouseUpdate, WarehouseStatus,
     StockCreate, StockUpdate, StockStatus
 )
+from validators.customer_validator import (
+    WAREHOUSE_CREATE_CONFIG,
+    WAREHOUSE_UPDATE_CONFIG,
+    STOCK_CREATE_CONFIG,
+    STOCK_UPDATE_CONFIG,
+)
 
+logger = logging.getLogger(__name__)
 
 class WarehouseService(BaseService):
     def __init__(self):
         super().__init__("warehouses")
+        self.logger = logging.getLogger(__name__)
 
     def _generate_warehouse_code(self) -> str:
         from datetime import datetime
@@ -19,16 +28,41 @@ class WarehouseService(BaseService):
         random_str = ''.join(random.choices(string.digits, k=6))
         return f"WH{date_str}{random_str}"
 
-    async def create_warehouse(self, warehouse_data: WarehouseCreate) -> str:
+    def validate_warehouse_create(self, warehouse_data: WarehouseCreate) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(warehouse_data.model_dump(), WAREHOUSE_CREATE_CONFIG)
+
+    def validate_warehouse_update(self, warehouse_data: WarehouseUpdate) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(warehouse_data.model_dump(exclude_unset=True), WAREHOUSE_UPDATE_CONFIG)
+
+    async def create_warehouse(self, warehouse_data: WarehouseCreate) -> Dict[str, Any]:
         data = warehouse_data.model_dump()
         if not data.get("warehouse_code"):
             data["warehouse_code"] = self._generate_warehouse_code()
         data["status"] = WarehouseStatus.ACTIVE.value
-        return await self.create(data)
+        data['id'] = await self.create(data)
+        return data
 
     async def update_warehouse(self, warehouse_code: str, warehouse_data: WarehouseUpdate) -> bool:
         data = warehouse_data.model_dump(exclude_unset=True)
-        return await self.update(warehouse_code, data)
+        data.pop("updated_at", None)
+        data.pop("created_at", None)
+        data.pop("id", None)
+        for key, value in data.items():
+            if hasattr(value, 'value'):
+                data[key] = value.value
+        try:
+            filter_query = {"warehouse_code": warehouse_code}
+            print(f"[DEBUG] Updating warehouse: filter={filter_query}, data={data}")
+            result = await self.collection.update_one(
+                filter_query,
+                {"$set": data}
+            )
+            print(f"[DEBUG] Update result: matched={result.matched_count}, modified={result.modified_count}")
+            return result.matched_count > 0
+        except Exception as e:
+            print(f"[ERROR] Update warehouse failed: {e}")
+            self.logger.error(f"Error updating warehouse: {e}")
+            return False
 
     async def get_warehouse_by_code(self, warehouse_code: str) -> Optional[Dict[str, Any]]:
         return await self.find_one({"warehouse_code": warehouse_code})
@@ -47,7 +81,8 @@ class WarehouseService(BaseService):
             filters["$or"] = [
                 {"warehouse_code": {"$regex": keyword, "$options": "i"}},
                 {"name": {"$regex": keyword, "$options": "i"}},
-                {"manager_name": {"$regex": keyword, "$options": "i"}}
+                {"manager_name": {"$regex": keyword, "$options": "i"}},
+                {"manager_id": {"$regex": keyword, "$options": "i"}}
             ]
         return await self.list(page, page_size, filters, "created_at", -1)
 
@@ -63,7 +98,8 @@ class WarehouseService(BaseService):
             "$or": [
                 {"name": {"$regex": keyword, "$options": "i"}},
                 {"warehouse_code": {"$regex": keyword, "$options": "i"}},
-                {"manager_name": {"$regex": keyword, "$options": "i"}}
+                {"manager_name": {"$regex": keyword, "$options": "i"}},
+                {"manager_id": {"$regex": keyword, "$options": "i"}}
             ]
         }
         cursor = self.collection.find(filters).limit(limit)
@@ -95,6 +131,11 @@ async def _enrich_stock_items(items: list, db) -> list:
             warehouse_map[str(w["_id"])] = {"code": w.get("warehouse_code", ""), "name": w.get("name", "")}
 
     for item in items:
+        if item.get("product_id"):
+            item["product_id"] = str(item["product_id"])
+        if item.get("warehouse_id"):
+            item["warehouse_id"] = str(item["warehouse_id"])
+
         product_id = item.get("product_id")
         if product_id and product_id in product_map:
             item["product_code"] = product_map[product_id]["code"]
@@ -118,10 +159,18 @@ class StockService(BaseService):
     def __init__(self):
         super().__init__("stocks")
 
-    async def create_stock(self, stock_data: StockCreate) -> str:
+    def validate_stock_create(self, stock_data: StockCreate) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(stock_data.model_dump(), STOCK_CREATE_CONFIG)
+
+    def validate_stock_update(self, stock_data: StockUpdate) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(stock_data.model_dump(exclude_unset=True), STOCK_UPDATE_CONFIG)
+
+    async def create_stock(self, stock_data: StockCreate) -> Dict[str, Any]:
         data = stock_data.model_dump()
         data["status"] = StockStatus.NORMAL.value
-        return await self.create(data)
+        _id = await self.create(data)
+        data["id"] = _id
+        return data
 
     async def update_stock(self, id: str, stock_data: StockUpdate) -> bool:
         data = stock_data.model_dump(exclude_unset=True)

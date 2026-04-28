@@ -113,9 +113,9 @@ class CustomerCreateTool(BaseTool):
             },
             "customer_type": {
                 "type": "string",
-                "description": "客户类型：enterprise(企业)、individual(个人)、government(政府)",
+                "description": "客户类型：company(企业)、individual(个人)、government(政府)",
                 "default": "company",
-                "example": "enterprise"
+                "example": "company"
             },
             "level": {
                 "type": "string",
@@ -201,17 +201,28 @@ class CustomerCreateTool(BaseTool):
                 remarks=remarks
             )
 
-            customer_code, db_id = await customer_service.create_customer(customer_data)
+            is_valid, errors = customer_service.validate_customer_create(customer_data)
+            if not is_valid:
+                error_msg = self._format_validation_errors(errors)
+                return ToolResult(success=False, content=f"客户创建参数验证失败: {error_msg}")
+
+            customer_data = await customer_service.create_customer(customer_data)
 
             return ToolResult(
                 success=True,
-                content=f"客户创建成功！客户编码: {customer_code}",
-                metadata={"customer_code": customer_code, "db_id": db_id}
-            )
+                content=f"客户创建成功！客户信息: {customer_data}",
+                metadata={"customer_code": customer_data.get("customer_code", ""), "customer_name": customer_data.get("name") or "", "customer_id": customer_data.get("id", "")}
+            ).model_dump_json()
 
         except Exception as e:
-            logger.error(f"Customer create failed: {e}")
-            return ToolResult(success=False, content="", error=str(e))
+            logger.exception(f"Customer create failed: {e}")
+            return ToolResult(success=False, content="", error=str(e)).model_dump_json()
+
+    def _format_validation_errors(self, errors: Dict[str, list]) -> str:
+        lines = []
+        for field, msgs in errors.items():
+            lines.append(f"{field}: {', '.join(msgs)}")
+        return "; ".join(lines)
 
 
 class CustomerDetailTool(BaseTool):
@@ -403,6 +414,12 @@ class CustomerDetailTool(BaseTool):
             logger.error(f"Customer detail failed: {e}")
             return ToolResult(success=False, content="", error=str(e))
 
+    def _format_validation_errors(self, errors: Dict[str, list]) -> str:
+        lines = []
+        for field, msgs in errors.items():
+            lines.append(f"{field}: {', '.join(msgs)}")
+        return "; ".join(lines)
+
     async def _update_customer_info(
         self,
         customer_id: str,
@@ -457,6 +474,11 @@ class CustomerDetailTool(BaseTool):
         if remarks is not None:
             update_data.remarks = remarks
 
+        is_valid, errors = customer_service.validate_customer_update(update_data)
+        if not is_valid:
+            error_msg = self._format_validation_errors(errors)
+            return ToolResult(success=False, content=f"客户更新参数验证失败: {error_msg}")
+
         success = await customer_service.update_customer(customer_id, update_data)
 
         if success:
@@ -484,6 +506,12 @@ class CustomerDetailTool(BaseTool):
             address=address or "",
             is_default=is_default
         )
+
+        is_valid, errors = customer_service.validate_shipping_address_create(addr_data)
+        if not is_valid:
+            error_msg = self._format_validation_errors(errors)
+            return ToolResult(success=False, content=f"收货地址参数验证失败: {error_msg}")
+
         result = await customer_service.add_shipping_address(customer_id, addr_data)
         if result:
             return ToolResult(success=True, content="收货地址添加成功", metadata=result)
@@ -504,15 +532,22 @@ class CustomerDetailTool(BaseTool):
     ) -> ToolResult:
         if not address_id:
             return ToolResult(success=False, content="更新地址需要提供address_id")
+
         addr_data = ShippingAddressUpdate(
-            receiver_name=recipient_name,
-            receiver_phone=recipient_phone,
+            recipient_name=recipient_name,
+            recipient_phone=recipient_phone,
             province=province,
             city=city,
             district=district,
             address=address,
             is_default=is_default
         )
+
+        is_valid, errors = customer_service.validate_shipping_address_update(addr_data)
+        if not is_valid:
+            error_msg = self._format_validation_errors(errors)
+            return ToolResult(success=False, content=f"收货地址参数验证失败: {error_msg}")
+
         success = await customer_service.update_shipping_address(
             customer_id, address_id, addr_data
         )

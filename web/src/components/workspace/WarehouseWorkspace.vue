@@ -9,12 +9,18 @@ interface Warehouse {
   warehouse_code: string
   name: string
   address: string
+  manager_id?: string
   manager_name: string
-  manager_phone: string
   status: string
   description?: string
   created_at?: string
   updated_at?: string
+}
+
+interface ManagerCandidate {
+  id: string
+  username: string
+  full_name: string
 }
 
 const loading = ref(false)
@@ -32,11 +38,14 @@ const deleteTargetId = ref<string | null>(null)
 const formLoading = ref(false)
 const deleteLoading = ref(false)
 
+const managerCandidates = ref<ManagerCandidate[]>([])
+const loadingCandidates = ref(false)
+
 const warehouseForm = ref<Partial<Warehouse>>({
   name: '',
   address: '',
+  manager_id: '',
   manager_name: '',
-  manager_phone: '',
   status: 'active',
   description: ''
 })
@@ -52,7 +61,6 @@ const columns = [
   { key: 'name', label: '仓库名称' },
   { key: 'address', label: '仓库地址' },
   { key: 'manager_name', label: '管理员', width: '100px' },
-  { key: 'manager_phone', label: '联系电话', width: '130px' },
   { key: 'status', label: '状态', width: '80px' }
 ]
 
@@ -75,7 +83,7 @@ const loadWarehouses = async () => {
     })
     warehouses.value = res.items.map((item: Warehouse) => ({
       ...item,
-      status: formatStatus(item.status)
+      display_status: formatStatus(item.status)
     }))
     total.value = res.total
   } catch (error) {
@@ -115,22 +123,48 @@ const resetWarehouseForm = () => {
   warehouseForm.value = {
     name: '',
     address: '',
+    manager_id: '',
     manager_name: '',
-    manager_phone: '',
     status: 'active',
     description: ''
   }
   editingWarehouse.value = null
 }
 
+const loadManagerCandidates = async () => {
+  if (managerCandidates.value.length > 0) return
+  loadingCandidates.value = true
+  try {
+    const res = await warehouseApi.getManagerCandidates()
+    managerCandidates.value = res.result || []
+  } catch (error) {
+    console.error('加载管理员候选失败:', error)
+    managerCandidates.value = []
+  } finally {
+    loadingCandidates.value = false
+  }
+}
+
+const handleManagerSelect = (event: Event) => {
+  const target = event.target as HTMLSelectElement
+  const selectedId = target.value
+  warehouseForm.value.manager_id = selectedId
+  const selected = managerCandidates.value.find(c => c.id === selectedId)
+  if (selected) {
+    warehouseForm.value.manager_name = selected.full_name
+  }
+}
+
 const openCreateWarehouse = () => {
   resetWarehouseForm()
+  loadManagerCandidates()
   showWarehouseModal.value = true
 }
 
 const openEditWarehouse = (warehouse: Warehouse) => {
   editingWarehouse.value = warehouse
   warehouseForm.value = { ...warehouse }
+  loadManagerCandidates()
   showWarehouseModal.value = true
 }
 
@@ -141,35 +175,39 @@ const confirmDelete = (warehouseId: string) => {
 
 const handleSaveWarehouse = async () => {
   if (!warehouseForm.value.name?.trim()) {
-    alert('请输入仓库名称')
+    window.showToast('请输入仓库名称', 'warning')
     return
   }
   if (!warehouseForm.value.address?.trim()) {
-    alert('请输入仓库地址')
+    window.showToast('请输入仓库地址', 'warning')
     return
   }
-  if (!warehouseForm.value.manager_name?.trim()) {
-    alert('请输入仓库管理员')
-    return
-  }
-  if (!warehouseForm.value.manager_phone?.trim()) {
-    alert('请输入管理员电话')
+  if (!warehouseForm.value.manager_id?.trim()) {
+    window.showToast('请选择仓库管理员', 'warning')
     return
   }
 
   formLoading.value = true
   try {
     if (editingWarehouse.value) {
-      await warehouseApi.update(editingWarehouse.value.id, warehouseForm.value)
-      alert('仓库更新成功')
+      await warehouseApi.update(editingWarehouse.value.warehouse_code, warehouseForm.value)
+      window.showToast('仓库更新成功', 'success')
+      const index = warehouses.value.findIndex(w => w.warehouse_code === editingWarehouse.value!.warehouse_code)
+      if (index !== -1) {
+        warehouses.value[index] = {
+          ...warehouses.value[index],
+          ...warehouseForm.value,
+          display_status: formatStatus(warehouseForm.value.status || warehouses.value[index].status)
+        }
+      }
     } else {
       await warehouseApi.create(warehouseForm.value)
-      alert('仓库创建成功')
+      window.showToast('仓库创建成功', 'success')
+      loadWarehouses()
     }
     showWarehouseModal.value = false
-    loadWarehouses()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     formLoading.value = false
   }
@@ -181,12 +219,13 @@ const handleDelete = async () => {
   deleteLoading.value = true
   try {
     await warehouseApi.delete(deleteTargetId.value)
-    alert('仓库删除成功')
+    window.showToast('仓库删除成功', 'success')
+    warehouses.value = warehouses.value.filter(w => w.id !== deleteTargetId.value)
+    total.value--
     showDeleteConfirm.value = false
     deleteTargetId.value = null
-    loadWarehouses()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     deleteLoading.value = false
   }
@@ -194,6 +233,7 @@ const handleDelete = async () => {
 
 onMounted(() => {
   loadWarehouses()
+  loadManagerCandidates()
 })
 </script>
 
@@ -258,10 +298,9 @@ onMounted(() => {
             <td>{{ warehouse.name }}</td>
             <td>{{ warehouse.address }}</td>
             <td>{{ warehouse.manager_name }}</td>
-            <td>{{ warehouse.manager_phone }}</td>
             <td>
-              <span class="status-tag" :class="warehouse.status.toLowerCase()">
-                {{ warehouse.status }}
+              <span class="status-tag" :class="warehouse.status">
+                {{ warehouse.display_status }}
               </span>
             </td>
             <td>
@@ -302,11 +341,20 @@ onMounted(() => {
           <div class="form-row">
             <div class="form-group">
               <label>仓库管理员 *</label>
-              <input type="text" v-model="warehouseForm.manager_name" placeholder="请输入管理员姓名" />
-            </div>
-            <div class="form-group">
-              <label>管理员电话 *</label>
-              <input type="text" v-model="warehouseForm.manager_phone" placeholder="请输入联系电话" />
+              <select
+                :value="warehouseForm.manager_id"
+                @change="handleManagerSelect"
+                :disabled="loadingCandidates"
+              >
+                <option value="">请选择管理员</option>
+                <option
+                  v-for="candidate in managerCandidates"
+                  :key="candidate.id"
+                  :value="candidate.id"
+                >
+                  {{ candidate.full_name }} ({{ candidate.username }})
+                </option>
+              </select>
             </div>
           </div>
           <div class="form-group">

@@ -33,16 +33,16 @@ class ToolRegistry:
     def get_all(self) -> List[BaseTool]:
         return list(self._tools.values())
 
-    def get_tools(self, tools_range: List[str], user_permissions: List[str] = None) -> List[Dict[str, Any]]:
+    def get_tools(self, tools_range, user_permissions: List[str] = None) -> List[Dict[str, Any]]:
         if tools_range is None:
-            tools = list(self._tools.values())
+            return self._tools.values()
         elif len(tools_range) == 0:
             return []
-        else:
-            tools = [t for t in self._tools.values() if t.name in tools_range]
+
+        tools = [t for t in self._tools.values() if t.name in tools_range]
         if user_permissions is not None:
             tools = [t for t in tools if not getattr(t, 'permission_code', '') or getattr(t, 'permission_code', '') in user_permissions]
-        return [tool.get_schema() for tool in tools]
+        return tools
 
     def get_tools_by_permissions(self, user_permissions: List[str] = None) -> List[BaseTool]:
         if user_permissions is None:

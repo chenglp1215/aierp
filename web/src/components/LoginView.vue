@@ -2,8 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { authApi } from '../services/api'
+import { useTheme } from '../hooks'
 
 const router = useRouter()
+useTheme()
 
 const username = ref('')
 const password = ref('')
@@ -181,7 +183,11 @@ const handleLogin = async () => {
 .bg-gradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d30 50%, #1a1a1a 100%);
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-primary) 100%);
+}
+
+[data-theme="light"] .bg-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .bg-grid {

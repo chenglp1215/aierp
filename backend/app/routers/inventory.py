@@ -17,8 +17,8 @@ async def create_warehouse(
     warehouse: WarehouseCreate,
     _: dict = Depends(require_permission("warehouse.create"))
 ):
-    warehouse_code = await warehouse_service.create_warehouse(warehouse)
-    return {"status": "success", "message": "仓库创建成功", "result": {"code": warehouse_code}}
+    warehouse_data = await warehouse_service.create_warehouse(warehouse)
+    return {"status": "success", "message": "仓库创建成功", "result": {"code": warehouse_data["warehouse_code"]}}
 
 
 @warehouse_router.get("/", response_model=WarehouseListResponse)
@@ -40,6 +40,44 @@ async def search_warehouses(
 ):
     items = await warehouse_service.search_warehouses(keyword, limit)
     return {"status": "success", "result": items}
+
+
+@warehouse_router.get("/manager-candidates", response_model=dict)
+async def get_warehouse_manager_candidates(
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    _: dict = Depends(require_permission("warehouse.view"))
+):
+    from services.auth_service import auth_service, role_service
+    from bson import ObjectId
+
+    warehouse_admin_role = await role_service.find_one({"code": "warehouse_admin"})
+    if not warehouse_admin_role:
+        return {"status": "success", "result": []}
+
+    warehouse_admin_role_id = str(warehouse_admin_role["id"])
+
+    users = await auth_service.collection.find({
+        "status": "active",
+        "role_ids": warehouse_admin_role_id
+    }).to_list(length=100)
+
+    candidates = []
+    for user in users:
+        user_id = str(user.get("_id"))
+        full_name = user.get("full_name", "")
+        username = user.get("username", "")
+
+        if keyword:
+            if keyword.lower() not in (full_name or "").lower() and keyword.lower() not in username.lower():
+                continue
+
+        candidates.append({
+            "id": user_id,
+            "username": username,
+            "full_name": full_name or username
+        })
+
+    return {"status": "success", "result": candidates}
 
 
 @warehouse_router.get("/{warehouse_code}", response_model=Warehouse)
@@ -98,8 +136,8 @@ async def create_stock(
     stock: StockCreate,
     _: dict = Depends(require_permission("stock.create"))
 ):
-    stock_id = await stock_service.create_stock(stock)
-    return {"status": "success", "message": "库存创建成功", "result": {"id": stock_id}}
+    stock_data = await stock_service.create_stock(stock)
+    return {"status": "success", "message": "库存创建成功", "result": {"id": stock_data["id"]}}
 
 
 @stock_router.get("/", response_model=StockListResponse)

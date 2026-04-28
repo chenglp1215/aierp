@@ -31,7 +31,7 @@ class ProcurementOrderService(BaseService):
         self,
         order_data: ProcurementOrderCreate,
         sales_order_id: Optional[str] = None
-    ) -> str:
+    ) -> Dict[str, Any]:
         """创建采购订单"""
         data = order_data.model_dump()
         data["procurement_no"] = self._generate_procurement_no()
@@ -41,8 +41,8 @@ class ProcurementOrderService(BaseService):
 
         data["status"] = ProcurementOrderStatus.PENDING.value
         data["sales_order_id"] = sales_order_id
-
-        return await self.create(data)
+        data["id"] = await self.create(data)
+        return data
 
     async def update_procurement_order(
         self,

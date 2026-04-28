@@ -56,6 +56,7 @@ const userForm = ref({
 const columns = [
   { key: 'username', label: '用户名' },
   { key: 'email', label: '邮箱' },
+  { key: 'full_name', label: '姓名' },
   { key: 'phone', label: '手机' },
   { key: 'role_names', label: '角色' },
   { key: 'created_at', label: '创建时间' }
@@ -143,19 +144,19 @@ const confirmDelete = (id: string) => {
 
 const handleSave = async () => {
   if (!userForm.value.username?.trim()) {
-    alert('请输入用户名')
+    window.showToast('请输入用户名', 'warning')
     return
   }
   if (userForm.value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.value.email)) {
-    alert('请输入有效的邮箱地址')
+    window.showToast('请输入有效的邮箱地址', 'warning')
     return
   }
   if (!editingUser.value && !userForm.value.password?.trim()) {
-    alert('请输入密码')
+    window.showToast('请输入密码', 'warning')
     return
   }
   if (userForm.value.password && userForm.value.password.length < 6) {
-    alert('密码长度不能少于6位')
+    window.showToast('密码长度不能少于6位', 'warning')
     return
   }
 
@@ -172,7 +173,26 @@ const handleSave = async () => {
         data.new_password = userForm.value.password
       }
       await authApi.updateUser(editingUser.value.id, data)
-      alert('用户更新成功')
+      window.showToast('用户更新成功', 'success')
+
+      // 直接更新列表中对应项
+      const index = users.value.findIndex(u => u.id === editingUser.value!.id)
+      if (index !== -1) {
+        const roleNames = userForm.value.role_ids.length > 0
+          ? userForm.value.role_ids.map((rid: string) => {
+              const role = roles.value.find(r => r.id === rid)
+              return role ? role.name : rid
+            })
+          : users.value[index].role_names
+        users.value[index] = {
+          ...users.value[index],
+          email: userForm.value.email || '',
+          phone: userForm.value.phone || '',
+          full_name: userForm.value.full_name || '',
+          role_ids: userForm.value.role_ids,
+          role_names: roleNames
+        }
+      }
     } else {
       const data: any = {
         username: userForm.value.username,
@@ -183,12 +203,13 @@ const handleSave = async () => {
         role_ids: userForm.value.role_ids.length > 0 ? userForm.value.role_ids : undefined
       }
       await authApi.createUser(data)
-      alert('用户创建成功')
+      window.showToast('用户创建成功', 'success')
+      // 新增用户需要重新加载列表以获取完整数据
+      loadUsers()
     }
     showModal.value = false
-    loadUsers()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     formLoading.value = false
   }
@@ -200,12 +221,14 @@ const handleDelete = async () => {
   deleteLoading.value = true
   try {
     await authApi.deleteUser(deleteTargetId.value)
-    alert('用户删除成功')
+    window.showToast('用户删除成功', 'success')
     showDeleteConfirm.value = false
+    // 直接从列表移除该项
+    users.value = users.value.filter(u => u.id !== deleteTargetId.value)
+    total.value--
     deleteTargetId.value = null
-    loadUsers()
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
     deleteLoading.value = false
   }
@@ -219,23 +242,23 @@ const openResetPwd = (user: User) => {
 
 const handleResetPwd = async () => {
   if (!resetPwdTarget.value || !newPassword.value.trim()) {
-    alert('请输入新密码')
+    window.showToast('请输入新密码', 'warning')
     return
   }
   if (newPassword.value.length < 6) {
-    alert('密码长度不能少于6位')
+    window.showToast('密码长度不能少于6位', 'warning')
     return
   }
 
   resetPwdLoading.value = true
   try {
     await authApi.resetPassword(resetPwdTarget.value.id, newPassword.value)
-    alert('密码重置成功')
+    window.showToast('密码重置成功', 'success')
     showResetPwdModal.value = false
     resetPwdTarget.value = null
     newPassword.value = ''
   } catch (error: any) {
-    alert(error.message || '密码重置失败')
+    window.showToast(error.message || '密码重置失败', 'error')
   } finally {
     resetPwdLoading.value = false
   }
@@ -288,7 +311,8 @@ onMounted(() => {
           </tr>
           <tr v-else v-for="user in users" :key="user.id">
             <td>{{ user.username }}</td>
-            <td>{{ user.email }}</td>
+            <td>{{ user.email || '-' }}</td>
+            <td>{{ user.full_name || '-' }}</td>
             <td>{{ user.phone || '-' }}</td>
             <td>{{ user.role_names?.join(', ') || '-' }}</td>
             <td>{{ formatDate(user.created_at) }}</td>

@@ -6,9 +6,12 @@ from models.product import (
     ProductCreate,
     ProductUpdate,
     ProductListResponse,
-    ProductStatus,
+    ProductSpec,
+    ProductSpecCreate,
+    ProductSpecUpdate,
+    ProductSpecListResponse,
 )
-from services.product_service import product_service
+from services.product_service import product_service, product_spec_service
 from .auth import get_current_active_user, require_permission
 
 product_router = APIRouter(prefix="/products", tags=["商品管理"])
@@ -20,11 +23,11 @@ async def create_product(
     _: dict = Depends(require_permission("product.create"))
 ):
     """创建商品"""
-    product_id = await product_service.create_product(product)
+    product_data = await product_service.create_product(product)
     return {
         "status": "success",
         "message": "商品创建成功",
-        "result": {"id": product_id}
+        "result": product_data
     }
 
 
@@ -32,15 +35,13 @@ async def create_product(
 async def list_products(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
-    status: Optional[str] = Query(None, description="商品状态"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     _: dict = Depends(require_permission("product.view"))
 ):
-    """获取商品列表"""
+    """获取商品列表（包含所有规格）"""
     result = await product_service.list_products(
         page=page,
         page_size=page_size,
-        status=status,
         keyword=keyword
     )
     return result
@@ -75,8 +76,8 @@ async def get_product(
     product_id: str,
     _: dict = Depends(require_permission("product.view"))
 ):
-    """获取商品详情"""
-    product = await product_service.get_by_id(product_id)
+    """获取商品详情（包含规格列表）"""
+    product = await product_service.get_product_with_specs(product_id)
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
     return product
@@ -103,27 +104,149 @@ async def delete_product(
     product_id: str,
     _: dict = Depends(require_permission("product.delete"))
 ):
-    """删除商品"""
+    """删除商品（同时删除关联规格）"""
     success = await product_service.delete(product_id)
     if not success:
         raise HTTPException(status_code=404, detail="商品不存在或删除失败")
+
+    await product_spec_service.delete_many({"product_id": product_id})
+
     return {
         "status": "success",
         "message": "商品删除成功"
     }
 
 
-@product_router.patch("/{product_id}/status", response_model=dict)
-async def update_product_status(
+@product_router.get("/{product_id}/specs", response_model=ProductSpecListResponse)
+async def list_product_specs(
     product_id: str,
-    status: ProductStatus,
-    _: dict = Depends(require_permission("product.edit"))
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(50, ge=1, le=100, description="每页数量"),
+    _: dict = Depends(require_permission("product.view"))
 ):
-    """更新商品状态"""
-    success = await product_service.update_status(product_id, status)
-    if not success:
-        raise HTTPException(status_code=404, detail="商品不存在或状态更新失败")
+    """获取商品的所有规格"""
+    result = await product_spec_service.list_specs(
+        page=page,
+        page_size=page_size,
+        product_id=product_id
+    )
+    return result
+
+
+@product_router.post("/{product_id}/specs", response_model=dict, status_code=201)
+async def create_product_spec(
+    product_id: str,
+    spec: ProductSpecCreate,
+    _: dict = Depends(require_permission("product.create"))
+):
+    """为商品创建规格"""
+    product = await product_service.get_by_id(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="商品不存在")
+
+    spec_data = spec.model_dump()
+    spec_data["product_id"] = product_id
+
+    from models.product import ProductSpecCreate
+    spec_create = ProductSpecCreate(**spec_data)
+    spec_data = await product_spec_service.create_spec(spec_create)
+
     return {
         "status": "success",
-        "message": "商品状态更新成功"
+        "message": "规格创建成功",
+        "result": spec_data
     }
+
+
+@product_router.get("/specs/{spec_id}", response_model=ProductSpec)
+async def get_spec(
+    spec_id: str,
+    _: dict = Depends(require_permission("product.view"))
+):
+    """获取规格详情"""
+    spec = await product_spec_service.get_by_id(spec_id)
+    if not spec:
+        raise HTTPException(status_code=404, detail="规格不存在")
+    return spec
+
+
+@product_router.put("/specs/{spec_id}", response_model=dict)
+async def update_spec(
+    spec_id: str,
+    spec: ProductSpecUpdate,
+    _: dict = Depends(require_permission("product.edit"))
+):
+    """更新规格信息"""
+    success = await product_spec_service.update_spec(spec_id, spec)
+    if not success:
+        raise HTTPException(status_code=404, detail="规格不存在或更新失败")
+    return {
+        "status": "success",
+        "message": "规格更新成功"
+    }
+
+
+@product_router.delete("/specs/{spec_id}", response_model=dict)
+async def delete_spec(
+    spec_id: str,
+    _: dict = Depends(require_permission("product.delete"))
+):
+    """删除规格"""
+    success = await product_spec_service.delete_spec(spec_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="规格不存在或删除失败")
+    return {
+        "status": "success",
+        "message": "规格删除成功"
+    }
+
+
+@product_router.patch("/specs/{spec_id}/toggle-active", response_model=dict)
+async def toggle_spec_active(
+    spec_id: str,
+    is_active: bool = Query(..., description="是否激活"),
+    _: dict = Depends(require_permission("product.edit"))
+):
+    """切换规格激活状态"""
+    success = await product_spec_service.toggle_spec_active(spec_id, is_active)
+    if not success:
+        raise HTTPException(status_code=404, detail="规格不存在或更新失败")
+    return {
+        "status": "success",
+        "message": f"规格已{'激活' if is_active else '停用'}"
+    }
+
+
+@product_router.get("/specs/{spec_id}/stock-detail", response_model=dict)
+async def get_spec_stock_detail(
+    spec_id: str,
+    _: dict = Depends(require_permission("product.view"))
+):
+    """获取规格库存明细"""
+    items = await product_service.get_product_stock_detail(spec_id)
+    total = sum(item.get("quantity", 0) for item in items)
+    return {
+        "status": "success",
+        "result": {
+            "items": items,
+            "total_quantity": total
+        }
+    }
+
+
+@product_router.get("/all-specs/", response_model=ProductSpecListResponse)
+async def list_all_specs(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(50, ge=1, le=100, description="每页数量"),
+    keyword: Optional[str] = Query(None, description="规格编号关键词（模糊匹配）"),
+    product_keyword: Optional[str] = Query(None, description="商品编码关键词（模糊匹配，筛选指定商品的规格）"),
+    _: dict = Depends(require_permission("product.view"))
+):
+    """获取所有规格列表，支持按规格编号或商品编码搜索"""
+    result = await product_spec_service.list_specs(
+        page=page,
+        page_size=page_size,
+        keyword=keyword,
+        product_keyword=product_keyword
+    )
+    return result

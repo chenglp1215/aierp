@@ -41,11 +41,11 @@ async def create_role(
 ):
     """创建角色"""
     try:
-        role_id = await role_service.create_role(role_data)
+        role_data = await role_service.create_role(role_data)
         return {
             "status": "success",
             "message": "角色创建成功",
-            "result": {"id": role_id}
+            "result": {"id": role_data["id"]}
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -58,6 +58,13 @@ async def update_role(
     current_user: dict = Depends(require_permission("role.edit"))
 ):
     """更新角色"""
+    role = await role_service.get_by_id(role_id)
+    if not role:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    if role.get("is_fixed"):
+        raise HTTPException(status_code=400, detail="固化角色不允许修改")
+
     try:
         success = await role_service.update_role(role_id, role_data)
         if not success:
@@ -73,6 +80,13 @@ async def delete_role(
     current_user: dict = Depends(require_permission("role.delete"))
 ):
     """删除角色"""
+    role = await role_service.get_by_id(role_id)
+    if not role:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    if role.get("is_fixed"):
+        raise HTTPException(status_code=400, detail="固化角色不允许删除")
+
     success = await role_service.delete(role_id)
     if not success:
         raise HTTPException(status_code=404, detail="角色不存在或删除失败")

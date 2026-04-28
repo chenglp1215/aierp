@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 
 export interface ToolCallData {
   tool: string
+  toolName?: string
   args: Record<string, any>
   result?: {
     success: boolean
@@ -20,7 +21,7 @@ const props = withDefaults(defineProps<{
 const isExpanded = ref(false)
 
 const displayName = computed(() => {
-  return props.toolCall.tool || '未知工具'
+  return props.toolCall.toolName || props.toolCall.tool || '未知工具'
 })
 
 const statusIcon = computed(() => {

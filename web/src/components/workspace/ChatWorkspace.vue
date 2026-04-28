@@ -3,7 +3,7 @@ defineOptions({ name: 'ChatWorkspace' })
 
 import { ref, computed, onMounted } from 'vue'
 import ChatCard from '../ChatCard.vue'
-import { agentApi, chatWsService, ChatFile } from '../../services/api'
+import { agentApi, chatWsService, aiToolsApi, ChatFile } from '../../services/api'
 
 interface Agent {
   id: string
@@ -22,6 +22,20 @@ interface AgentTab {
   placeholder: string
 }
 
+interface ToolInfo {
+  name: string
+  cn_name: string
+  description: string
+  permission_code: string
+}
+
+interface ToolCallItem {
+  tool: string
+  toolName: string
+  args: Record<string, any>
+  result?: { success: boolean; content: string; error?: string }
+}
+
 interface TabState {
   connected: boolean
   connecting: boolean
@@ -31,20 +45,12 @@ interface TabState {
     content: string
     timestamp: Date
     files?: ChatFile[]
-    toolCalls?: Array<{
-      tool: string
-      args: Record<string, any>
-      result?: { success: boolean; content: string; error?: string }
-    }>
+    toolCalls?: ToolCallItem[]
     _pending?: boolean
   }>
   _pendingMessage?: {
     id: string
-    toolCalls: Array<{
-      tool: string
-      args: Record<string, any>
-      result?: { success: boolean; content: string; error?: string }
-    }>
+    toolCalls: ToolCallItem[]
     content: string
   }
   _waitingForResponse: boolean
@@ -54,6 +60,7 @@ const agents = ref<Agent[]>([])
 const loading = ref(false)
 const activeTabId = ref<string | null>(null)
 const tabStates = ref<Map<string, TabState>>(new Map())
+const toolsMap = ref<Map<string, string>>(new Map())
 
 const iconMap: Record<string, string> = {
   '智能问答': 'chat',
@@ -140,8 +147,10 @@ const connectTab = async (tabId: string) => {
             _pending: true
           })
         }
+        const toolName = getToolName(msg.tool || '')
         tabState._pendingMessage.toolCalls.push({
           tool: msg.tool || '',
+          toolName: toolName,
           args: msg.args || {},
           result: undefined
         })
@@ -149,6 +158,7 @@ const connectTab = async (tabId: string) => {
         if (pendingMsg && pendingMsg.toolCalls) {
           pendingMsg.toolCalls.push({
             tool: msg.tool || '',
+            toolName: toolName,
             args: msg.args || {},
             result: undefined
           })
@@ -176,7 +186,7 @@ const connectTab = async (tabId: string) => {
           }
         }
       } else if (msg.type === 'system' || msg.type === 'text') {
-        let toolCalls: Array<{ tool: string; args: Record<string, any>; result?: { success: boolean; content: string; error?: string } }> = []
+        let toolCalls: ToolCallItem[] = []
         if (tabState._pendingMessage) {
           toolCalls = tabState._pendingMessage.toolCalls
           tabState._pendingMessage = undefined
@@ -198,7 +208,7 @@ const connectTab = async (tabId: string) => {
         }
         tabState._waitingForResponse = false
       } else if (msg.type === 'error') {
-        let toolCalls: Array<{ tool: string; args: Record<string, any>; result?: { success: boolean; content: string; error?: string } }> = []
+        let toolCalls: ToolCallItem[] = []
         if (tabState._pendingMessage) {
           toolCalls = tabState._pendingMessage.toolCalls
           tabState._pendingMessage = undefined
@@ -305,6 +315,23 @@ const loadAgents = async () => {
   }
 }
 
+const loadTools = async () => {
+  try {
+    const res = await aiToolsApi.listTools()
+    if (res.items) {
+      res.items.forEach((tool: ToolInfo) => {
+        toolsMap.value.set(tool.name, tool.cn_name || tool.name)
+      })
+    }
+  } catch (error) {
+    console.error('加载工具列表失败:', error)
+  }
+}
+
+const getToolName = (tool: string): string => {
+  return toolsMap.value.get(tool) || tool
+}
+
 const getTabIcon = (tab: AgentTab) => {
   const icons: Record<string, string> = {
     chat: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z',
@@ -316,6 +343,7 @@ const getTabIcon = (tab: AgentTab) => {
 }
 
 onMounted(() => {
+  loadTools()
   loadAgents()
 })
 </script>

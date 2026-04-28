@@ -30,12 +30,13 @@ async def init_admin_user():
                 "name": "管理员",
                 "description": "系统管理员角色",
                 "permission_ids": all_perm_ids,
-                "status": "active"
+                "status": "active",
+                "is_fixed": True
             })
             admin_role_id = role_id
-            logger.info(f"创建管理员角色成功: {role_id}")
+            logger.info(f"创建管理员角色成功: {admin_role_id}")
         else:
-            await role_service.update(admin_role["id"], {"permission_ids": all_perm_ids})
+            await role_service.update(admin_role["id"], {"permission_ids": all_perm_ids, "is_fixed": True})
             admin_role_id = admin_role["id"]
             logger.info("管理员角色已存在，已更新权限")
 

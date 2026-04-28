@@ -31,7 +31,8 @@ const servers = ref<McpServer[]>([])
 const serverTools = ref<Record<string, Tool[]>>({})
 const expandedServer = ref<string | null>(null)
 const loading = ref(false)
-const saving = ref(false)
+const formLoading = ref(false)
+const deleteLoading = ref(false)
 const testingServerId = ref<string | null>(null)
 
 const showServerModal = ref(false)
@@ -101,9 +102,9 @@ const testConnection = async (serverId: string) => {
   testingServerId.value = serverId
   try {
     await mcpApi.testConnection(serverId)
-    alert('连接测试成功')
+    window.showToast('连接测试成功', 'success')
   } catch (error: any) {
-    alert(error.message || '连接测试失败')
+    window.showToast(error.message || '连接测试失败', 'error')
   } finally {
     testingServerId.value = null
   }
@@ -158,10 +159,10 @@ const getEnvVarsObject = () => {
 
 const handleSaveServer = async () => {
   if (!serverForm.value.name?.trim()) {
-    alert('请输入服务器名称')
+    window.showToast('请输入服务器名称', 'warning')
     return
   }
-  saving.value = true
+  formLoading.value = true
   try {
     const data = {
       ...serverForm.value,
@@ -169,36 +170,43 @@ const handleSaveServer = async () => {
     }
     if (editingServer.value?.id) {
       await mcpApi.update(editingServer.value.id, data)
-      alert('服务器更新成功')
+      window.showToast('服务器更新成功', 'success')
+      const index = servers.value.findIndex(s => s.id === editingServer.value!.id)
+      if (index !== -1) {
+        servers.value[index] = {
+          ...servers.value[index],
+          ...data
+        }
+      }
     } else {
       await mcpApi.create(data)
-      alert('服务器创建成功')
+      window.showToast('服务器创建成功', 'success')
+      loadServers()
     }
     showServerModal.value = false
-    loadServers()
   } catch (error: any) {
-    alert(error.message || '操作失败')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
-    saving.value = false
+    formLoading.value = false
   }
 }
 
 const handleDelete = async () => {
   if (!deleteTargetId.value) return
-  saving.value = true
+  deleteLoading.value = true
   try {
     await mcpApi.delete(deleteTargetId.value)
-    alert('服务器删除成功')
-    showDeleteConfirm.value = false
-    deleteTargetId.value = null
+    window.showToast('服务器删除成功', 'success')
+    servers.value = servers.value.filter(s => s.id !== deleteTargetId.value)
     if (expandedServer.value === deleteTargetId.value) {
       expandedServer.value = null
     }
-    loadServers()
+    showDeleteConfirm.value = false
+    deleteTargetId.value = null
   } catch (error: any) {
-    alert(error.message || '删除失败')
+    window.showToast(error.message || '删除失败', 'error')
   } finally {
-    saving.value = false
+    deleteLoading.value = false
   }
 }
 
@@ -334,8 +342,8 @@ onMounted(() => {
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showServerModal = false">取消</button>
-          <button class="btn-primary" @click="handleSaveServer" :disabled="saving">
-            {{ saving ? '保存中...' : '保存' }}
+          <button class="btn-primary" @click="handleSaveServer" :disabled="formLoading">
+            {{ formLoading ? '保存中...' : '保存' }}
           </button>
         </div>
       </div>
@@ -351,8 +359,8 @@ onMounted(() => {
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDeleteConfirm = false">取消</button>
-          <button class="btn-danger" @click="handleDelete" :disabled="saving">
-            {{ saving ? '删除中...' : '确认删除' }}
+          <button class="btn-danger" @click="handleDelete" :disabled="deleteLoading">
+            {{ deleteLoading ? '删除中...' : '确认删除' }}
           </button>
         </div>
       </div>

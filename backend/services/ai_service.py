@@ -13,9 +13,12 @@ class LlmService(BaseService):
     def __init__(self):
         super().__init__("llm_models")
 
-    async def create_model(self, model_data: Dict[str, Any]) -> str:
+    async def create_model(self, model_data: Dict[str, Any]) -> Dict[str, Any]:
         """创建模型"""
-        return await self.create(model_data)
+        model_data["created_at"] = datetime.now()
+        model_data["updated_at"] = datetime.now()
+        model_data["id"] = await self.create(model_data)
+        return model_data
 
     async def update_model(self, model_id: str, model_data: Dict[str, Any]) -> bool:
         """更新模型"""
@@ -70,7 +73,7 @@ class KnowledgeBaseService(BaseService):
     def __init__(self):
         super().__init__("knowledge_bases")
 
-    async def create_knowledge_base(self, kb_data: Dict[str, Any]) -> str:
+    async def create_knowledge_base(self, kb_data: Dict[str, Any]) -> Dict[str, Any]:
         """创建知识库"""
         kb_data["document_count"] = 0
         return await self.create(kb_data)
@@ -104,7 +107,7 @@ class McpService(BaseService):
     def __init__(self):
         super().__init__("mcp_servers")
 
-    async def create_server(self, server_data: Dict[str, Any]) -> str:
+    async def create_server(self, server_data: Dict[str, Any]) -> Dict[str, Any]:
         """创建 MCP 服务器"""
         server_data["tool_count"] = 0
         return await self.create(server_data)
@@ -138,11 +141,12 @@ class SkillService(BaseService):
     def __init__(self):
         super().__init__("skills")
 
-    async def create_skill(self, skill_data: Dict[str, Any]) -> str:
+    async def create_skill(self, skill_data: Dict[str, Any]) -> Dict[str, Any]:
         """创建技能"""
         from app.agent.skills.loader import load_skill_from_db
         skill_data = load_skill_from_db(skill_data)
-        return await self.create(skill_data)
+        skill_data["id"] = await self.create(skill_data)
+        return skill_data
 
     async def update_skill(self, skill_id: str, skill_data: Dict[str, Any]) -> bool:
         """更新技能"""
@@ -202,7 +206,7 @@ class AgentService(BaseService):
     def __init__(self):
         super().__init__("agents")
 
-    async def create_agent(self, agent_data: Dict[str, Any]) -> str:
+    async def create_agent(self, agent_data: Dict[str, Any]) -> Dict[str, Any]:
         """创建 Agent"""
         return await self.create(agent_data)
 

@@ -1,314 +1,239 @@
 import logging
+import asyncio
+import inspect
 from typing import Optional, Dict, Any, List, Callable
-
+from langchain.agents import create_agent
+from langchain_openai import ChatOpenAI
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.messages import AIMessage
+from langchain_core.outputs import LLMResult
 from .config import AgentConfig
-from .llm import llm_client
-from .tools import tool_registry, ToolResult, SkillAsTool
+from .llm.config import LLMConfig
+from .tools import tool_registry
 from models.auth import User
+from langchain_core.messages.tool import ToolMessage
+from langchain_core.tools import StructuredTool
+from app.agent.tools.base import BaseTool
+
 
 logger = logging.getLogger(__name__)
 
 
-ToolCallback = Callable[[str, Dict[str, Any]], Any]
-ToolResultCallback = Callable[[Dict[str, Any]], Any]
-TextCallback = Callable[[str], None]
-FormResultCallback = Callable[[Dict[str, Any]], Any]
+class AgentCallbackHandler(BaseCallbackHandler):
+    def __init__(
+        self,
+        text_callback: Optional[Callable[..., Any]] = None,
+        tool_call_callback: Optional[Callable[..., Any]] = None,
+        tool_result_callback: Optional[Callable[..., Any]] = None
+    ):
+        self.text_callback = text_callback
+        self.tool_call_callback = tool_call_callback
+        self.tool_result_callback = tool_result_callback
 
+    async def on_tool_start(self, serialized: Dict[str, Any], input: Any, **kwargs):
+        if self.tool_call_callback:
+            tool_name = serialized.get("name", "") if serialized else ""
+            logger.info(f"Tool start: {serialized}, input: {input}， kwargs: {kwargs}")
+            await self.tool_call_callback(tool_name, input)
 
+    async def on_tool_end(self, output: ToolMessage, **kwargs):
+        if self.tool_result_callback:
+            content_str = output.content
+            logger.info(f"Tool end: content: {type(content_str)}， {content_str}")
+            import json
+            content = json.loads(content_str)
+            tool_name = output.name
+            result = {
+                "tool": tool_name,
+                "success": content.get("success"),
+                "content": content.get("content"),
+                "error": content.get("error") if not content.get("success") else None
+            }
+            await self.tool_result_callback(result)
+    
+    async def on_llm_end(self, response: LLMResult, **kwargs) -> None:
+        """
+        LLM 每次生成完成时触发。
+        可以同时处理：
+        - 中间节点的文字输出（如"我现在帮你调用工具xxx"）
+        - 最终回答（当没有后续工具调用时）
+        """
+        if hasattr(response, 'generations') and response.generations:
+            generation = response.generations[0][0]
+            text = generation.text
+            if text:
+                # 判断是否是最终回答：检查是否有 tool_calls
+                has_tool_calls = hasattr(generation, 'message') and hasattr(generation.message, 'tool_calls') and generation.message.tool_calls
+                if has_tool_calls:
+                    logger.info(f"[中间输出] 模型正在思考: {text[:100]}...")
+                    if self.text_callback:
+                        await self.text_callback(text)
+                else:
+                    logger.info(f"[最终回答] {text[:100]}...")   
+                    if self.text_callback:
+                        await self.text_callback(text)
 
 class Agent:
     def __init__(self, config: AgentConfig):
         self.config = config
-        self.tools = tool_registry.get_tools(self.config.tools_range)
         self._conversation_history: List[Dict[str, str]] = []
+        self._llm: Optional[ChatOpenAI] = None
+        self._agent = None
 
     async def initialize(self) -> None:
         logger.info(f"Initializing agent: {self.config.name}")
+        self._llm = await self._get_llm()
+        self._agent = await self._create_agent()
+
+    async def _get_llm(self) -> ChatOpenAI:
+        from services.ai_service import llm_config_service
+
+        config_data = await llm_config_service.get_config()
+        llm_config = LLMConfig(**config_data) if config_data else LLMConfig()
+
+        model_kwargs = {
+            "model": self.config.model_name or llm_config.default_model,
+            "temperature": self.config.temperature or llm_config.temperature,
+            "max_tokens": self.config.max_tokens or llm_config.max_tokens,
+        }
+
+        if llm_config.api_key:
+            model_kwargs["api_key"] = llm_config.api_key
+        if llm_config.api_base_url:
+            model_kwargs["base_url"] = llm_config.api_base_url
+
+        return ChatOpenAI(**model_kwargs)
+
+    async def _create_agent(self):
+        tools = await self._get_tools()
+        system_prompt = await self._build_system_prompt()
+
+        return create_agent(
+            model=self._llm,
+            tools=tools,
+            system_prompt=system_prompt
+        )
+
+    async def _get_tools(self) -> List[Any]:
+        tools = tool_registry.get_tools(self.config.tools_range, None)
+        return [self._create_agent_tool(s) for s in tools]
+
+    def _create_agent_tool(self, tools: BaseTool) -> StructuredTool:
+        exec_func = tools.execute
+        tool_name = tools.name
+        tool_description = tools.description
+        parameters = tools.parameters
+        tools = StructuredTool.from_function(
+            func=None,
+            coroutine=exec_func,
+            name=tool_name,
+            description=tool_description,
+            args_schema=parameters
+        )
+        return tools
+
+    async def _build_system_prompt(self) -> str:
+        from app.agent.prompts import GLOBAL_SYSTEM_PROMPT
+        parts = [p for p in [GLOBAL_SYSTEM_PROMPT, self.config.system_prompt] if p]
+        return "\n\n".join(parts) or "You are a helpful AI assistant."
+
+    def _format_messages(self) -> List:
+        from app.agent.prompts import GLOBAL_SYSTEM_PROMPT
+
+        messages = []
+        if GLOBAL_SYSTEM_PROMPT:
+            messages.append(("system", GLOBAL_SYSTEM_PROMPT))
+        if self.config.system_prompt:
+            messages.append(("system", self.config.system_prompt))
+
+        for msg in self._conversation_history:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "user":
+                messages.append(("user", content))
+            elif role == "assistant":
+                messages.append(("assistant", content))
+            elif role == "tool":
+                messages.append(("tool", content, msg.get("tool_call_id", ""), msg.get("name", "")))
+
+        return messages
 
     async def chat(
         self,
         user_message: str,
         session_id: Optional[str] = None,
         user: Optional[User] = None,
-        stream_callback: Optional[Callable[[str], None]] = None,
+        stream_callback: Optional[Callable[..., Any]] = None,
         user_permissions: Optional[List[str]] = None
     ) -> str:
-        messages = self._build_messages(user_message)
-        tools = await self._get_tools_with_skills(user_permissions)
-        logger.info(f"【chat: 加载工具列表】 {[t.get('function', {}).get('name') for t in tools]}, 共 {len(tools)} 个工具")
+        if not self._agent:
+            await self.initialize()
 
-        try:
-            if stream_callback:
-                full_response = ""
-                async for token in llm_client.chat_stream(
-                    messages=messages,
-                    model_name=self.config.model_name,
-                    tools=tools if len(tools) > 0 else None
-                ):
-                    full_response += token
-                    await stream_callback(token)
-                return full_response
-            else:
-                response = await llm_client.chat(
-                    messages=messages,
-                    model_name=self.config.model_name,
-                    stream=False,
-                    tools=tools if len(tools) > 0 else None
-                )
-                return response
-
-        except Exception as e:
-            logger.error(f"Agent chat error: {e}")
-            raise
-
-    async def chat_with_tools_stream(
-        self,
-        user_message: str,
-        session_id: Optional[str] = None,
-        user: Optional[User] = None,
-        stream_callback: Optional[Callable[[str], None]] = None,
-        tool_call_callback: Optional[ToolCallback] = None,
-        tool_result_callback: Optional[ToolResultCallback] = None,
-        user_permissions: Optional[List[str]] = None
-    ) -> str:
-        messages = self._build_messages(user_message)
-        tools = await self._get_tools_with_skills(user_permissions)
-        logger.info(f"【chat_with_tools_stream: 加载工具列表】 {[t.get('function', {}).get('name') for t in tools]}, 共 {len(tools)} 个工具")
-
-        full_response = ""
-        max_turns = 10
-        current_turn = 0
-
-        while current_turn < max_turns:
-            current_turn += 1
-
-            has_tool_call = False
-            accumulated_content = ""
-            async for chunk in llm_client.chat_with_tools_stream(
-                messages=messages,
-                model_name=self.config.model_name,
-                tools=tools if len(tools) > 0 else None
-            ):
-                chunk_type = chunk.get("type")
-                if chunk_type == "tool_call":
-                    has_tool_call = True
-                    tool_name = chunk.get("name")
-                    tool_args = chunk.get("args", {})
-                    tool_call_id = chunk.get("id", f"call_{current_turn}")
-                    tool = tool_registry.get(tool_name)
-                    tool_cn_name = tool.cn_name or tool_name
-                    if tool_call_callback:
-                        await tool_call_callback(tool_cn_name, tool_args)
-
-                    if tool:
-                        try:
-                            tool_result = await tool.execute_with_validation(**tool_args)
-                        except Exception as e:
-                            logger.error(f"Tool {tool_cn_name} execution failed: {e}")
-                            tool_result = ToolResult(success=False, content="", error=str(e))
-                    else:
-                        tool_result = ToolResult(success=False, content="", error="Tool not found")
-
-                    result_data = {
-                        "tool": tool_cn_name,
-                        "success": tool_result.success,
-                        "content": tool_result.content,
-                        "error": tool_result.error
-                    }
-                    if tool_result_callback:
-                        await tool_result_callback(result_data)
-
-                    assistant_msg = {
-                        "role": "assistant",
-                        "content": accumulated_content,
-                        "tool_calls": [{
-                            "id": tool_call_id,
-                            "name": tool_name,
-                            "args": tool_args
-                        }]
-                    }
-                    messages.append(assistant_msg)
-                    self._conversation_history.append(assistant_msg)
-
-                    tool_result_content = tool_result.content if tool_result.success else f"Error: {tool_result.error}"
-                    tool_msg = {
-                        "role": "tool",
-                        "content": tool_result_content,
-                        "tool_call_id": tool_call_id,
-                        "name": tool_name
-                    }
-                    messages.append(tool_msg)
-                    self._conversation_history.append(tool_msg)
-
-                elif chunk_type == "content":
-                    content = chunk.get("content", "")
-                    accumulated_content += content
-                    full_response += content
-                    if stream_callback:
-                        await stream_callback(content)
-
-            if not has_tool_call:
-                if accumulated_content:
-                    assistant_msg = {
-                        "role": "assistant",
-                        "content": accumulated_content
-                    }
-                    messages.append(assistant_msg)
-                    self._conversation_history.append(assistant_msg)
-                break
-
-        if current_turn >= max_turns:
-            logger.warning(f"Max tool call turns ({max_turns}) reached")
-
-        return full_response
+        messages = [("user", user_message)]
+        result = self._agent.invoke({"messages": messages})
+        return result.get("messages", [[]])[-1].content
 
     async def chat_with_tools(
         self,
         user_message: str,
         session_id: Optional[str] = None,
         user: Optional[User] = None,
-        tool_call_callback: Optional[ToolCallback] = None,
-        tool_result_callback: Optional[ToolResultCallback] = None,
-        text_callback: Optional[TextCallback] = None,
-        form_result_callback: Optional[FormResultCallback] = None,
+        tool_call_callback: Optional[Callable[..., Any]] = None,
+        tool_result_callback: Optional[Callable[..., Any]] = None,
+        text_callback: Optional[Callable[..., Any]] = None,
+        form_result_callback: Optional[Callable[..., Any]] = None,
         user_permissions: Optional[List[str]] = None
     ) -> str:
-        messages = self._build_messages(user_message)
-        tools = await self._get_tools_with_skills(user_permissions)
-        logger.info(f"【chat_with_tools: 加载工具列表】 共 {len(tools)} 个工具， 分别是：{[tool['function']['name'] for tool in tools]}")
+        if not self._agent:
+            await self.initialize()
+
         self.add_to_history("user", user_message)
-        
-        last_response = ""
-        max_turns = 10
-        current_turn = 0
+        messages = self._format_messages()
+        messages.append(("user", user_message))
 
-        while current_turn < max_turns:
-            current_turn += 1
+        callback_handler = AgentCallbackHandler(
+            text_callback=text_callback,
+            tool_call_callback=tool_call_callback,
+            tool_result_callback=tool_result_callback
+        )
 
-            llm_result = await llm_client.chat_with_tools(
-                messages=messages,
-                model_name=self.config.model_name,
-                tools=tools if len(tools) > 0 else None
-            )
+        result = await self._agent.ainvoke(
+            {"messages": messages},
+            config={"callbacks": [callback_handler]}
+        )
 
-            content = llm_result.get("content", "")
-            if content and text_callback:
-                await text_callback(content)
-                last_response = content
-            tool_calls = llm_result.get("tool_calls", [])
+        output_messages = result.get("messages", [])
+        response = ""
+        for msg in output_messages:
+            if isinstance(msg, AIMessage):
+                response = msg.content
+        if response:
+            self.add_to_history("assistant", response)
+        return response
 
-            if not tool_calls:
-                break
-
-            for tc_idx, tc in enumerate(tool_calls):
-                tool_name = tc.get("name")
-                tool_args = tc.get("args", {})
-                tool_call_id = tc.get("id", f"call_{current_turn}_{tc_idx}")
-                logger.info(f"【chat_with_tools: 工具调用】tool_name: {tool_name} tool_call_id: {tool_call_id}")
-                tool = tool_registry.get(tool_name)
-                tool_cn_name = tool.cn_name or tool_name
-
-                if tool_call_callback:
-                    await tool_call_callback(tool_cn_name, tool_args)
-
-                if tool:
-                    try:
-                        logger.info(f"【chat_with_tools: 调用工具】 {tool_cn_name}({tool_args})")
-                        tool_result = await tool.execute_with_validation(**tool_args)
-                    except Exception as e:
-                        logger.error(f"Tool {tool_cn_name} execution failed: {e}")
-                        tool_result = ToolResult(success=False, content="", error=str(e))
-                else:
-                    tool_result = ToolResult(success=False, content="", error="Tool not found")
-
-                result_data = {
-                    "tool": tool_cn_name,
-                    "success": tool_result.success,
-                    "content": tool_result.content,
-                    "error": tool_result.error
-                }
-                if tool_result_callback:
-                    await tool_result_callback(result_data)
-
-                assistant_msg = {
-                    "role": "assistant",
-                    "content": content,
-                    "tool_calls": [{
-                        "id": tool_call_id,
-                        "name": tool_name,
-                        "args": tool_args
-                    }]
-                }
-                messages.append(assistant_msg)
-                self._conversation_history.append(assistant_msg)
-
-                tool_result_content = tool_result.content if tool_result.success else f"Error: {tool_result.error}"
-                tool_msg = {
-                    "role": "tool",
-                    "content": tool_result_content,
-                    "tool_call_id": tool_call_id,
-                    "name": tool_name
-                }
-                messages.append(tool_msg)
-                self._conversation_history.append(tool_msg)
-        if current_turn >= max_turns:
-            logger.warning(f"Max tool call turns ({max_turns}) reached")
-
-        if last_response and text_callback:
-            self.add_to_history("assistant", last_response)
-
-
-    def _build_messages(self, user_message: str) -> List[Dict[str, str]]:
-        messages = []
-
-        from app.agent.prompts import GLOBAL_SYSTEM_PROMPT
-        if GLOBAL_SYSTEM_PROMPT:
-            messages.append({
-                "role": "system",
-                "content": GLOBAL_SYSTEM_PROMPT
-            })
-        if self.config.system_prompt:
-            messages.append({
-                "role": "system",
-                "content": self.config.system_prompt
-            })
-
-        for msg in self._conversation_history:
-            messages.append(msg)
-
-        messages.append({
-            "role": "user",
-            "content": user_message
-        })
-
-        return messages
-
-    async def _get_tools_with_skills(self, user_permissions: List[str] = None) -> List[Dict[str, Any]]:
-        skill_names = []
-        if self.config.skill_ids:
-            from services.ai_service import skill_service
-            skill_datas = await skill_service.get_skills_by_ids(self.config.skill_ids)
-            for skill_data in skill_datas:
-                skill_tool = SkillAsTool(skill_data)
-                tool_registry.register(skill_tool)
-                skill_names.append(skill_data.get("name", ""))
-
-        if self.config.tools_range:
-            tools_range = list(set(self.config.tools_range + skill_names))
-        elif skill_names:
-            tools_range = skill_names
-        else:
-            tools_range = []
-        logger.info(f"_get_tools_with_skills: 加载工具中】 agent的tools范围：{tools_range}， 用户权限：{user_permissions}")
-        schemas = tool_registry.get_tools(tools_range, user_permissions)
-        return schemas
+    async def chat_with_tools_stream(
+        self,
+        user_message: str,
+        session_id: Optional[str] = None,
+        user: Optional[User] = None,
+        stream_callback: Optional[Callable[..., Any]] = None,
+        tool_call_callback: Optional[Callable[..., Any]] = None,
+        tool_result_callback: Optional[Callable[..., Any]] = None,
+        user_permissions: Optional[List[str]] = None
+    ) -> str:
+        return await self.chat_with_tools(
+            user_message=user_message,
+            session_id=session_id,
+            user=user,
+            tool_call_callback=tool_call_callback,
+            tool_result_callback=tool_result_callback,
+            text_callback=stream_callback,
+            form_result_callback=None,
+            user_permissions=user_permissions
+        )
 
     def add_to_history(self, role: str, content: str) -> None:
-        self._conversation_history.append({
-            "role": role,
-            "content": content
-        })
-
+        self._conversation_history.append({"role": role, "content": content})
         if len(self._conversation_history) > 50:
             self._conversation_history = self._conversation_history[-50:]
 
