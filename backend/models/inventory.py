@@ -68,17 +68,126 @@ class WarehouseListResponse(BaseModel):
     items: List[Warehouse] = Field(..., description="仓库列表")
 
 
-class StockBase(BaseModel):
+class InboundBatchBase(BaseModel):
+    quantity: float = Field(..., gt=0, description="入库数量")
+    remarks: Optional[str] = Field(None, max_length=500, description="备注")
+
+
+class InboundBatchCreate(InboundBatchBase):
+    pass
+
+
+class InboundBatch(InboundBatchBase):
+    id: str = Field(..., description="入库批次ID")
+    inventory_id: str = Field(..., description="库存ID")
+    operator_id: Optional[str] = Field(None, description="操作人ID")
+    operator_name: Optional[str] = Field(None, description="操作人姓名")
+    created_at: datetime = Field(default_factory=datetime.now, description="入库时间")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "507f1f77bcf86cd799439030",
+                "inventory_id": "507f1f77bcf86cd799439021",
+                "quantity": 100,
+                "operator_id": "507f1f77bcf86cd799439011",
+                "operator_name": "张三",
+                "remarks": "采购入库",
+                "created_at": "2026-04-28T10:00:00"
+            }
+        }
+
+
+class InboundBatchListResponse(BaseModel):
+    total: int = Field(..., description="总记录数")
+    page: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页记录数")
+    items: List[InboundBatch] = Field(..., description="入库批次列表")
+
+
+class OutboundBatchBase(BaseModel):
+    quantity: float = Field(..., gt=0, description="出库数量")
+    remarks: Optional[str] = Field(None, max_length=500, description="备注")
+
+
+class OutboundBatchCreate(OutboundBatchBase):
+    pass
+
+
+class OutboundBatch(OutboundBatchBase):
+    id: str = Field(..., description="出库批次ID")
+    inventory_id: str = Field(..., description="库存ID")
+    operator_id: Optional[str] = Field(None, description="操作人ID")
+    operator_name: Optional[str] = Field(None, description="操作人姓名")
+    created_at: datetime = Field(default_factory=datetime.now, description="出库时间")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "507f1f77bcf86cd799439031",
+                "inventory_id": "507f1f77bcf86cd799439021",
+                "quantity": 50,
+                "operator_id": "507f1f77bcf86cd799439011",
+                "operator_name": "李四",
+                "remarks": "销售出库",
+                "created_at": "2026-04-28T14:00:00"
+            }
+        }
+
+
+class OutboundBatchListResponse(BaseModel):
+    total: int = Field(..., description="总记录数")
+    page: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页记录数")
+    items: List[OutboundBatch] = Field(..., description="出库批次列表")
+
+
+class InboundOutboundSummary(BaseModel):
+    total_inbound: float = Field(0, description="总入库数量")
+    total_outbound: float = Field(0, description="总出库数量")
+    inbound_count: int = Field(0, description="入库批次数量")
+    outbound_count: int = Field(0, description="出库批次数量")
+
+
+class StockDB(BaseModel):
+    id: str = Field(..., description="库存ID")
     spec_id: str = Field(..., description="规格ID")
     warehouse_id: str = Field(..., description="仓库ID")
-    quantity: float = Field(..., ge=0, description="库存数量")
+    quantity: float = Field(..., ge=0, description="当前库存数量")
     min_stock: float = Field(default=0, ge=0, description="最小库存警告阈值")
     max_stock: float = Field(default=0, ge=0, description="最大库存警告阈值")
     status: StockStatus = Field(default=StockStatus.NORMAL, description="库存状态")
+    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
 
 
-class StockCreate(StockBase):
-    pass
+class StockSpecInfo(BaseModel):
+    spec_id: str = Field(..., description="规格ID")
+    spec_code: str = Field(..., description="规格编号")
+    packaging: Optional[str] = Field(None, description="包装规格")
+    sales_spec: Optional[str] = Field(None, description="销售规格")
+    price: Optional[float] = Field(None, description="价格")
+
+
+class StockProductInfo(BaseModel):
+    product_id: str = Field(..., description="商品ID")
+    product_code: str = Field(..., description="商品编号")
+    product_name: str = Field(..., description="商品名称")
+    category: Optional[str] = Field(None, description="商品分类")
+
+
+class StockWarehouseInfo(BaseModel):
+    warehouse_id: str = Field(..., description="仓库ID")
+    warehouse_code: str = Field(..., description="仓库编码")
+    warehouse_name: str = Field(..., description="仓库名称")
+
+
+class StockCreate(BaseModel):
+    spec_id: str = Field(..., description="规格ID")
+    warehouse_id: str = Field(..., description="仓库ID")
+    quantity: float = Field(default=0, ge=0, description="初始库存数量")
+    min_stock: float = Field(default=0, ge=0, description="最小库存警告阈值")
+    max_stock: float = Field(default=0, ge=0, description="最大库存警告阈值")
 
 
 class StockUpdate(BaseModel):
@@ -88,31 +197,11 @@ class StockUpdate(BaseModel):
     status: Optional[StockStatus] = None
 
 
-class Stock(StockBase):
-    id: str = Field(..., description="库存ID")
-    spec_code: Optional[str] = Field(None, description="规格编号")
-    product_name: Optional[str] = Field(None, description="商品名称")
-    warehouse_code: Optional[str] = Field(None, description="仓库编码")
-    warehouse_name: Optional[str] = Field(None, description="仓库名称")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": "507f1f77bcf86cd799439021",
-                "spec_id": "507f1f77bcf86cd799439013",
-                "spec_code": "SPEC20260420001",
-                "product_name": "有机红茶",
-                "warehouse_id": "507f1f77bcf86cd799439020",
-                "warehouse_code": "WH20260420001",
-                "warehouse_name": "深圳中心仓",
-                "quantity": 500,
-                "min_stock": 50,
-                "max_stock": 5000,
-                "status": "normal"
-            }
-        }
+class Stock(StockDB):
+    spec: Optional[StockSpecInfo] = Field(None, description="规格信息")
+    product: Optional[StockProductInfo] = Field(None, description="商品信息")
+    warehouse: Optional[StockWarehouseInfo] = Field(None, description="仓库信息")
+    inbound_outbound_summary: Optional[InboundOutboundSummary] = Field(None, description="出入库汇总")
 
 
 class StockListResponse(BaseModel):
@@ -120,3 +209,9 @@ class StockListResponse(BaseModel):
     page: int = Field(..., description="当前页码")
     page_size: int = Field(..., description="每页记录数")
     items: List[Stock] = Field(..., description="库存列表")
+
+
+class StockDetailResponse(BaseModel):
+    stock: Stock = Field(..., description="库存详情")
+    inbound_batches: List[InboundBatch] = Field(default_factory=list, description="入库批次列表")
+    outbound_batches: List[OutboundBatch] = Field(default_factory=list, description="出库批次列表")

@@ -3,13 +3,21 @@ from typing import Optional
 
 from models.inventory import (
     Warehouse, WarehouseCreate, WarehouseUpdate, WarehouseListResponse,
-    Stock, StockCreate, StockUpdate, StockListResponse
+    Stock, StockCreate, StockUpdate, StockListResponse,
+    InboundBatch, InboundBatchCreate, InboundBatchListResponse,
+    OutboundBatch, OutboundBatchCreate, OutboundBatchListResponse,
+    StockDetailResponse, InboundOutboundSummary
 )
-from services.inventory_service import warehouse_service, stock_service
+from services.inventory_service import (
+    warehouse_service, stock_service,
+    inbound_batch_service, outbound_batch_service
+)
 from .auth import get_current_active_user, require_permission
 
 warehouse_router = APIRouter(prefix="/warehouses", tags=["仓库管理"])
 stock_router = APIRouter(prefix="/stocks", tags=["库存管理"])
+inbound_router = APIRouter(prefix="/inbound-batches", tags=["入库批次管理"])
+outbound_router = APIRouter(prefix="/outbound-batches", tags=["出库批次管理"])
 
 
 @warehouse_router.post("/", response_model=dict, status_code=201)
@@ -48,7 +56,6 @@ async def get_warehouse_manager_candidates(
     _: dict = Depends(require_permission("warehouse.view"))
 ):
     from services.auth_service import auth_service, role_service
-    from bson import ObjectId
 
     warehouse_admin_role = await role_service.find_one({"code": "warehouse_admin"})
     if not warehouse_admin_role:
@@ -136,22 +143,33 @@ async def create_stock(
     stock: StockCreate,
     _: dict = Depends(require_permission("stock.create"))
 ):
-    stock_data = await stock_service.create_stock(stock)
-    return {"status": "success", "message": "库存创建成功", "result": {"id": stock_data["id"]}}
+    try:
+        stock_data = await stock_service.create_stock(stock)
+        return {"status": "success", "message": "库存创建成功", "result": {"id": stock_data["id"]}}
+    except ValueError as e:
+        if str(e).startswith("DUPLICATE_STOCK:"):
+            existing_id = str(e).split(":")[1]
+            return {
+                "status": "duplicate",
+                "message": "该仓库中已存在此规格的库存记录",
+                "result": {"existing_id": existing_id}
+            }
+        raise
 
 
 @stock_router.get("/", response_model=StockListResponse)
 async def list_stocks(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    warehouse_id: Optional[str] = Query(None),
-    product_id: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
-    keyword: Optional[str] = Query(None),
+    warehouse_id: Optional[str] = Query(None, description="仓库ID"),
+    product_id: Optional[str] = Query(None, description="商品ID"),
+    spec_id: Optional[str] = Query(None, description="规格ID"),
+    status: Optional[str] = Query(None, description="库存状态"),
+    keyword: Optional[str] = Query(None, description="关键词搜索"),
     _: dict = Depends(require_permission("stock.view"))
 ):
     return await stock_service.list_stocks(
-        page, page_size, warehouse_id, product_id, status, keyword
+        page, page_size, warehouse_id, product_id, spec_id, status, keyword
     )
 
 
@@ -182,6 +200,17 @@ async def get_stock(
     return stock
 
 
+@stock_router.get("/{stock_id}/detail", response_model=StockDetailResponse)
+async def get_stock_detail(
+    stock_id: str,
+    _: dict = Depends(require_permission("stock.view"))
+):
+    detail = await stock_service.get_stock_detail(stock_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="库存不存在")
+    return detail
+
+
 @stock_router.put("/{stock_id}", response_model=dict)
 async def update_stock(
     stock_id: str,
@@ -205,14 +234,57 @@ async def delete_stock(
     return {"status": "success", "message": "库存删除成功"}
 
 
-@stock_router.post("/{stock_id}/adjust", response_model=dict)
-async def adjust_stock(
+@stock_router.post("/{stock_id}/inbound", response_model=dict)
+async def inbound_stock(
     stock_id: str,
-    quantity_change: float = Query(..., description="库存变化量，正数增加，负数减少"),
-    is_add: bool = Query(True, description="是否为增加操作"),
-    _: dict = Depends(require_permission("stock.edit"))
+    quantity: float = Query(..., gt=0, description="入库数量"),
+    remarks: Optional[str] = Query(None, description="备注"),
+    current_user: dict = Depends(get_current_active_user)
 ):
-    result = await stock_service.adjust_stock_by_id(stock_id, quantity_change, is_add)
-    if not result:
-        raise HTTPException(status_code=404, detail="库存不存在或调整失败")
-    return {"status": "success", "message": "库存调整成功", "result": result}
+    try:
+        operator_id = current_user.get("id")
+        operator_name = current_user.get("full_name") or current_user.get("username")
+        result = await stock_service.inbound(stock_id, quantity, remarks, operator_id, operator_name)
+        if not result:
+            raise HTTPException(status_code=404, detail="库存不存在")
+        return {"status": "success", "message": "入库成功", "result": result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@stock_router.post("/{stock_id}/outbound", response_model=dict)
+async def outbound_stock(
+    stock_id: str,
+    quantity: float = Query(..., gt=0, description="出库数量"),
+    remarks: Optional[str] = Query(None, description="备注"),
+    current_user: dict = Depends(get_current_active_user)
+):
+    try:
+        operator_id = current_user.get("id")
+        operator_name = current_user.get("full_name") or current_user.get("username")
+        result = await stock_service.outbound(stock_id, quantity, remarks, operator_id, operator_name)
+        if not result:
+            raise HTTPException(status_code=404, detail="库存不存在")
+        return {"status": "success", "message": "出库成功", "result": result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@inbound_router.get("/by-stock/{stock_id}", response_model=InboundBatchListResponse)
+async def get_inbound_batches_by_stock(
+    stock_id: str,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    _: dict = Depends(require_permission("stock.view"))
+):
+    return await inbound_batch_service.get_inbound_batches_by_inventory(stock_id, page, page_size)
+
+
+@outbound_router.get("/by-stock/{stock_id}", response_model=OutboundBatchListResponse)
+async def get_outbound_batches_by_stock(
+    stock_id: str,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    _: dict = Depends(require_permission("stock.view"))
+):
+    return await outbound_batch_service.get_outbound_batches_by_inventory(stock_id, page, page_size)

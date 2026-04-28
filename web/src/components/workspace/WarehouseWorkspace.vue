@@ -4,6 +4,10 @@ defineOptions({ name: 'WarehouseWorkspace' })
 import { ref, computed, onMounted } from 'vue'
 import { warehouseApi } from '../../services/api'
 
+const emit = defineEmits<{
+  (e: 'navigate', id: string, extraData?: Record<string, any>): void
+}>()
+
 interface Warehouse {
   id: string
   warehouse_code: string
@@ -15,6 +19,7 @@ interface Warehouse {
   description?: string
   created_at?: string
   updated_at?: string
+  display_status?: string
 }
 
 interface ManagerCandidate {
@@ -117,6 +122,13 @@ const resetFilters = () => {
 const clearKeyword = () => {
   keyword.value = ''
   handleSearch()
+}
+
+const viewInventory = (warehouse: Warehouse) => {
+  emit('navigate', 'inventory', {
+    warehouseId: warehouse.id,
+    warehouseName: warehouse.name
+  })
 }
 
 const resetWarehouseForm = () => {
@@ -305,6 +317,7 @@ onMounted(() => {
             </td>
             <td>
               <div class="action-buttons">
+                <button class="btn-link" @click="viewInventory(warehouse)">查看库存</button>
                 <button class="btn-link" @click="openEditWarehouse(warehouse)">编辑</button>
                 <button class="btn-link danger" @click="confirmDelete(warehouse.id)">删除</button>
               </div>

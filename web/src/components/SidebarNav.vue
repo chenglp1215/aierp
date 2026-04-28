@@ -12,6 +12,7 @@ interface MenuItem {
 
 const emit = defineEmits<{
   navigate: [id: string]
+  'warehouse-navigate': [id: string, extraData?: Record<string, any>]
 }>()
 
 const { loadPermissions, hasPermission, isLoaded } = usePermission()

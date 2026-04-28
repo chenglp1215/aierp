@@ -7,7 +7,7 @@ from .auth import auth_router
 from .role import role_router
 from .permission import permission_router
 from .ai import llm_router, kb_router, mcp_router, skill_router, agent_router, ai_tools_router
-from .inventory import warehouse_router, stock_router
+from .inventory import warehouse_router, stock_router, inbound_router, outbound_router
 from .procurement import procurement_router
 from .accounts_receivable import accounts_receivable_router
 from .ws import ws_router
@@ -32,5 +32,7 @@ api_router.include_router(agent_router, tags=["Agent 设置"])
 api_router.include_router(ai_tools_router, tags=["AI 工具"])
 api_router.include_router(warehouse_router, tags=["仓库管理"])
 api_router.include_router(stock_router, tags=["库存管理"])
+api_router.include_router(inbound_router, tags=["入库批次管理"])
+api_router.include_router(outbound_router, tags=["出库批次管理"])
 api_router.include_router(upload_router, tags=["文件上传"])
 api_router.include_router(ws_router, prefix="/ws")

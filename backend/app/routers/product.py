@@ -158,6 +158,20 @@ async def create_product_spec(
     }
 
 
+@product_router.get("/specs/search", response_model=dict)
+async def search_specs(
+    keyword: str = Query(..., min_length=1, description="搜索关键词"),
+    limit: int = Query(20, ge=1, le=50, description="返回数量"),
+    _: dict = Depends(require_permission("product.view"))
+):
+    """搜索商品规格（用于下拉选择等），返回规格及其关联的商品信息"""
+    items = await product_spec_service.search_specs(keyword, limit)
+    return {
+        "status": "success",
+        "result": items
+    }
+
+
 @product_router.get("/specs/{spec_id}", response_model=ProductSpec)
 async def get_spec(
     spec_id: str,

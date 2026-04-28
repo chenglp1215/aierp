@@ -461,6 +461,10 @@ export const productApi = {
 
   getAllSpecs: (params?: { page?: number; page_size?: number; keyword?: string; category?: string }) => {
     return apiService.get<any>('/products/all-specs/', params)
+  },
+
+  searchSpecs: (keyword: string, limit?: number) => {
+    return apiService.get<any>('/products/specs/search', { keyword, limit })
   }
 }
 
@@ -621,11 +625,14 @@ export const warehouseApi = {
 }
 
 export const stockApi = {
-  list: (params: { page?: number; page_size?: number; warehouse_id?: string; product_id?: string; status?: string; keyword?: string }) => {
+  list: (params: { page?: number; page_size?: number; warehouse_id?: string; product_id?: string; spec_id?: string; status?: string; keyword?: string }) => {
     return apiService.get<any>('/stocks/', params)
   },
   getById: (id: string) => {
     return apiService.get<any>(`/stocks/${id}`)
+  },
+  getDetail: (id: string) => {
+    return apiService.get<any>(`/stocks/${id}/detail`)
   },
   create: (data: any) => {
     return apiService.post<any>('/stocks/', data)
@@ -636,18 +643,35 @@ export const stockApi = {
   delete: (id: string) => {
     return apiService.delete<any>(`/stocks/${id}`)
   },
-  adjust: (id: string, quantity_change: number, is_add: boolean = true) => {
-    const queryParams = new URLSearchParams({
-      quantity_change: String(quantity_change),
-      is_add: String(is_add)
+  inbound: (id: string, quantity: number, remarks?: string) => {
+    const params = new URLSearchParams({
+      quantity: String(quantity)
     })
-    return apiService.post<any>(`/stocks/${id}/adjust?${queryParams.toString()}`, null)
+    if (remarks) {
+      params.append('remarks', remarks)
+    }
+    return apiService.post<any>(`/stocks/${id}/inbound?${params.toString()}`, null)
+  },
+  outbound: (id: string, quantity: number, remarks?: string) => {
+    const params = new URLSearchParams({
+      quantity: String(quantity)
+    })
+    if (remarks) {
+      params.append('remarks', remarks)
+    }
+    return apiService.post<any>(`/stocks/${id}/outbound?${params.toString()}`, null)
   },
   search: (keyword: string, limit?: number) => {
     return apiService.get<any>('/stocks/search', { keyword, limit })
   },
   getStats: () => {
     return apiService.get<any>('/stocks/stats')
+  },
+  getInboundBatches: (stockId: string, params?: { page?: number; page_size?: number }) => {
+    return apiService.get<any>(`/inbound-batches/by-stock/${stockId}`, params)
+  },
+  getOutboundBatches: (stockId: string, params?: { page?: number; page_size?: number }) => {
+    return apiService.get<any>(`/outbound-batches/by-stock/${stockId}`, params)
   }
 }
 

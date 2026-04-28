@@ -106,6 +106,55 @@ class ProductSpecService(BaseService):
     async def toggle_spec_active(self, id: str, is_active: bool) -> bool:
         return await self.update(id, {"is_active": is_active})
 
+    async def search_specs(self, keyword: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """搜索规格，支持规格编码、包装、商品名称、商品编码模糊匹配"""
+        spec_cursor = self.collection.find({
+            "$or": [
+                {"spec_code": {"$regex": keyword, "$options": "i"}},
+                {"packaging": {"$regex": keyword, "$options": "i"}}
+            ]
+        }).limit(limit)
+        specs = await spec_cursor.to_list(length=limit)
+
+        product_cursor = self.db["products"].find({
+            "$or": [
+                {"name": {"$regex": keyword, "$options": "i"}},
+                {"product_code": {"$regex": keyword, "$options": "i"}}
+            ]
+        }).limit(limit)
+        products = await product_cursor.to_list(length=limit)
+
+        if not products:
+            for spec in specs:
+                spec["id"] = str(spec.pop("_id"))
+            return specs
+
+        product_ids = [str(p["_id"]) for p in products]
+        product_map = {str(p["_id"]): p for p in products}
+
+        product_spec_cursor = self.collection.find({
+            "product_id": {"$in": product_ids}
+        }).limit(limit)
+        product_specs = await product_spec_cursor.to_list(length=limit)
+
+        all_specs = specs.copy()
+        spec_ids = set(str(s.get("_id")) for s in all_specs)
+        for spec in product_specs:
+            sid = str(spec["_id"])
+            if sid not in spec_ids:
+                all_specs.append(spec)
+                spec_ids.add(sid)
+
+        for spec in all_specs:
+            spec["id"] = str(spec.pop("_id"))
+            product_id = spec.get("product_id")
+            if product_id and product_id in product_map:
+                product = product_map[product_id]
+                spec["product_name"] = product.get("name", "")
+                spec["product_code"] = product.get("product_code", "")
+
+        return all_specs[:limit]
+
 
 class ProductService(BaseService):
     def __init__(self):

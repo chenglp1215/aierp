@@ -19,7 +19,6 @@ import ProductWorkspace from './workspace/ProductWorkspace.vue'
 import AccountManagement from './workspace/AccountManagement.vue'
 import IntelligentSettings from './workspace/IntelligentSettings.vue'
 import WarehouseWorkspace from './workspace/WarehouseWorkspace.vue'
-import StockWorkspace from './workspace/StockWorkspace.vue'
 import { authApi } from '../services/api'
 import { usePermission, MENU_PERMISSION_MAP } from '../hooks'
 
@@ -35,6 +34,7 @@ interface Tab {
 
 const isMobileMenuOpen = ref(false)
 const activeTabId = ref('dashboard')
+const inventoryDrillDownData = ref<{ warehouseId?: string; warehouseName?: string } | null>(null)
 const openTabs = ref<Tab[]>([
   { id: 'dashboard', label: '工作台', closable: false },
   { id: 'chat', label: '智能助手', closable: false }
@@ -45,9 +45,23 @@ const defaultTabs: Tab[] = [
   { id: 'chat', label: '智能助手', closable: false }
 ]
 
-const handleNavigate = (id: string) => {
+const handleNavigate = (id: string, extraData?: Record<string, any>) => {
   const permCode = MENU_PERMISSION_MAP[id]
   if (permCode && !hasPermission(permCode)) {
+    return
+  }
+
+  if (extraData?.warehouseId) {
+    inventoryDrillDownData.value = {
+      warehouseId: extraData.warehouseId,
+      warehouseName: extraData.warehouseName || ''
+    }
+    const label = extraData.warehouseName ? `${extraData.warehouseName} - 库存` : '库存管理'
+    const tabExists = openTabs.value.find(t => t.id === 'inventory-drilldown')
+    if (!tabExists) {
+      openTabs.value.push({ id: 'inventory-drilldown', label, closable: true })
+    }
+    activeTabId.value = 'inventory-drilldown'
     return
   }
 
@@ -103,6 +117,15 @@ const handleLogout = () => {
   window.location.replace(window.location.origin + '/login')
 }
 
+const handleInventoryBack = () => {
+  const idx = openTabs.value.findIndex(t => t.id === 'inventory-drilldown')
+  if (idx > -1) {
+    openTabs.value.splice(idx, 1)
+  }
+  inventoryDrillDownData.value = null
+  activeTabId.value = 'warehouse-list'
+}
+
 const handleSettings = () => {
   console.log('Settings')
 }
@@ -116,7 +139,8 @@ const currentWorkspace = computed(() => {
   if (id === 'finance-receivable') return ReceivableList
   if (id.startsWith('sales')) return SalesWorkspace
   if (id === 'warehouse-list') return WarehouseWorkspace
-  if (id === 'inventory-stock') return StockWorkspace
+  if (id === 'inventory-stock') return InventoryWorkspace
+  if (id === 'inventory-drilldown') return InventoryWorkspace
   if (id.startsWith('inventory')) return InventoryWorkspace
   if (id.startsWith('finance')) return FinanceWorkspace
   if (id === 'crm') return CrmWorkspace
@@ -131,7 +155,7 @@ const currentBreadcrumb = computed(() => {
 })
 
 const keepAliveList = computed(() => {
-  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderList', 'ProcurementOrderList', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace', 'StockWorkspace']
+  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderList', 'ProcurementOrderList', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace']
   return names
 })
 
@@ -182,6 +206,7 @@ onMounted(async () => {
     <SidebarNav
       :class="{ open: isMobileMenuOpen }"
       @navigate="handleNavigate"
+      @warehouse-navigate="handleNavigate"
     />
 
     <div
@@ -229,7 +254,7 @@ onMounted(async () => {
 
       <div class="content-area">
         <KeepAlive :include="keepAliveList">
-          <component :is="currentWorkspace" :key="activeTabId" />
+          <component :is="currentWorkspace" :key="activeTabId" v-bind="activeTabId === 'inventory-drilldown' ? inventoryDrillDownData : {}" @back="handleInventoryBack" @navigate="handleNavigate" />
         </KeepAlive>
       </div>
 
