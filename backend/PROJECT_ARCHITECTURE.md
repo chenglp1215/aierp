@@ -298,3 +298,260 @@ window.location.replace('/login')
 2. localStorage 认证数据要全部清除
 3. 后端中间件必须注册才会生效
 4. 集成外部 API 时必须严格遵循其规范
+
+## VxeTable4 前端表格实现规范
+
+### 概述
+项目前端使用 VxeTable4 作为通用表格组件，适用于产品管理、客户管理、订单管理等列表页面。
+
+### 核心文件
+| 文件 | 说明 |
+|------|------|
+| web/src/components/workspace/ProductWorkspace.vue | 产品管理页面（完整示例） |
+| web/src/components/workspace/SalesOrderList.vue | 销售订单列表 |
+| web/src/components/workspace/InventoryWorkspace.vue | 库存管理页面 |
+
+### 垂直表格数据构建（产品-规格展开模式）
+
+当一个产品有多个规格时，需要将数据转换为垂直展开格式：
+
+```typescript
+interface ProductGroup {
+  product: Product
+  rowspan: number
+}
+
+const buildVerticalTableData = () => {
+  const data: any[] = []
+  for (const group of productGroups.value) {
+    const specs = group.product.specs || []
+    for (let i = 0; i < specs.length; i++) {
+      const spec = specs[i]
+      data.push({
+        _id: `${group.product.id}_${spec.id}`,
+        product_id: group.product.id,
+        product_code: group.product.product_code,
+        product_name: group.product.name,
+        isFirst: i === 0,
+        rowspan: i === 0 ? specs.length : 0,
+        product_rowspan: i === 0 ? specs.length : 0,
+        specs_length: specs.length
+      })
+    }
+  }
+  verticalTableData.value = data
+}
+```
+
+### 合并单元格规则 (span-method)
+
+```typescript
+type SpanMethod = (params: { row: any; columnIndex: number }) => { rowspan: number; colspan: number } | void
+
+const verticalSpanMethod: SpanMethod = ({ row, columnIndex }) => {
+  const productCols = [0, 1, 2, 3, 4, 5]  // 需要合并的产品列
+  const actionCol = 12  // 操作列索引
+  
+  if (productCols.includes(columnIndex) && row.isFirst) {
+    return { rowspan: row.rowspan, colspan: 1 }
+  }
+  if (productCols.includes(columnIndex) || (columnIndex === actionCol && !row.isFirst)) {
+    return { rowspan: 0, colspan: 0 }
+  }
+  if (columnIndex === actionCol && row.isFirst) {
+    return { rowspan: row.rowspan, colspan: 1 }
+  }
+}
+```
+
+### 序号方法 (seq-method)
+
+处理分页时序号连续性：
+
+```typescript
+const seqMethod = ({ row }: { row: any }) => {
+  if (!row.isFirst) return 0
+  const firstRows = verticalTableData.value.filter(r => r.isFirst)
+  return firstRows.findIndex(r => r._id === row._id) + 1 + (page.value - 1) * pageSize.value
+}
+```
+
+### 基础模板结构
+
+```vue
+<vxe-table
+  :data="verticalTableData"
+  :column-config="{ resizable: true }"
+  :span-method="verticalSpanMethod"
+  :seq-config="{ seqMethod: seqMethod }"
+>
+  <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
+  <vxe-column field="product_code" title="产品编号" width="130" class-name="col--center" />
+  <!-- 更多列 -->
+  <vxe-column title="操作" width="220" fixed="right" class-name="col--center">
+    <template #default="{ row }">
+      <span class="action-btns">
+        <button class="btn-link" @click="openEditProduct(row)">编辑</button>
+        <button class="btn-link danger" @click="confirmDeleteProduct(row)">删除</button>
+      </span>
+    </template>
+  </vxe-column>
+</vxe-table>
+
+<vxe-pager
+  v-model:current-page="page"
+  v-model:page-size="pageSize"
+  :total="total"
+  :layouts="['PrevPage', 'JumpNumber', 'NextPage', 'FullJump', 'Sizes', 'Total']"
+  @page-change="handlePageChange"
+/>
+```
+
+### 分页处理
+
+```typescript
+const handlePageChange = ({ currentPage, pageSize: newPageSize }: { currentPage: number; pageSize: number }) => {
+  page.value = currentPage
+  pageSize.value = newPageSize
+  loadProducts()
+}
+```
+
+### 样式定制
+
+全局样式（在组件 `<style>` 标签外）：
+
+```css
+.vxe-table {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.vxe-table .vxe-body--row {
+  height: 48px;
+}
+
+.vxe-table .vxe-body--column.col--center {
+  text-align: center;
+  justify-content: center;
+}
+
+.vxe-pager {
+  margin-top: 16px;
+  background-color: var(--bg-card) !important;
+  border-top: 1px solid var(--border-color);
+}
+
+.vxe-pager .vxe-pager--num-btn.is--active {
+  background-color: var(--accent-blue) !important;
+  color: white !important;
+}
+```
+
+### 主题适配
+
+```css
+[data-theme="light"] .vxe-pager {
+  background-color: #ffffff !important;
+  border-top: 1px solid #e5e7eb;
+}
+
+[data-theme="light"] .vxe-pager .vxe-pager--num-btn.is--active {
+  color: #ffffff !important;
+}
+```
+
+### 操作列按钮样式
+
+```css
+.action-btns {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-link:hover {
+  background-color: rgba(0, 120, 212, 0.1);
+}
+
+.btn-link.danger {
+  color: var(--accent-red);
+}
+
+.btn-link.danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+```
+
+### 状态标签
+
+```vue
+<vxe-column field="spec_is_active" title="规格有效" width="80" class-name="col--center">
+  <template #default="{ row }">
+    <span :class="['active-tag', row.spec_is_active ? 'active' : '']">
+      {{ row.spec_is_active ? '在售' : '停用' }}
+    </span>
+  </template>
+</vxe-column>
+```
+
+```css
+.active-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--accent-red);
+}
+
+.active-tag.active {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--accent-green);
+}
+```
+
+### 加载状态覆盖层
+
+```vue
+<div class="table-section" style="position: relative;">
+  <div v-if="loading" class="table-loading-overlay">
+    <div class="table-loading-content">加载中...</div>
+  </div>
+  <vxe-table :data="verticalTableData" ...>
+    <!-- ... -->
+  </vxe-table>
+</div>
+```
+
+```css
+.table-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+[data-theme="dark"] .table-loading-overlay {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+```
