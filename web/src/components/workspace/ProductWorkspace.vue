@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { productApi, uploadApi, categoryApi, type Product, type ProductSpec, type ProductFormData, type ProductSpecFormData, type CategoryTreeNode } from '../../services/api'
-import type { VxeTablePropTypes } from 'vxe-pc-ui'
+
+type SpanMethod = (params: { row: any; columnIndex: number }) => { rowspan: number; colspan: number } | void
 
 interface ProductGroup {
   product: Product
@@ -183,7 +184,7 @@ const buildVerticalTableData = () => {
   verticalTableData.value = data
 }
 
-const verticalSpanMethod: VxeTablePropTypes.SpanMethod = ({ row, columnIndex }) => {
+const verticalSpanMethod: SpanMethod = ({ row, columnIndex }) => {
   const productCols = [0, 1, 2, 3, 4, 5]
   const actionCol = 12
   if (productCols.includes(columnIndex) && row.isFirst) {
@@ -272,10 +273,14 @@ const handleSaveProduct = async () => {
       window.showToast('产品更新成功', 'success')
       const index = products.value.findIndex(p => p.id === editingProduct.value!.id)
       if (index !== -1) {
-        products.value[index] = {
-          ...products.value[index],
-          ...productForm.value
-        }
+        const updated = products.value[index]
+        updated.product_code = productForm.value.product_code || updated.product_code
+        updated.name = productForm.value.name
+        updated.image_url = productForm.value.image_url
+        updated.brand = productForm.value.brand
+        updated.category_id = productForm.value.category_id
+        updated.tax_code = productForm.value.tax_code
+        updated.is_active = productForm.value.is_active
       }
     } else {
       await productApi.create(productForm.value)

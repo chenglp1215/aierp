@@ -24,7 +24,7 @@ const flatTreeData = computed(() => {
   const result: (CategoryTreeNode & { depth: number; expanded: boolean; hasChildren: boolean })[] = []
   const traverse = (nodes: CategoryTreeNode[], depth = 0) => {
     for (const node of nodes) {
-      const hasChildren = node.children && node.children.length > 0
+      const hasChildren = (node.children?.length ?? 0) > 0
       result.push({
         ...node,
         depth,
