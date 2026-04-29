@@ -1,6 +1,7 @@
 from typing import Optional, Dict, Any, List
 import random
 import string
+import logging
 from bson import ObjectId
 from datetime import datetime
 
@@ -12,6 +13,8 @@ from validators.customer_validator import (
     PRODUCT_SPEC_CREATE_CONFIG,
     PRODUCT_SPEC_UPDATE_CONFIG,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ProductSpecService(BaseService):
@@ -174,14 +177,70 @@ class ProductService(BaseService):
 
     async def create_product(self, product_data: ProductCreate) -> Dict[str, Any]:
         data = product_data.model_dump()
+        specs_data = data.pop("specs", []) or []
+        if specs_data:
+            spec_codes = [s.get("spec_code") for s in specs_data if s.get("spec_code")]
+            if len(spec_codes) != len(set(spec_codes)):
+                raise ValueError("同一商品下的规格编号不能重复")
         if not data.get("product_code"):
             data["product_code"] = self._generate_product_code()
         data["id"] = await self.create(data)
+
+        created_specs = []
+        for spec_data in specs_data:
+            spec_data["product_id"] = data["id"]
+            spec_create = ProductSpecCreate(**spec_data)
+            spec = await self.spec_service.create_spec(spec_create)
+            created_specs.append(spec)
+
+        data["specs"] = created_specs
         return data
 
     async def update_product(self, id: str, product_data: ProductUpdate) -> bool:
+        from pydantic import ValidationError
         data = product_data.model_dump(exclude_unset=True)
-        return await self.update(id, data)
+        specs_data = data.pop("specs", None)
+
+        success = await self.update(id, data)
+        if not success:
+            return False
+
+        if specs_data is not None:
+            spec_codes = [s.get("spec_code") for s in specs_data if s.get("spec_code")]
+            if len(spec_codes) != len(set(spec_codes)):
+                raise ValueError("同一商品下的规格编号不能重复")
+
+            logger.info(f"Updating specs for product {id}: specs_count={len(specs_data)}")
+            try:
+                existing_specs = await self.spec_service.get_specs_by_product_id(id)
+                existing_spec_ids = {s["id"] for s in existing_specs}
+                logger.info(f"Existing spec ids: {existing_spec_ids}")
+                submitted_spec_ids = set()
+
+                for spec_data in specs_data:
+                    spec_id = spec_data.pop("id", None)
+                    logger.info(f"Processing spec: id={spec_id}, data_keys={list(spec_data.keys())}")
+                    if spec_id and spec_id in existing_spec_ids:
+                        await self.spec_service.update_spec(spec_id, ProductSpecUpdate(**spec_data))
+                        submitted_spec_ids.add(spec_id)
+                        logger.info(f"Updated spec {spec_id}")
+                    else:
+                        spec_data["product_id"] = id
+                        spec = await self.spec_service.create_spec(ProductSpecCreate(**spec_data))
+                        logger.info(f"Created new spec: id={spec['id']}")
+                        submitted_spec_ids.add(spec["id"])
+
+                for existing_spec in existing_specs:
+                    if existing_spec["id"] not in submitted_spec_ids:
+                        await self.spec_service.delete_spec(existing_spec["id"])
+                        logger.info(f"Deleted spec {existing_spec['id']}")
+            except (ValidationError, ValueError):
+                raise
+            except Exception as e:
+                logger.error(f"Error updating specs: {e}", exc_info=True)
+                raise
+
+        return True
 
     async def get_product_by_code(self, product_code: str) -> Optional[Dict[str, Any]]:
         return await self.find_one({"product_code": product_code})
@@ -233,9 +292,12 @@ class ProductService(BaseService):
     async def get_product_stock_detail(self, spec_id: str) -> Dict[str, Any]:
         pipeline = [
             {"$match": {"spec_id": spec_id}},
+            {"$addFields": {
+                "warehouse_id_obj": {"$toObjectId": "$warehouse_id"}
+            }},
             {"$lookup": {
                 "from": "warehouses",
-                "localField": "warehouse_id",
+                "localField": "warehouse_id_obj",
                 "foreignField": "_id",
                 "as": "warehouse_info"
             }},

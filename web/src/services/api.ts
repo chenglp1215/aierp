@@ -75,6 +75,13 @@ class ApiService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: '请求失败' }))
+      if (response.status === 422 && Array.isArray(error.detail)) {
+        const messages = error.detail.map((err: any) => {
+          const field = err.loc?.slice(1).join('.') || err.loc?.pop() || '字段'
+          return `${field}: ${err.msg}`
+        })
+        throw new Error(messages.join('; '))
+      }
       throw new Error(error.detail || `HTTP error! status: ${response.status}`)
     }
 
@@ -383,6 +390,7 @@ export interface Product {
   brand?: string
   category?: string
   tax_code?: string
+  is_active?: boolean
   specs: ProductSpec[]
   created_at?: string
   updated_at?: string
@@ -395,9 +403,12 @@ export interface ProductFormData {
   brand?: string
   category?: string
   tax_code?: string
+  is_active?: boolean
+  specs?: ProductSpecFormData[]
 }
 
 export interface ProductSpecFormData {
+  id?: string
   spec_code?: string
   packaging?: string
   sales_spec?: string

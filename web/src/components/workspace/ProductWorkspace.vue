@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { productApi, uploadApi, type Product, type ProductSpec, type ProductFormData, type ProductSpecFormData } from '../../services/api'
 import type { VxeTablePropTypes } from 'vxe-pc-ui'
 
@@ -24,6 +24,9 @@ const showStockDetail = ref(false)
 const editingProduct = ref<Product | null>(null)
 const editingSpec = ref<ProductSpec | null>(null)
 const selectedSpecForStock = ref<ProductSpec | null>(null)
+const stockDetailLoading = ref(false)
+const stockDetailData = ref<any[]>([])
+const stockDetailTotal = ref(0)
 const deleteTargetId = ref<string | null>(null)
 const deleteTargetType = ref<'product' | 'spec'>('product')
 const formLoading = ref(false)
@@ -36,7 +39,8 @@ const productForm = ref<ProductFormData>({
   image_url: '',
   brand: '',
   category: '',
-  tax_code: ''
+  tax_code: '',
+  is_active: true
 })
 
 const specForm = ref<ProductSpecFormData>({
@@ -49,8 +53,19 @@ const specForm = ref<ProductSpecFormData>({
 })
 
 const verticalTableData = ref<any[]>([])
+const specsListInModal = ref<ProductSpec[]>([])
 
 const formatPrice = (price: number) => `¥${price.toFixed(2)}`
+
+const getStockStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    'normal': '正常',
+    'low_stock': '低库存',
+    'out_of_stock': '缺货',
+    'overstock': '超库存'
+  }
+  return statusMap[status] || status || '-'
+}
 
 const handleImageUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -104,12 +119,13 @@ const buildVerticalTableData = () => {
         product_name: group.product.name,
         brand: group.product.brand,
         category: group.product.category,
+        product_is_active: group.product.is_active ?? true,
         spec_id: spec.id,
         spec_code: spec.spec_code,
         packaging: spec.packaging,
         sales_spec: spec.sales_spec,
         price: spec.price,
-        is_active: spec.is_active,
+        spec_is_active: spec.is_active,
         stock_quantity: spec.stock_quantity || 0,
         stock_status: spec.stock_status,
         isFirst: i === 0,
@@ -123,12 +139,12 @@ const buildVerticalTableData = () => {
 }
 
 const verticalSpanMethod: VxeTablePropTypes.SpanMethod = ({ row, columnIndex }) => {
-  const productCols = [0, 1, 2, 3, 4]
-  const actionCol = 11
+  const productCols = [0, 1, 2, 3, 4, 10]
+  const actionCol = 12
   if (productCols.includes(columnIndex) && row.isFirst) {
     return { rowspan: row.rowspan, colspan: 1 }
   }
-  if (productCols.includes(columnIndex) || (columnIndex === actionCol && row.isFirst)) {
+  if (productCols.includes(columnIndex) || (columnIndex === actionCol && !row.isFirst)) {
     return { rowspan: 0, colspan: 0 }
   }
   if (columnIndex === actionCol && row.isFirst) {
@@ -171,12 +187,29 @@ const resetFilters = () => {
 const hasActiveFilters = computed(() => !!keyword.value)
 
 const resetProductForm = () => {
-  productForm.value = { product_code: '', name: '', image_url: '', brand: '', category: '', tax_code: '' }
+  productForm.value = { product_code: '', name: '', image_url: '', brand: '', category: '', tax_code: '', is_active: true }
   editingProduct.value = null
 }
 
 const openCreateProduct = () => {
   resetProductForm()
+  showProductModal.value = true
+}
+
+const openEditProduct = (row: any) => {
+  const product = products.value.find(p => p.id === row.product_id)
+  if (!product) return
+  editingProduct.value = product
+  productForm.value = {
+    product_code: product.product_code,
+    name: product.name,
+    image_url: product.image_url || '',
+    brand: product.brand,
+    category: product.category,
+    tax_code: product.tax_code || '',
+    is_active: product.is_active ?? true
+  }
+  specsListInModal.value = [...(product.specs || [])]
   showProductModal.value = true
 }
 
@@ -205,6 +238,137 @@ const handleSaveProduct = async () => {
     showProductModal.value = false
     loadStats()
     buildVerticalTableData()
+  } catch (error: any) {
+    window.showToast(error.message || '操作失败', 'error')
+  } finally {
+    formLoading.value = false
+  }
+}
+
+const editingSpecId = ref<string | null>(null)
+const isAddingNewSpec = ref(false)
+const newSpecForm = ref({
+  spec_code: '',
+  packaging: '',
+  sales_spec: '',
+  price: 0,
+  cas_number: '',
+  is_active: true
+})
+const editingSpecBackup = ref<any>(null)
+
+const addNewSpecInModal = () => {
+  isAddingNewSpec.value = true
+  editingSpecId.value = null
+  newSpecForm.value = {
+    spec_code: '',
+    packaging: '',
+    sales_spec: '',
+    price: 0,
+    cas_number: '',
+    is_active: true
+  }
+}
+
+const cancelAddNewSpec = () => {
+  isAddingNewSpec.value = false
+  newSpecForm.value = {
+    spec_code: '',
+    packaging: '',
+    sales_spec: '',
+    price: 0,
+    cas_number: '',
+    is_active: true
+  }
+}
+
+const confirmAddNewSpec = () => {
+  if (!newSpecForm.value.price || newSpecForm.value.price < 0) {
+    window.showToast('请输入有效的价格', 'warning')
+    return
+  }
+  const newSpec: ProductSpec = {
+    id: `temp_${Date.now()}`,
+    product_id: editingProduct.value!.id,
+    spec_code: newSpecForm.value.spec_code,
+    packaging: newSpecForm.value.packaging,
+    sales_spec: newSpecForm.value.sales_spec,
+    price: newSpecForm.value.price,
+    cas_number: newSpecForm.value.cas_number,
+    is_active: newSpecForm.value.is_active
+  }
+  specsListInModal.value.push(newSpec)
+  isAddingNewSpec.value = false
+}
+
+const startEditSpec = (spec: ProductSpec) => {
+  editingSpecId.value = spec.id
+  editingSpecBackup.value = { ...spec }
+}
+
+const cancelEditSpec = () => {
+  if (editingSpecBackup.value) {
+    const index = specsListInModal.value.findIndex(s => s.id === editingSpecBackup.value.id)
+    if (index !== -1) {
+      specsListInModal.value[index] = editingSpecBackup.value
+    }
+  }
+  editingSpecId.value = null
+  editingSpecBackup.value = null
+}
+
+const saveSpecFromRow = (spec: ProductSpec) => {
+  if (!spec.price || spec.price < 0) {
+    window.showToast('请输入有效的价格', 'warning')
+    return
+  }
+  editingSpecId.value = null
+  editingSpecBackup.value = null
+}
+
+const deleteSpecInModal = (specId: string) => {
+  const index = specsListInModal.value.findIndex(s => s.id === specId)
+  if (index !== -1) {
+    specsListInModal.value.splice(index, 1)
+  }
+}
+
+const handleSaveProductWithSpecs = async () => {
+  if (!productForm.value.name?.trim()) {
+    window.showToast('请输入商品名称', 'warning')
+    return
+  }
+  const specCodes = specsListInModal.value
+    .map(spec => spec.spec_code)
+    .filter(code => code && code.trim())
+  if (specCodes.length !== new Set(specCodes).size) {
+    window.showToast('同一商品下的规格编号不能重复', 'warning')
+    return
+  }
+  formLoading.value = true
+  try {
+    const formDataWithSpecs: ProductFormData = {
+      ...productForm.value,
+      specs: specsListInModal.value.map(spec => ({
+        id: spec.id && !spec.id.toString().startsWith('temp_') ? spec.id : undefined,
+        spec_code: spec.spec_code,
+        packaging: spec.packaging,
+        sales_spec: spec.sales_spec,
+        price: spec.price,
+        cas_number: spec.cas_number,
+        is_active: spec.is_active
+      }))
+    }
+    if (editingProduct.value) {
+      await productApi.update(editingProduct.value.id, formDataWithSpecs)
+      window.showToast('商品更新成功', 'success')
+    } else {
+      await productApi.create(formDataWithSpecs)
+      window.showToast('商品创建成功', 'success')
+    }
+    showProductModal.value = false
+    loadProducts()
+    loadStats()
   } catch (error: any) {
     window.showToast(error.message || '操作失败', 'error')
   } finally {
@@ -358,20 +522,44 @@ const handleToggleSpecActive = async (row: any) => {
   }
 }
 
-const openStockDetail = (row: any) => {
+const openStockDetail = async (row: any) => {
   const spec = products.value
     .flatMap(p => p.specs || [])
     .find(s => s.id === row.spec_id)
   if (spec) {
     selectedSpecForStock.value = spec
     showStockDetail.value = true
+    stockDetailLoading.value = true
+    stockDetailData.value = []
+    try {
+      const res = await productApi.getSpecStockDetail(spec.id)
+      if (res.result) {
+        stockDetailData.value = res.result.items || []
+        stockDetailTotal.value = res.result.total_quantity || 0
+      }
+    } catch (error) {
+      console.error('加载库存详情失败:', error)
+    } finally {
+      stockDetailLoading.value = false
+    }
   }
 }
 
 onMounted(() => {
   loadProducts()
   loadStats()
+  document.addEventListener('keydown', handleEscKey)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleEscKey)
+})
+
+const handleEscKey = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    showProductModal.value = false
+  }
+}
 </script>
 
 <template>
@@ -416,9 +604,29 @@ onMounted(() => {
         <vxe-column field="packaging" title="包装" width="100" />
         <vxe-column field="sales_spec" title="销售规格" width="120" />
         <vxe-column field="price" title="价格" width="100" />
-        <vxe-column field="stock_quantity" title="库存" width="80" />
-        <vxe-column field="is_active" title="有效" width="70" />
-        <vxe-column title="操作" width="220" fixed="right" class-name="col--center" />
+        <vxe-column field="stock_quantity" title="库存" width="80">
+          <template #default="{ row }">
+            <button class="stock-link" @click.stop="openStockDetail(row)">{{ row.stock_quantity || 0 }}</button>
+          </template>
+        </vxe-column>
+        <vxe-column field="product_is_active" title="商品有效" width="80" class-name="col--center">
+          <template #default="{ row }">
+            <span :class="['active-tag', row.product_is_active ? 'active' : '']">{{ row.product_is_active ? '在售' : '停用' }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column field="spec_is_active" title="规格有效" width="80" class-name="col--center">
+          <template #default="{ row }">
+            <span :class="['active-tag', row.spec_is_active ? 'active' : '']">{{ row.spec_is_active ? '在售' : '停用' }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column title="操作" width="220" fixed="right" class-name="col--center">
+          <template #default="{ row }">
+            <span class="action-btns">
+              <button class="btn-link" @click="openEditProduct(row)">编辑</button>
+              <button class="btn-link danger" @click="confirmDeleteProduct(row)">删除</button>
+            </span>
+          </template>
+        </vxe-column>
       </vxe-table>
 
       <vxe-pager
@@ -430,7 +638,7 @@ onMounted(() => {
       />
     </div>
 
-    <div class="modal-overlay" v-if="showProductModal" @click.self="showProductModal = false">
+    <div class="modal-overlay" v-if="showProductModal">
       <div class="modal">
         <div class="modal-header">
           <h3>{{ editingProduct ? '编辑商品' : '新建商品' }}</h3>
@@ -462,6 +670,12 @@ onMounted(() => {
               <label>税务编码</label>
               <input type="text" v-model="productForm.tax_code" placeholder="税务编码" />
             </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="productForm.is_active" />
+                是否有效
+              </label>
+            </div>
           </div>
           <div class="form-group">
             <label>商品图片</label>
@@ -477,10 +691,72 @@ onMounted(() => {
               </label>
             </div>
           </div>
+          <div class="specs-section" v-if="editingProduct">
+            <div class="specs-section-header">
+              <h4>商品规格列表</h4>
+              <button class="btn-secondary btn-sm" @click="addNewSpecInModal">添加规格</button>
+            </div>
+            <table class="specs-table">
+              <thead>
+                <tr>
+                  <th>规格编号</th>
+                  <th>包装</th>
+                  <th>销售规格</th>
+                  <th>价格</th>
+                  <th>CAS号</th>
+                  <th>有效</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="spec in specsListInModal" :key="spec.id">
+                  <template v-if="editingSpecId === spec.id">
+                    <td><input type="text" v-model="spec.spec_code" class="inline-input" placeholder="自动生成或手动输入" /></td>
+                    <td><input type="text" v-model="spec.packaging" class="inline-input" placeholder="包装" /></td>
+                    <td><input type="text" v-model="spec.sales_spec" class="inline-input" placeholder="销售规格" /></td>
+                    <td><input type="number" v-model="spec.price" class="inline-input" placeholder="0.00" min="0" step="0.01" /></td>
+                    <td><input type="text" v-model="spec.cas_number" class="inline-input" placeholder="CAS号" /></td>
+                    <td><input type="checkbox" v-model="spec.is_active" class="inline-checkbox" /></td>
+                    <td>
+                      <button class="btn-link" @click="cancelEditSpec">取消</button>
+                      <button class="btn-link" @click="saveSpecFromRow(spec)">保存</button>
+                    </td>
+                  </template>
+                  <template v-else>
+                    <td>{{ spec.spec_code || '-' }}</td>
+                    <td>{{ spec.packaging || '-' }}</td>
+                    <td>{{ spec.sales_spec || '-' }}</td>
+                    <td>{{ formatPrice(spec.price) }}</td>
+                    <td>{{ spec.cas_number || '-' }}</td>
+                    <td>{{ spec.is_active ? '是' : '否' }}</td>
+                    <td>
+                      <button class="btn-link" @click="startEditSpec(spec)">编辑</button>
+                      <button class="btn-link danger" @click="deleteSpecInModal(spec.id)">删除</button>
+                    </td>
+                  </template>
+                </tr>
+                <tr v-if="isAddingNewSpec">
+                  <td><input type="text" v-model="newSpecForm.spec_code" class="inline-input" placeholder="自动生成或手动输入" /></td>
+                  <td><input type="text" v-model="newSpecForm.packaging" class="inline-input" placeholder="包装" /></td>
+                  <td><input type="text" v-model="newSpecForm.sales_spec" class="inline-input" placeholder="销售规格" /></td>
+                  <td><input type="number" v-model="newSpecForm.price" class="inline-input" placeholder="0.00" min="0" step="0.01" /></td>
+                  <td><input type="text" v-model="newSpecForm.cas_number" class="inline-input" placeholder="CAS号" /></td>
+                  <td><input type="checkbox" v-model="newSpecForm.is_active" class="inline-checkbox" /></td>
+                  <td>
+                    <button class="btn-link" @click="cancelAddNewSpec">取消</button>
+                    <button class="btn-link" @click="confirmAddNewSpec">保存</button>
+                  </td>
+                </tr>
+                <tr v-if="specsListInModal.length === 0 && !isAddingNewSpec">
+                  <td colspan="7" class="specs-empty">暂无规格，请添加规格</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showProductModal = false">取消</button>
-          <button class="btn-primary" @click="handleSaveProduct" :disabled="formLoading">
+          <button class="btn-primary" @click="handleSaveProductWithSpecs" :disabled="formLoading">
             {{ formLoading ? '保存中...' : '保存' }}
           </button>
         </div>
@@ -559,13 +835,14 @@ onMounted(() => {
         </div>
         <div class="modal-body">
           <div class="stock-detail-info">
-            <p class="stock-total">总库存数量: <strong>{{ selectedSpecForStock?.stock_quantity || 0 }}</strong></p>
+            <p class="stock-total">总库存数量: <strong>{{ stockDetailTotal || selectedSpecForStock?.stock_quantity || 0 }}</strong></p>
           </div>
-          <table class="stock-detail-table">
+          <div v-if="stockDetailLoading" class="stock-loading">加载中...</div>
+          <table v-else-if="stockDetailData.length > 0" class="stock-detail-table">
             <thead>
               <tr>
                 <th>仓库</th>
-                <th>批次号</th>
+                <th>仓库编号</th>
                 <th>数量</th>
                 <th>最小库存</th>
                 <th>最大库存</th>
@@ -573,11 +850,17 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colspan="6" class="empty-cell">暂无数据</td>
+              <tr v-for="item in stockDetailData" :key="item.id">
+                <td>{{ item.warehouse_name || '-' }}</td>
+                <td>{{ item.warehouse_code || '-' }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.min_stock ?? '-' }}</td>
+                <td>{{ item.max_stock ?? '-' }}</td>
+                <td>{{ getStockStatusText(item.status) }}</td>
               </tr>
             </tbody>
           </table>
+          <div v-else class="empty-cell">暂无数据</div>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showStockDetail = false">关闭</button>
@@ -718,9 +1001,13 @@ onMounted(() => {
 }
 
 .stock-link {
+  background: transparent;
   color: var(--accent-blue);
   cursor: pointer;
   text-decoration: underline;
+  padding: 0;
+  border: none;
+  font-size: inherit;
 }
 
 .stock-link:hover {
@@ -763,8 +1050,8 @@ onMounted(() => {
 .modal {
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
-  width: 90%;
-  max-width: 600px;
+  width: 95%;
+  max-width: 1000px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-hover);
@@ -873,6 +1160,101 @@ onMounted(() => {
 
 .image-upload-area {
   width: 100%;
+}
+
+.specs-section {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.specs-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.specs-section-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.specs-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.specs-table th,
+.specs-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+}
+
+.specs-table th {
+  font-weight: 500;
+  color: var(--text-muted);
+  background-color: var(--bg-secondary);
+}
+
+.specs-table td {
+  color: var(--text-primary);
+}
+
+.specs-table tbody tr:hover {
+  background-color: rgba(0, 120, 212, 0.05);
+}
+
+.specs-table td .inline-input {
+  width: 100%;
+  padding: 6px 8px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.specs-table td .inline-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.specs-table td .inline-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.specs-empty {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.action-btns {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.action-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .image-preview {
@@ -1059,6 +1441,12 @@ onMounted(() => {
 }
 
 .empty-cell {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
+.stock-loading {
   text-align: center;
   padding: 40px;
   color: var(--text-muted);

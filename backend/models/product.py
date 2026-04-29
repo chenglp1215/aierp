@@ -4,6 +4,7 @@ from datetime import datetime
 
 
 class ProductSpecBase(BaseModel):
+    product_id: Optional[str] = Field(None, description="商品ID")
     spec_code: str = Field(..., min_length=1, max_length=50, description="规格编号")
     packaging: Optional[str] = Field(None, max_length=100, description="包装")
     sales_spec: Optional[str] = Field(None, max_length=100, description="销售规格")
@@ -17,6 +18,7 @@ class ProductSpecCreate(ProductSpecBase):
 
 
 class ProductSpecUpdate(BaseModel):
+    id: Optional[str] = Field(None, description="规格ID，更新时必传")
     spec_code: Optional[str] = Field(None, min_length=1, max_length=50)
     packaging: Optional[str] = Field(None, max_length=100)
     sales_spec: Optional[str] = Field(None, max_length=100)
@@ -57,10 +59,11 @@ class ProductBase(BaseModel):
     brand: Optional[str] = Field(None, max_length=100, description="品牌")
     category: Optional[str] = Field(None, max_length=100, description="分类")
     tax_code: Optional[str] = Field(None, max_length=50, description="税务编码")
+    is_active: bool = Field(default=True, description="是否有效")
 
 
 class ProductCreate(ProductBase):
-    pass
+    specs: Optional[List["ProductSpecCreate"]] = Field(default_factory=list, description="商品规格列表")
 
 
 class ProductUpdate(BaseModel):
@@ -70,6 +73,8 @@ class ProductUpdate(BaseModel):
     brand: Optional[str] = Field(None, max_length=100)
     category: Optional[str] = Field(None, max_length=100)
     tax_code: Optional[str] = Field(None, max_length=50)
+    is_active: Optional[bool] = None
+    specs: Optional[List["ProductSpecUpdate"]] = Field(default_factory=list, description="商品规格列表")
 
 
 class Product(ProductBase):

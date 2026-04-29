@@ -23,12 +23,15 @@ async def create_product(
     _: dict = Depends(require_permission("product.create"))
 ):
     """创建商品"""
-    product_data = await product_service.create_product(product)
-    return {
-        "status": "success",
-        "message": "商品创建成功",
-        "result": product_data
-    }
+    try:
+        product_data = await product_service.create_product(product)
+        return {
+            "status": "success",
+            "message": "商品创建成功",
+            "result": product_data
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @product_router.get("/", response_model=ProductListResponse)
@@ -90,13 +93,16 @@ async def update_product(
     _: dict = Depends(require_permission("product.edit"))
 ):
     """更新商品信息"""
-    success = await product_service.update_product(product_id, product)
-    if not success:
-        raise HTTPException(status_code=404, detail="商品不存在或更新失败")
-    return {
-        "status": "success",
-        "message": "商品更新成功"
-    }
+    try:
+        success = await product_service.update_product(product_id, product)
+        if not success:
+            raise HTTPException(status_code=404, detail="商品不存在或更新失败")
+        return {
+            "status": "success",
+            "message": "商品更新成功"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @product_router.delete("/{product_id}", response_model=dict)
