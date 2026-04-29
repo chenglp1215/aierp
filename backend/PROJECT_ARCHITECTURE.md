@@ -104,10 +104,54 @@ python main.py
 # 访问 API 文档: http://localhost:8000/docs
 ```
 
+## 商品分类模块
+
+### 数据结构
+商品分类支持三级分类树，存储在 MongoDB `product_categories` 集合中。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | str | 分类ID (自动生成) |
+| name | str | 分类名称 |
+| tax_code | str | 税务编码 |
+| parent_id | str | 父分类ID (顶级分类为空) |
+| level | int | 分类层级 (1/2/3) |
+| sort_order | int | 排序权重 |
+| is_active | bool | 是否有效 |
+
+### API 端点
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| /product-categories/ | POST | 创建分类 |
+| /product-categories/ | GET | 列表查询(平铺) |
+| /product-categories/tree | GET | 树形结构 |
+| /product-categories/parent-options | GET | 可选父分类 |
+| /product-categories/children/{parent_id} | GET | 子分类列表 |
+| /product-categories/{id} | GET | 分类详情 |
+| /product-categories/{id} | PUT | 更新分类 |
+| /product-categories/{id} | DELETE | 删除分类 |
+
+### 前端页面
+- ProductWorkspace.vue 改为包含子页签的容器组件
+  - 子页签1: 商品分类 (ProductCategoryWorkspace.vue) - 三级树形视图+列表视图
+  - 子页签2: 商品管理 (ProductManageContent.vue) - 原 ProductWorkspace 内容
+
+### 核心文件
+| 文件 | 说明 |
+|------|------|
+| backend/models/product_category.py | Pydantic 数据模型 |
+| backend/services/product_category_service.py | 业务逻辑服务 |
+| backend/app/routers/product.py | 分类路由 (category_router) |
+| web/src/services/api.ts | productCategoryApi |
+| web/src/components/workspace/ProductCategoryWorkspace.vue | 分类管理页面 |
+| web/src/components/workspace/ProductManageContent.vue | 商品管理内容 |
+| web/src/components/workspace/ProductWorkspace.vue | 页签容器 |
+
 ## 最近变更记录
 
 | 日期 | 变更内容 |
 |------|----------|
+| 2026-04-29 | **商品分类模块**：新增三级分类管理(后端+前端) |
 | 2026-04-28 | **API 接口文档**：整理所有后端接口为标准文档 |
 | 2026-04-28 | **文档同步规范**：接口/数据结构变更需同步更新接口文档 |
 | 2026-04-28 | **前端列表操作优化**：编辑/删除直接更新本地列表 |

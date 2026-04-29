@@ -99,6 +99,23 @@ class ProductSpecService(BaseService):
 
         return items
 
+    async def _batch_get_stock_info(self, spec_ids: List[str]) -> Dict[str, Dict]:
+        if not spec_ids:
+            return {}
+
+        pipeline = [
+            {"$match": {"spec_id": {"$in": spec_ids}}},
+            {"$group": {
+                "_id": "$spec_id",
+                "total_quantity": {"$sum": "$quantity"},
+                "min_status": {"$min": "$status"}
+            }}
+        ]
+
+        cursor = self.db["stocks"].aggregate(pipeline)
+        stock_data = await cursor.to_list(length=None)
+        return {s["_id"]: s for s in stock_data}
+
     async def get_specs_by_product_id(self, product_id: str) -> List[Dict[str, Any]]:
         items = await self.find_many({"product_id": product_id})
         return await self._enrich_stock_status(items)
@@ -258,15 +275,45 @@ class ProductService(BaseService):
                 {"name": {"$regex": keyword, "$options": "i"}}
             ]
 
-        result = await self.list(page, page_size, filters, "created_at", -1)
-        items = result.get("items", [])
+        skip = (page - 1) * page_size
+        total = await self.count(filters)
 
-        for item in items:
-            specs = await self.spec_service.get_specs_by_product_id(item["id"])
-            item["specs"] = specs
+        cursor = self.collection.find(filters).sort("created_at", -1).skip(skip).limit(page_size)
+        products = await cursor.to_list(length=page_size)
 
-        result["items"] = items
-        return result
+        for p in products:
+            p["id"] = str(p.pop("_id"))
+
+        if not products:
+            return {"total": total, "page": page, "page_size": page_size, "items": []}
+
+        product_ids = [p["id"] for p in products]
+
+        all_specs = await self.spec_service.find_many({"product_id": {"$in": product_ids}})
+
+        spec_ids = [s["id"] for s in all_specs if s.get("id")]
+        stock_map = await self.spec_service._batch_get_stock_info(spec_ids)
+
+        specs_map: Dict[str, List] = {}
+        for spec in all_specs:
+            sid = spec.get("id")
+            stock_info = stock_map.get(sid)
+            if stock_info:
+                spec["stock_quantity"] = stock_info["total_quantity"]
+                spec["stock_status"] = stock_info["min_status"]
+            else:
+                spec["stock_quantity"] = 0
+                spec["stock_status"] = "out_of_stock"
+
+            pid = spec.get("product_id")
+            if pid not in specs_map:
+                specs_map[pid] = []
+            specs_map[pid].append(spec)
+
+        for product in products:
+            product["specs"] = specs_map.get(product["id"], [])
+
+        return {"total": total, "page": page, "page_size": page_size, "items": products}
 
     async def get_product_with_specs(self, product_id: str) -> Optional[Dict[str, Any]]:
         product = await self.get_by_id(product_id)
