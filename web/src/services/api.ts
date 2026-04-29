@@ -388,7 +388,8 @@ export interface Product {
   name: string
   image_url?: string
   brand?: string
-  category?: string
+  category_id?: string
+  category_name?: string
   tax_code?: string
   is_active?: boolean
   specs: ProductSpec[]
@@ -401,7 +402,7 @@ export interface ProductFormData {
   name: string
   image_url?: string
   brand?: string
-  category?: string
+  category_id?: string
   tax_code?: string
   is_active?: boolean
   specs?: ProductSpecFormData[]
@@ -475,7 +476,7 @@ export const categoryApi = {
 }
 
 export const productApi = {
-  list: (params: { page?: number; page_size?: number; status?: string; keyword?: string }) => {
+  list: (params: { page?: number; page_size?: number; status?: string; keyword?: string; brand?: string; category_id?: string }) => {
     return apiService.get<any>('/products/', params)
   },
 

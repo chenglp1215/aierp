@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { productApi, uploadApi, type Product, type ProductSpec, type ProductFormData, type ProductSpecFormData } from '../../services/api'
+import { productApi, uploadApi, categoryApi, type Product, type ProductSpec, type ProductFormData, type ProductSpecFormData, type CategoryTreeNode } from '../../services/api'
 import type { VxeTablePropTypes } from 'vxe-pc-ui'
 
 interface ProductGroup {
@@ -33,12 +33,55 @@ const formLoading = ref(false)
 const deleteLoading = ref(false)
 const imageUploading = ref(false)
 
+const categories = ref<CategoryTreeNode[]>([])
+const categoriesLoading = ref(false)
+
+const filterBrand = ref('')
+const filterCategoryId = ref('')
+
+const brandOptions = computed(() => {
+  const brands = products.value.map(p => p.brand).filter(Boolean) as string[]
+  return [...new Set(brands)].sort()
+})
+
+const flatCategories = computed(() => {
+  const result: { id: string; name: string; level: number }[] = []
+  const flatten = (nodes: CategoryTreeNode[], level = 1) => {
+    for (const node of nodes) {
+      result.push({ id: node.id, name: node.name, level })
+      if (node.children?.length) {
+        flatten(node.children, level + 1)
+      }
+    }
+  }
+  flatten(categories.value)
+  return result
+})
+
+const getCategoryNameById = (id: string | undefined) => {
+  if (!id) return '-'
+  const cat = flatCategories.value.find(c => c.id === id)
+  return cat?.name || '-'
+}
+
+const loadCategories = async () => {
+  categoriesLoading.value = true
+  try {
+    const res = await categoryApi.getTree()
+    categories.value = res.result || []
+  } catch (error) {
+    console.error('加载分类失败:', error)
+  } finally {
+    categoriesLoading.value = false
+  }
+}
+
 const productForm = ref<ProductFormData>({
   product_code: '',
   name: '',
   image_url: '',
   brand: '',
-  category: '',
+  category_id: '',
   tax_code: '',
   is_active: true
 })
@@ -90,7 +133,9 @@ const loadProducts = async () => {
     const res = await productApi.list({
       page: page.value,
       page_size: pageSize.value,
-      keyword: keyword.value || undefined
+      keyword: keyword.value || undefined,
+      brand: filterBrand.value || undefined,
+      category_id: filterCategoryId.value || undefined
     })
     products.value = res.items
     productGroups.value = products.value.map(p => ({
@@ -100,7 +145,7 @@ const loadProducts = async () => {
     total.value = res.total
     buildVerticalTableData()
   } catch (error) {
-    console.error('加载商品列表失败:', error)
+    console.error('加载产品列表失败:', error)
   } finally {
     loading.value = false
   }
@@ -118,7 +163,7 @@ const buildVerticalTableData = () => {
         product_code: group.product.product_code,
         product_name: group.product.name,
         brand: group.product.brand,
-        category: group.product.category,
+        category: group.product.category_name || '-',
         product_is_active: group.product.is_active ?? true,
         spec_id: spec.id,
         spec_code: spec.spec_code,
@@ -139,7 +184,7 @@ const buildVerticalTableData = () => {
 }
 
 const verticalSpanMethod: VxeTablePropTypes.SpanMethod = ({ row, columnIndex }) => {
-  const productCols = [0, 1, 2, 3, 4, 10]
+  const productCols = [0, 1, 2, 3, 4, 5]
   const actionCol = 12
   if (productCols.includes(columnIndex) && row.isFirst) {
     return { rowspan: row.rowspan, colspan: 1 }
@@ -180,14 +225,16 @@ const handleSearch = () => {
 
 const resetFilters = () => {
   keyword.value = ''
+  filterBrand.value = ''
+  filterCategoryId.value = ''
   page.value = 1
   loadProducts()
 }
 
-const hasActiveFilters = computed(() => !!keyword.value)
+const hasActiveFilters = computed(() => !!(keyword.value || filterBrand.value || filterCategoryId.value))
 
 const resetProductForm = () => {
-  productForm.value = { product_code: '', name: '', image_url: '', brand: '', category: '', tax_code: '', is_active: true }
+  productForm.value = { product_code: '', name: '', image_url: '', brand: '', category_id: '', tax_code: '', is_active: true }
   editingProduct.value = null
 }
 
@@ -205,7 +252,7 @@ const openEditProduct = (row: any) => {
     name: product.name,
     image_url: product.image_url || '',
     brand: product.brand,
-    category: product.category,
+    category_id: product.category_id,
     tax_code: product.tax_code || '',
     is_active: product.is_active ?? true
   }
@@ -215,14 +262,14 @@ const openEditProduct = (row: any) => {
 
 const handleSaveProduct = async () => {
   if (!productForm.value.name?.trim()) {
-    window.showToast('请输入商品名称', 'warning')
+    window.showToast('请输入产品名称', 'warning')
     return
   }
   formLoading.value = true
   try {
     if (editingProduct.value) {
       await productApi.update(editingProduct.value.id, productForm.value)
-      window.showToast('商品更新成功', 'success')
+      window.showToast('产品更新成功', 'success')
       const index = products.value.findIndex(p => p.id === editingProduct.value!.id)
       if (index !== -1) {
         products.value[index] = {
@@ -232,7 +279,7 @@ const handleSaveProduct = async () => {
       }
     } else {
       await productApi.create(productForm.value)
-      window.showToast('商品创建成功', 'success')
+      window.showToast('产品创建成功', 'success')
       loadProducts()
     }
     showProductModal.value = false
@@ -335,14 +382,14 @@ const deleteSpecInModal = (specId: string) => {
 
 const handleSaveProductWithSpecs = async () => {
   if (!productForm.value.name?.trim()) {
-    window.showToast('请输入商品名称', 'warning')
+    window.showToast('请输入产品名称', 'warning')
     return
   }
   const specCodes = specsListInModal.value
     .map(spec => spec.spec_code)
     .filter(code => code && code.trim())
   if (specCodes.length !== new Set(specCodes).size) {
-    window.showToast('同一商品下的规格编号不能重复', 'warning')
+    window.showToast('同一产品下的规格编号不能重复', 'warning')
     return
   }
   formLoading.value = true
@@ -361,10 +408,10 @@ const handleSaveProductWithSpecs = async () => {
     }
     if (editingProduct.value) {
       await productApi.update(editingProduct.value.id, formDataWithSpecs)
-      window.showToast('商品更新成功', 'success')
+      window.showToast('产品更新成功', 'success')
     } else {
       await productApi.create(formDataWithSpecs)
-      window.showToast('商品创建成功', 'success')
+      window.showToast('产品创建成功', 'success')
     }
     showProductModal.value = false
     loadProducts()
@@ -388,7 +435,7 @@ const handleDelete = async () => {
   try {
     if (deleteTargetType.value === 'product') {
       await productApi.delete(deleteTargetId.value)
-      window.showToast('商品删除成功', 'success')
+      window.showToast('产品删除成功', 'success')
       products.value = products.value.filter(p => p.id !== deleteTargetId.value)
       total.value--
     } else {
@@ -462,7 +509,7 @@ const handleSaveSpec = async () => {
     return
   }
   if (!editingSpec.value?.product_id && !editingSpec.value?.id) {
-    window.showToast('无效的商品关联', 'warning')
+    window.showToast('无效的产品关联', 'warning')
     return
   }
   formLoading.value = true
@@ -548,6 +595,7 @@ const openStockDetail = async (row: any) => {
 onMounted(() => {
   loadProducts()
   loadStats()
+  loadCategories()
   document.addEventListener('keydown', handleEscKey)
 })
 
@@ -565,8 +613,8 @@ const handleEscKey = (e: KeyboardEvent) => {
 <template>
   <div class="product-workspace">
     <div class="workspace-header">
-      <h2 class="workspace-title">商品管理</h2>
-      <button class="primary-btn" @click="openCreateProduct">新建商品</button>
+      <h2 class="workspace-title">产品管理</h2>
+      <button class="primary-btn" @click="openCreateProduct">新建产品</button>
     </div>
 
     <div class="filter-section">
@@ -575,11 +623,19 @@ const handleEscKey = (e: KeyboardEvent) => {
           <input
             type="text"
             class="filter-input"
-            placeholder="搜索商品名称、编号..."
+            placeholder="搜索产品名称、编号..."
             v-model="keyword"
             @keyup.enter="handleSearch"
           />
         </div>
+        <select v-model="filterBrand" class="filter-select">
+          <option value="">全部品牌</option>
+          <option v-for="brand in brandOptions" :key="brand" :value="brand">{{ brand }}</option>
+        </select>
+        <select v-model="filterCategoryId" class="filter-select">
+          <option value="">全部分类</option>
+          <option v-for="cat in flatCategories" :key="cat.id" :value="cat.id">{{ '　'.repeat(cat.level - 1) }}{{ cat.name }}</option>
+        </select>
         <button class="filter-btn" @click="handleSearch">搜索</button>
         <button class="filter-btn reset-btn" @click="resetFilters" v-if="hasActiveFilters">重置</button>
       </div>
@@ -596,10 +652,15 @@ const handleEscKey = (e: KeyboardEvent) => {
         :seq-config="{ seqMethod: seqMethod }"
       >
         <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
-        <vxe-column field="product_code" title="商品编号" width="130" class-name="col--center" />
-        <vxe-column field="product_name" title="商品名称" min-width="180" class-name="col--center" />
+        <vxe-column field="product_code" title="产品编号" width="130" class-name="col--center" />
+        <vxe-column field="product_name" title="产品名称" min-width="180" class-name="col--center" />
         <vxe-column field="brand" title="品牌" width="100" class-name="col--center" />
         <vxe-column field="category" title="分类" width="100" class-name="col--center" />
+        <vxe-column field="product_is_active" title="产品有效" width="80" class-name="col--center">
+          <template #default="{ row }">
+            <span :class="['active-tag', row.product_is_active ? 'active' : '']">{{ row.product_is_active ? '在售' : '停用' }}</span>
+          </template>
+        </vxe-column>
         <vxe-column field="spec_code" title="规格编号" width="130" />
         <vxe-column field="packaging" title="包装" width="100" />
         <vxe-column field="sales_spec" title="销售规格" width="120" />
@@ -607,11 +668,6 @@ const handleEscKey = (e: KeyboardEvent) => {
         <vxe-column field="stock_quantity" title="库存" width="80">
           <template #default="{ row }">
             <button class="stock-link" @click.stop="openStockDetail(row)">{{ row.stock_quantity || 0 }}</button>
-          </template>
-        </vxe-column>
-        <vxe-column field="product_is_active" title="商品有效" width="80" class-name="col--center">
-          <template #default="{ row }">
-            <span :class="['active-tag', row.product_is_active ? 'active' : '']">{{ row.product_is_active ? '在售' : '停用' }}</span>
           </template>
         </vxe-column>
         <vxe-column field="spec_is_active" title="规格有效" width="80" class-name="col--center">
@@ -641,18 +697,18 @@ const handleEscKey = (e: KeyboardEvent) => {
     <div class="modal-overlay" v-if="showProductModal">
       <div class="modal">
         <div class="modal-header">
-          <h3>{{ editingProduct ? '编辑商品' : '新建商品' }}</h3>
+          <h3>{{ editingProduct ? '编辑产品' : '新建产品' }}</h3>
           <button class="modal-close" @click="showProductModal = false">×</button>
         </div>
         <div class="modal-body">
           <div class="form-row">
             <div class="form-group">
-              <label>商品编号</label>
+              <label>产品编号</label>
               <input type="text" v-model="productForm.product_code" placeholder="自动生成或手动输入" />
             </div>
             <div class="form-group">
-              <label>商品名称 *</label>
-              <input type="text" v-model="productForm.name" placeholder="请输入商品名称" />
+              <label>产品名称 *</label>
+              <input type="text" v-model="productForm.name" placeholder="请输入产品名称" />
             </div>
           </div>
           <div class="form-row">
@@ -662,7 +718,12 @@ const handleEscKey = (e: KeyboardEvent) => {
             </div>
             <div class="form-group">
               <label>分类</label>
-              <input type="text" v-model="productForm.category" placeholder="商品分类" />
+              <select v-model="productForm.category_id" class="form-select" :disabled="categoriesLoading">
+                <option value="">请选择分类</option>
+                <option v-for="cat in flatCategories" :key="cat.id" :value="cat.id">
+                  {{ '　'.repeat(cat.level - 1) }}{{ cat.name }}
+                </option>
+              </select>
             </div>
           </div>
           <div class="form-row">
@@ -678,7 +739,7 @@ const handleEscKey = (e: KeyboardEvent) => {
             </div>
           </div>
           <div class="form-group">
-            <label>商品图片</label>
+            <label>产品图片</label>
             <div class="image-upload-area">
               <div class="image-preview" v-if="productForm.image_url">
                 <img :src="productForm.image_url" class="preview-img" />
@@ -693,7 +754,7 @@ const handleEscKey = (e: KeyboardEvent) => {
           </div>
           <div class="specs-section" v-if="editingProduct">
             <div class="specs-section-header">
-              <h4>商品规格列表</h4>
+              <h4>产品规格列表</h4>
               <button class="btn-secondary btn-sm" @click="addNewSpecInModal">添加规格</button>
             </div>
             <table class="specs-table">
@@ -816,7 +877,7 @@ const handleEscKey = (e: KeyboardEvent) => {
           <h3>确认删除</h3>
         </div>
         <div class="modal-body">
-          <p>确定要删除该{{ deleteTargetType === 'product' ? '商品及其所有规格' : '规格' }}吗？此操作不可恢复。</p>
+          <p>确定要删除该{{ deleteTargetType === 'product' ? '产品及其所有规格' : '规格' }}吗？此操作不可恢复。</p>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDeleteConfirm = false">取消</button>
@@ -929,6 +990,22 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .filter-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.filter-select {
+  padding: 8px 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.filter-select:focus {
   outline: none;
   border-color: var(--accent-blue);
 }
@@ -1156,6 +1233,27 @@ const handleEscKey = (e: KeyboardEvent) => {
   width: 16px;
   height: 16px;
   cursor: pointer;
+}
+
+.form-select {
+  padding: 10px 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.form-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .image-upload-area {

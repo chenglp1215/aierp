@@ -39,13 +39,17 @@ async def list_products(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
+    brand: Optional[str] = Query(None, description="品牌"),
+    category_id: Optional[str] = Query(None, description="分类ID"),
     _: dict = Depends(require_permission("product.view"))
 ):
     """获取商品列表（包含所有规格）"""
     result = await product_service.list_products(
         page=page,
         page_size=page_size,
-        keyword=keyword
+        keyword=keyword,
+        brand=brand,
+        category_id=category_id
     )
     return result
 
