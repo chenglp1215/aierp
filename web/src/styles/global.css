@@ -128,3 +128,189 @@ a {
 ::-webkit-scrollbar-corner {
   background: var(--bg-secondary);
 }
+
+.vxe-table--loading,
+.vxe-table--empty {
+  background-color: var(--bg-card) !important;
+}
+
+.vxe-table .vxe-table--loading-overlay,
+.vxe-table .vxe-table--empty-placeholder {
+  background-color: var(--bg-card) !important;
+  color: var(--text-muted);
+}
+
+.vxe-table {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  border: none !important;
+  --vxe-table-border-color: var(--border-color);
+  --vxe-ui-table-border-color: var(--border-color);
+  --vxe-ui-table-resizable-line-color: var(--border-color);
+}
+
+.vxe-table::before {
+  display: none !important;
+}
+
+.vxe-table .vxe-table--header {
+  background-color: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.vxe-table .vxe-table--body {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.vxe-table .vxe-table--header-column,
+.vxe-table .vxe-table--body-column {
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  border-right: none;
+  border-left: none;
+  border-top: none;
+  color: var(--text-primary);
+}
+
+.vxe-table .vxe-table--header-column {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-muted);
+}
+
+.vxe-table .vxe-table--body tr:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.vxe-table .vxe-table--body tr:hover > td {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.vxe-table .vxe-table--footer {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.vxe-pager {
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.vxe-pager--prev-btn,
+.vxe-pager--next-btn,
+.vxe-pager--jump-prev-btn,
+.vxe-pager--jump-next-btn,
+.vxe-pager--num-btn {
+  background-color: transparent !important;
+  border: none !important;
+  color: var(--text-secondary);
+}
+
+.vxe-pager--num-btn.is--active {
+  background-color: var(--accent-blue) !important;
+  color: white;
+}
+
+.vxe-pager--btn-btn {
+  background-color: transparent !important;
+  border: none !important;
+  color: var(--text-secondary);
+}
+
+.vxe-pager--sizes .vxe-input {
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.vxe-pager--sizes .vxe-input .vxe-input--inner {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="light"] .vxe-table {
+  background-color: #ffffff;
+  color: #1a1a1a;
+  border: none !important;
+  --vxe-table-border-color: #e5e7eb;
+  --vxe-ui-table-border-color: #e5e7eb;
+  --vxe-ui-table-resizable-line-color: #e5e7eb;
+}
+
+[data-theme="light"] .vxe-table::before {
+  display: none;
+}
+
+[data-theme="light"] .vxe-table .vxe-table--header {
+  background-color: #f5f7fa;
+  color: #666666;
+}
+
+[data-theme="light"] .vxe-table .vxe-table--body {
+  background-color: #ffffff;
+  color: #1a1a1a;
+}
+
+[data-theme="light"] .vxe-table .vxe-table--header-column,
+[data-theme="light"] .vxe-table .vxe-table--body-column {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: none;
+  border-left: none;
+  border-top: none;
+  color: #1a1a1a;
+}
+
+[data-theme="light"] .vxe-table .vxe-table--header-column {
+  background-color: #f5f7fa !important;
+  color: #666666;
+}
+
+[data-theme="light"] .vxe-table .vxe-table--body tr:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .vxe-table .vxe-table--body tr:hover > td {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .vxe-pager {
+  background-color: #ffffff;
+  color: #666666;
+  border-top: 1px solid #e5e7eb;
+}
+
+[data-theme="light"] .vxe-pager--prev-btn,
+[data-theme="light"] .vxe-pager--next-btn,
+[data-theme="light"] .vxe-pager--jump-prev-btn,
+[data-theme="light"] .vxe-pager--jump-next-btn,
+[data-theme="light"] .vxe-pager--num-btn,
+[data-theme="light"] .vxe-pager--btn-btn {
+  background-color: transparent !important;
+  border: none !important;
+  color: #666666;
+}
+
+[data-theme="light"] .vxe-pager--sizes .vxe-input {
+  background-color: transparent !important;
+  border: none !important;
+}
+
+[data-theme="light"] .vxe-pager--sizes .vxe-input .vxe-input--inner {
+  background-color: #f5f7fa;
+  color: #1a1a1a;
+  border: 1px solid #e5e7eb;
+}
+
+[data-theme="light"] .vxe-table--loading,
+[data-theme="light"] .vxe-table--empty {
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] .vxe-table .vxe-table--loading-overlay,
+[data-theme="light"] .vxe-table .vxe-table--empty-placeholder {
+  background-color: #ffffff !important;
+  color: #999999;
+}

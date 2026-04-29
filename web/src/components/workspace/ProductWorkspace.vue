@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { productApi, uploadApi, type Product, type ProductSpec, type ProductFormData, type ProductSpecFormData } from '../../services/api'
+import type { VxeTablePropTypes } from 'vxe-pc-ui'
+
+interface ProductGroup {
+  product: Product
+  rowspan: number
+}
 
 const loading = ref(false)
 const products = ref<Product[]>([])
+const productGroups = ref<ProductGroup[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
-const expandedProducts = ref<Set<string>>(new Set())
 const stats = ref({ total: 0, total_stock: 0, total_specs: 0 })
 
 const showProductModal = ref(false)
@@ -23,7 +29,6 @@ const deleteTargetType = ref<'product' | 'spec'>('product')
 const formLoading = ref(false)
 const deleteLoading = ref(false)
 const imageUploading = ref(false)
-const showActiveOnly = ref(false)
 
 const productForm = ref<ProductFormData>({
   product_code: '',
@@ -43,60 +48,9 @@ const specForm = ref<ProductSpecFormData>({
   is_active: true
 })
 
-const productFormRef = ref<HTMLFormElement | null>(null)
-const specFormRef = ref<HTMLFormElement | null>(null)
-
-const specColumns = [
-  { key: 'spec_code', label: '规格编号', width: '140px' },
-  { key: 'packaging', label: '包装', width: '100px' },
-  { key: 'sales_spec', label: '销售规格', width: '120px' },
-  { key: 'price', label: '价格', width: '100px' },
-  { key: 'cas_number', label: 'CAS号', width: '100px' },
-  { key: 'stock', label: '库存', width: '80px' },
-  { key: 'is_active', label: '有效', width: '60px' }
-]
-
-const stockStatusMap: Record<string, { label: string; class: string }> = {
-  normal: { label: '正常', class: 'normal' },
-  low_stock: { label: '库存不足', class: 'low-stock' },
-  out_of_stock: { label: '缺货', class: 'out-of-stock' },
-  overstock: { label: '库存过剩', class: 'overstock' }
-}
+const verticalTableData = ref<any[]>([])
 
 const formatPrice = (price: number) => `¥${price.toFixed(2)}`
-
-const formatStockStatus = (status: string | undefined) => {
-  if (!status) return '-'
-  const info = stockStatusMap[status]
-  return info ? info.label : status
-}
-
-const getStockStatusClass = (status: string | undefined) => {
-  if (!status) return ''
-  const info = stockStatusMap[status]
-  return info ? info.class : ''
-}
-
-const toggleExpand = (productId: string) => {
-  if (expandedProducts.value.has(productId)) {
-    expandedProducts.value.delete(productId)
-  } else {
-    expandedProducts.value.add(productId)
-  }
-}
-
-const isExpanded = (productId: string) => expandedProducts.value.has(productId)
-
-const isAllExpanded = ref(true)
-
-const toggleAll = () => {
-  if (isAllExpanded.value) {
-    expandedProducts.value.clear()
-  } else {
-    products.value.forEach(p => expandedProducts.value.add(p.id))
-  }
-  isAllExpanded.value = !isAllExpanded.value
-}
 
 const handleImageUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -124,15 +78,68 @@ const loadProducts = async () => {
       keyword: keyword.value || undefined
     })
     products.value = res.items
+    productGroups.value = products.value.map(p => ({
+      product: p,
+      rowspan: p.specs?.length || 1
+    }))
     total.value = res.total
-    if (isAllExpanded.value) {
-      products.value.forEach(p => expandedProducts.value.add(p.id))
-    }
+    buildVerticalTableData()
   } catch (error) {
     console.error('加载商品列表失败:', error)
   } finally {
     loading.value = false
   }
+}
+
+const buildVerticalTableData = () => {
+  const data: any[] = []
+  for (const group of productGroups.value) {
+    const specs = group.product.specs || []
+    for (let i = 0; i < specs.length; i++) {
+      const spec = specs[i]
+      data.push({
+        _id: `${group.product.id}_${spec.id}`,
+        product_id: group.product.id,
+        product_code: group.product.product_code,
+        product_name: group.product.name,
+        brand: group.product.brand,
+        category: group.product.category,
+        spec_id: spec.id,
+        spec_code: spec.spec_code,
+        packaging: spec.packaging,
+        sales_spec: spec.sales_spec,
+        price: spec.price,
+        is_active: spec.is_active,
+        stock_quantity: spec.stock_quantity || 0,
+        stock_status: spec.stock_status,
+        isFirst: i === 0,
+        rowspan: i === 0 ? specs.length : 0,
+        product_rowspan: i === 0 ? specs.length : 0,
+        specs_length: specs.length
+      })
+    }
+  }
+  verticalTableData.value = data
+}
+
+const verticalSpanMethod: VxeTablePropTypes.SpanMethod = ({ row, columnIndex }) => {
+  const productCols = [0, 1, 2, 3, 4]
+  const actionCol = 11
+  if (productCols.includes(columnIndex) && row.isFirst) {
+    return { rowspan: row.rowspan, colspan: 1 }
+  }
+  if (productCols.includes(columnIndex) || (columnIndex === actionCol && row.isFirst)) {
+    return { rowspan: 0, colspan: 0 }
+  }
+  if (columnIndex === actionCol && row.isFirst) {
+    return { rowspan: row.rowspan, colspan: 1 }
+  }
+}
+
+const seqMethod = ({ row }: { row: any }) => {
+  if (!row.isFirst) return 0
+  const firstRows = verticalTableData.value.filter(r => r.isFirst)
+  return firstRows.findIndex(r => r._id === row._id) + 1 + (page.value - 1) * pageSize.value
 }
 
 const loadStats = async () => {
@@ -144,8 +151,9 @@ const loadStats = async () => {
   }
 }
 
-const handlePageChange = (newPage: number) => {
-  page.value = newPage
+const handlePageChange = ({ currentPage, pageSize: newPageSize }: { currentPage: number; pageSize: number }) => {
+  page.value = currentPage
+  pageSize.value = newPageSize
   loadProducts()
 }
 
@@ -160,11 +168,6 @@ const resetFilters = () => {
   loadProducts()
 }
 
-const clearKeyword = () => {
-  keyword.value = ''
-  handleSearch()
-}
-
 const hasActiveFilters = computed(() => !!keyword.value)
 
 const resetProductForm = () => {
@@ -174,19 +177,6 @@ const resetProductForm = () => {
 
 const openCreateProduct = () => {
   resetProductForm()
-  showProductModal.value = true
-}
-
-const openEditProduct = (product: Product) => {
-  editingProduct.value = product
-  productForm.value = {
-    product_code: product.product_code,
-    name: product.name,
-    image_url: product.image_url,
-    brand: product.brand || '',
-    category: product.category || '',
-    tax_code: product.tax_code || ''
-  }
   showProductModal.value = true
 }
 
@@ -200,7 +190,6 @@ const handleSaveProduct = async () => {
     if (editingProduct.value) {
       await productApi.update(editingProduct.value.id, productForm.value)
       window.showToast('商品更新成功', 'success')
-      // 直接更新列表中对应项
       const index = products.value.findIndex(p => p.id === editingProduct.value!.id)
       if (index !== -1) {
         products.value[index] = {
@@ -215,6 +204,7 @@ const handleSaveProduct = async () => {
     }
     showProductModal.value = false
     loadStats()
+    buildVerticalTableData()
   } catch (error: any) {
     window.showToast(error.message || '操作失败', 'error')
   } finally {
@@ -222,8 +212,8 @@ const handleSaveProduct = async () => {
   }
 }
 
-const confirmDeleteProduct = (productId: string) => {
-  deleteTargetId.value = productId
+const confirmDeleteProduct = (row: any) => {
+  deleteTargetId.value = row.product_id
   deleteTargetType.value = 'product'
   showDeleteConfirm.value = true
 }
@@ -235,13 +225,11 @@ const handleDelete = async () => {
     if (deleteTargetType.value === 'product') {
       await productApi.delete(deleteTargetId.value)
       window.showToast('商品删除成功', 'success')
-      // 直接从列表中移除
       products.value = products.value.filter(p => p.id !== deleteTargetId.value)
       total.value--
     } else {
       await productApi.deleteSpec(deleteTargetId.value)
       window.showToast('规格删除成功', 'success')
-      // 从对应商品的 specs 中移除
       for (const product of products.value) {
         if (product.specs) {
           const specIndex = product.specs.findIndex(s => s.id === deleteTargetId.value)
@@ -255,6 +243,7 @@ const handleDelete = async () => {
     showDeleteConfirm.value = false
     deleteTargetId.value = null
     loadStats()
+    buildVerticalTableData()
   } catch (error: any) {
     window.showToast(error.message || '删除失败', 'error')
   } finally {
@@ -274,13 +263,17 @@ const resetSpecForm = () => {
   editingSpec.value = null
 }
 
-const openCreateSpec = (productId: string) => {
+const openCreateSpec = (row: any) => {
   resetSpecForm()
-  editingSpec.value = { id: productId } as ProductSpec
+  editingSpec.value = { id: row.product_id, product_id: row.product_id } as ProductSpec
   showSpecModal.value = true
 }
 
-const openEditSpec = (spec: ProductSpec) => {
+const openEditSpec = (row: any) => {
+  const spec = products.value
+    .flatMap(p => p.specs || [])
+    .find(s => s.id === row.spec_id)
+  if (!spec) return
   editingSpec.value = spec
   specForm.value = {
     spec_code: spec.spec_code,
@@ -293,8 +286,8 @@ const openEditSpec = (spec: ProductSpec) => {
   showSpecModal.value = true
 }
 
-const confirmDeleteSpec = (specId: string) => {
-  deleteTargetId.value = specId
+const confirmDeleteSpec = (row: any) => {
+  deleteTargetId.value = row.spec_id
   deleteTargetType.value = 'spec'
   showDeleteConfirm.value = true
 }
@@ -312,10 +305,8 @@ const handleSaveSpec = async () => {
   try {
     const productId = editingSpec.value!.product_id || editingSpec.value!.id
     if (editingSpec.value && 'spec_code' in editingSpec.value) {
-      // 编辑已有规格
-      const res = await productApi.updateSpec(editingSpec.value.id, specForm.value)
+      await productApi.updateSpec(editingSpec.value.id, specForm.value)
       window.showToast('规格更新成功', 'success')
-      // 直接更新列表中对应规格
       for (const product of products.value) {
         if (product.specs) {
           const specIndex = product.specs.findIndex(s => s.id === editingSpec.value!.id)
@@ -329,13 +320,13 @@ const handleSaveSpec = async () => {
         }
       }
     } else {
-      // 新建规格
       await productApi.createSpec(productId!, specForm.value)
       window.showToast('规格创建成功', 'success')
       loadProducts()
     }
     showSpecModal.value = false
     loadStats()
+    buildVerticalTableData()
   } catch (error: any) {
     window.showToast(error.message || '操作失败', 'error')
   } finally {
@@ -343,12 +334,15 @@ const handleSaveSpec = async () => {
   }
 }
 
-const handleToggleSpecActive = async (spec: ProductSpec) => {
+const handleToggleSpecActive = async (row: any) => {
+  const spec = products.value
+    .flatMap(p => p.specs || [])
+    .find(s => s.id === row.spec_id)
+  if (!spec) return
   const newStatus = !spec.is_active
   try {
     await productApi.toggleSpecActive(spec.id, newStatus)
     window.showToast(`规格已${newStatus ? '激活' : '停用'}`, 'success')
-    // 直接更新规格的 is_active 状态
     for (const product of products.value) {
       if (product.specs) {
         const specItem = product.specs.find(s => s.id === spec.id)
@@ -358,25 +352,23 @@ const handleToggleSpecActive = async (spec: ProductSpec) => {
         }
       }
     }
+    buildVerticalTableData()
   } catch (error: any) {
     window.showToast(error.message || '操作失败', 'error')
   }
 }
 
-const openStockDetail = (spec: ProductSpec) => {
-  selectedSpecForStock.value = spec
-  showStockDetail.value = true
-}
-
-const getFilteredSpecs = (specs: ProductSpec[]) => {
-  if (showActiveOnly.value) {
-    return specs.filter(s => s.is_active)
+const openStockDetail = (row: any) => {
+  const spec = products.value
+    .flatMap(p => p.specs || [])
+    .find(s => s.id === row.spec_id)
+  if (spec) {
+    selectedSpecForStock.value = spec
+    showStockDetail.value = true
   }
-  return specs
 }
 
 onMounted(() => {
-  products.value.forEach(p => expandedProducts.value.add(p.id))
   loadProducts()
   loadStats()
 })
@@ -405,121 +397,37 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="table-section">
-      <div class="table-toolbar">
-        <label class="checkbox-label">
-          <input type="checkbox" v-model="showActiveOnly" />
-          <span class="toggle-switch"></span>
-          <span>只查看有效</span>
-        </label>
-        <button class="toggle-all-btn" @click="toggleAll">
-          {{ isAllExpanded ? '全部收起' : '全部展开' }}
-        </button>
+    <div class="table-section" style="position: relative;">
+      <div v-if="loading" class="table-loading-overlay">
+        <div class="table-loading-content">加载中...</div>
       </div>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th style="width: 40px"></th>
-            <th style="width: 140px">商品编号</th>
-            <th style="width: 200px">商品名称</th>
-            <th style="width: 80px">品牌</th>
-            <th style="width: 80px">分类</th>
-            <th style="width: 100px">税务编码</th>
-            <th style="width: 80px">规格数</th>
-            <th style="width: 200px">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <template v-if="loading">
-            <tr>
-              <td colspan="8" class="loading-cell">加载中...</td>
-            </tr>
-          </template>
-          <template v-else-if="products.length === 0">
-            <tr>
-              <td colspan="8" class="empty-cell">暂无数据</td>
-            </tr>
-          </template>
-          <template v-else>
-            <template v-for="product in products" :key="product.id">
-              <tr class="product-row" :class="{ expanded: isExpanded(product.id) }">
-                <td class="expand-cell">
-                  <button class="expand-btn" @click="toggleExpand(product.id)">
-                    <span class="expand-icon" :class="{ rotated: isExpanded(product.id) }">▶</span>
-                  </button>
-                </td>
-                <td class="code-cell">{{ product.product_code }}</td>
-                <td class="name-cell">
-                  <span class="product-name">{{ product.name }}</span>
-                </td>
-                <td>{{ product.brand || '-' }}</td>
-                <td>{{ product.category || '-' }}</td>
-                <td>{{ product.tax_code || '-' }}</td>
-                <td class="spec-count-cell">
-                  <span class="spec-badge">{{ product.specs?.length || 0 }}</span>
-                </td>
-                <td class="actions-cell">
-                  <button class="btn-link" @click="openCreateSpec(product.id)">添加规格</button>
-                  <button class="btn-link" @click="openEditProduct(product)">编辑</button>
-                  <button class="btn-link danger" @click="confirmDeleteProduct(product.id)">删除</button>
-                </td>
-              </tr>
-              <tr v-if="isExpanded(product.id)" class="spec-row">
-                <td colspan="8" class="spec-cell">
-                  <div class="spec-table-wrapper">
-                    <table class="spec-table">
-                      <thead>
-                        <tr>
-                          <th v-for="col in specColumns" :key="col.key" :style="{ width: col.width }">
-                            {{ col.label }}
-                          </th>
-                          <th style="width: 140px">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-if="!product.specs || product.specs.length === 0">
-                          <td :colspan="specColumns.length + 1" class="empty-spec-cell">
-                            暂无规格，点击"添加规格"创建
-                          </td>
-                        </tr>
-                        <tr v-for="spec in getFilteredSpecs(product.specs)" :key="spec.id" :class="{ inactive: !spec.is_active }">
-                          <td>{{ spec.spec_code }}</td>
-                          <td>{{ spec.packaging || '-' }}</td>
-                          <td>{{ spec.sales_spec || '-' }}</td>
-                          <td class="price-cell">{{ formatPrice(spec.price) }}</td>
-                          <td>{{ spec.cas_number || '-' }}</td>
-                          <td>
-                            <span class="stock-link" @click="openStockDetail(spec)">{{ spec.stock_quantity || 0 }}</span>
-                          </td>
-                          <td>
-                            <span class="active-tag" :class="{ active: spec.is_active }">
-                              {{ spec.is_active ? '有效' : '无效' }}
-                            </span>
-                          </td>
-                          <td class="spec-actions">
-                            <button class="btn-link" @click="openEditSpec(spec)">编辑</button>
-                            <button class="btn-link" @click="handleToggleSpecActive(spec)">
-                              {{ spec.is_active ? '停用' : '激活' }}
-                            </button>
-                            <button class="btn-link danger" @click="confirmDeleteSpec(spec.id)">删除</button>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </td>
-              </tr>
-            </template>
-          </template>
-        </tbody>
-      </table>
-    </div>
+      <vxe-table
+        :data="verticalTableData"
+        :column-config="{ resizable: true }"
+        :span-method="verticalSpanMethod"
+        :seq-config="{ seqMethod: seqMethod }"
+      >
+        <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
+        <vxe-column field="product_code" title="商品编号" width="130" class-name="col--center" />
+        <vxe-column field="product_name" title="商品名称" min-width="180" class-name="col--center" />
+        <vxe-column field="brand" title="品牌" width="100" class-name="col--center" />
+        <vxe-column field="category" title="分类" width="100" class-name="col--center" />
+        <vxe-column field="spec_code" title="规格编号" width="130" />
+        <vxe-column field="packaging" title="包装" width="100" />
+        <vxe-column field="sales_spec" title="销售规格" width="120" />
+        <vxe-column field="price" title="价格" width="100" />
+        <vxe-column field="stock_quantity" title="库存" width="80" />
+        <vxe-column field="is_active" title="有效" width="70" />
+        <vxe-column title="操作" width="220" fixed="right" class-name="col--center" />
+      </vxe-table>
 
-    <div class="pagination" v-if="total > 0">
-      <span class="pagination-info">共 {{ total }} 条</span>
-      <button class="pagination-btn" :disabled="page === 1" @click="handlePageChange(page - 1)">上一页</button>
-      <span class="pagination-current">第 {{ page }} 页</span>
-      <button class="pagination-btn" :disabled="products.length < pageSize" @click="handlePageChange(page + 1)">下一页</button>
+      <vxe-pager
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :total="total"
+        :layouts="['PrevPage', 'JumpNumber', 'NextPage', 'FullJump', 'Sizes', 'Total']"
+        @page-change="handlePageChange"
+      />
     </div>
 
     <div class="modal-overlay" v-if="showProductModal" @click.self="showProductModal = false">
@@ -775,174 +683,9 @@ onMounted(() => {
   box-shadow: var(--shadow-card);
 }
 
-.table-toolbar {
+.action-buttons {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.table-toolbar .checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.table-toolbar input[type="checkbox"] {
-  display: none;
-}
-
-.table-toolbar .toggle-switch {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  background-color: var(--border-color);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-}
-
-.table-toolbar .toggle-switch::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  background-color: white;
-  border-radius: 50%;
-  transition: transform var(--transition-fast);
-}
-
-.table-toolbar input[type="checkbox"]:checked + .toggle-switch {
-  background-color: var(--accent-blue);
-}
-
-.table-toolbar input[type="checkbox"]:checked + .toggle-switch::after {
-  transform: translateX(16px);
-}
-
-.toggle-all-btn {
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-  font-size: 12px;
-  border: 1px solid var(--border-color);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.toggle-all-btn:hover {
-  background-color: var(--accent-blue);
-  color: white;
-  border-color: var(--accent-blue);
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-  padding: 8px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.data-table th {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
-}
-
-.data-table td {
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
-.loading-cell,
-.empty-cell {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-muted);
-}
-
-.product-row {
-  transition: background-color var(--transition-fast);
-}
-
-.product-row:hover {
-  background-color: rgba(0, 120, 212, 0.05);
-}
-
-.product-row.expanded {
-  background-color: rgba(0, 120, 212, 0.08);
-}
-
-.expand-cell {
-  width: 40px;
-  text-align: center;
-}
-
-.expand-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px 8px;
-  color: var(--text-muted);
-  transition: color var(--transition-fast);
-}
-
-.expand-btn:hover {
-  color: var(--accent-blue);
-}
-
-.expand-icon {
-  display: inline-block;
-  transition: transform var(--transition-fast);
-  font-size: 10px;
-}
-
-.expand-icon.rotated {
-  transform: rotate(90deg);
-}
-
-.code-cell {
-  font-family: monospace;
-  color: var(--text-secondary);
-}
-
-.name-cell .product-name {
-  font-weight: 500;
-}
-
-.spec-count-cell {
-  text-align: center;
-}
-
-.spec-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 8px;
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.actions-cell {
-  white-space: nowrap;
+  gap: 4px;
 }
 
 .btn-link {
@@ -969,111 +712,9 @@ onMounted(() => {
   background-color: rgba(239, 68, 68, 0.1);
 }
 
-.spec-row {
-  background-color: var(--bg-secondary);
-}
-
-.spec-cell {
-  padding: 0 !important;
-}
-
-.spec-table-wrapper {
-  padding: 12px 20px;
-}
-
-.spec-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: var(--bg-card);
-  border-radius: var(--radius-md);
-}
-
-.spec-table th,
-.spec-table td {
-  padding: 6px 10px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-color);
-  font-size: 12px;
-}
-
-.spec-table th {
-  background-color: var(--bg-secondary);
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.spec-table tr.inactive {
-  opacity: 0.6;
-}
-
-.spec-table tr:hover {
-  background-color: rgba(0, 120, 212, 0.03);
-}
-
-.empty-spec-cell {
-  text-align: center;
-  padding: 24px !important;
-  color: var(--text-muted);
-}
-
-.price-cell {
+.price-text {
   color: var(--accent-red);
   font-weight: 500;
-}
-
-.stock-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stock-qty {
-  font-weight: 500;
-}
-
-.status-tag {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-}
-
-.status-tag.normal {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
-}
-
-.status-tag.low-stock {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: var(--accent-yellow);
-}
-
-.status-tag.out-of-stock {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: var(--accent-red);
-}
-
-.status-tag.overstock {
-  background-color: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
-}
-
-.active-tag {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  background-color: rgba(239, 68, 68, 0.1);
-  color: var(--accent-red);
-}
-
-.active-tag.active {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
-}
-
-.spec-actions {
-  white-space: nowrap;
 }
 
 .stock-link {
@@ -1086,50 +727,18 @@ onMounted(() => {
   color: var(--accent-blue-hover);
 }
 
-.stock-detail-modal {
-  max-width: 700px;
-}
-
-.stock-detail-info {
-  margin-bottom: 16px;
-  padding: 12px;
-  background-color: var(--bg-secondary);
-  border-radius: var(--radius-sm);
-}
-
-.stock-total {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.stock-total strong {
-  font-size: 18px;
+.active-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: rgba(239, 68, 68, 0.1);
   color: var(--accent-red);
 }
 
-.stock-detail-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.stock-detail-table th,
-.stock-detail-table td {
-  padding: 8px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.stock-detail-table th {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
-}
-
-.stock-detail-table td {
-  font-size: 13px;
-  color: var(--text-primary);
+.active-tag.active {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--accent-green);
 }
 
 .pagination {
@@ -1139,37 +748,6 @@ onMounted(() => {
   gap: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border-color);
-}
-
-.pagination-info {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.pagination-btn {
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 13px;
-  border: 1px solid var(--border-color);
-  transition: all var(--transition-fast);
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background-color: var(--accent-blue);
-  color: white;
-  border-color: var(--accent-blue);
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pagination-current {
-  font-size: 13px;
-  color: var(--text-secondary);
 }
 
 .modal-overlay {
@@ -1434,17 +1012,61 @@ onMounted(() => {
   background-color: var(--accent-blue-hover);
 }
 
+.stock-detail-modal {
+  max-width: 700px;
+}
+
+.stock-detail-info {
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.stock-total {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.stock-total strong {
+  font-size: 18px;
+  color: var(--accent-red);
+}
+
+.stock-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.stock-detail-table th,
+.stock-detail-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.stock-detail-table th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background-color: var(--bg-secondary);
+}
+
+.stock-detail-table td {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
 @media (max-width: 1024px) {
   .form-row.three-col {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .spec-table-wrapper {
-    overflow-x: auto;
-  }
-
-  .spec-table {
-    min-width: 900px;
   }
 }
 
@@ -1458,9 +1080,194 @@ onMounted(() => {
     width: 95%;
     margin: 16px;
   }
+}
+</style>
 
-  .stats-bar {
-    flex-wrap: wrap;
-  }
+<style>
+.vxe-table {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.vxe-table .table-header-cell {
+  background-color: var(--bg-secondary);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.vxe-table .table-cell {
+  padding: 8px 12px;
+}
+
+.vxe-table .vxe-body--row {
+  height: 48px;
+}
+
+.vxe-table .vxe-body--column.col--ellipsis {
+  height: auto;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.vxe-table .vxe-body--column.col--center {
+  text-align: center;
+  justify-content: center;
+}
+
+.vxe-table .vxe-table--body tr:hover,
+.vxe-table .vxe-table--body tr:hover > td {
+  background-color: transparent !important;
+}
+
+[data-theme="light"] .vxe-table .vxe-table--body tr:hover,
+[data-theme="light"] .vxe-table .vxe-table--body tr:hover > td {
+  background-color: transparent !important;
+}
+
+.vxe-pager {
+  margin-top: 16px;
+  background-color: var(--bg-card) !important;
+  border-top: 1px solid var(--border-color);
+}
+
+.vxe-pager * {
+  background-color: inherit !important;
+}
+
+.vxe-pager .vxe-pager--prev-btn,
+.vxe-pager .vxe-pager--next-btn,
+.vxe-pager .vxe-pager--jump-prev-btn,
+.vxe-pager .vxe-pager--jump-next-btn,
+.vxe-pager .vxe-pager--num-btn,
+.vxe-pager .vxe-pager--btn-btn,
+.vxe-pager .vxe-pager--fulljump,
+.vxe-pager .vxe-pager--goto {
+  background-color: transparent !important;
+  border: none !important;
+  color: var(--text-secondary) !important;
+}
+
+.vxe-pager .vxe-pager--num-btn.is--active {
+  background-color: var(--accent-blue) !important;
+  color: white !important;
+  border-color: var(--accent-blue);
+}
+
+.vxe-pager .vxe-pager--sizes .vxe-input,
+.vxe-pager--sizes .vxe-input {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.vxe-pager .vxe-pager--sizes .vxe-input .vxe-input--inner,
+.vxe-pager--sizes .vxe-input .vxe-input--inner {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.vxe-pager .vxe-pager--jump-prev-btn,
+.vxe-pager .vxe-pager--jump-next-btn,
+.vxe-pager .vxe-pager--jump-number {
+  background-color: transparent !important;
+  color: var(--text-secondary) !important;
+}
+
+.vxe-pager .vxe-pager--goto {
+  background-color: transparent !important;
+  color: var(--text-secondary) !important;
+}
+
+.vxe-pager .vxe-pager--goto .vxe-pager--goto-input,
+.vxe-pager .vxe-pager--goto-input {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.vxe-pager .vxe-pager--total {
+  background-color: transparent !important;
+  color: var(--text-secondary) !important;
+}
+
+.vxe-pager .vxe-pager--sizes {
+  background-color: transparent !important;
+  color: var(--text-secondary) !important;
+}
+
+.table-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+[data-theme="dark"] .table-loading-overlay {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.table-loading-content {
+  padding: 20px 40px;
+  background-color: var(--bg-card);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+[data-theme="light"] .vxe-pager {
+  background-color: #ffffff !important;
+  border-top: 1px solid #e5e7eb;
+}
+
+[data-theme="light"] .vxe-pager * {
+  background-color: inherit !important;
+}
+
+[data-theme="light"] .vxe-pager .vxe-pager--prev-btn,
+[data-theme="light"] .vxe-pager .vxe-pager--next-btn,
+[data-theme="light"] .vxe-pager .vxe-pager--jump-prev-btn,
+[data-theme="light"] .vxe-pager .vxe-pager--jump-next-btn,
+[data-theme="light"] .vxe-pager .vxe-pager--num-btn,
+[data-theme="light"] .vxe-pager .vxe-pager--btn-btn,
+[data-theme="light"] .vxe-pager .vxe-pager--fulljump,
+[data-theme="light"] .vxe-pager .vxe-pager--goto {
+  color: #666666 !important;
+}
+
+[data-theme="light"] .vxe-pager .vxe-pager--num-btn.is--active {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .vxe-pager .vxe-pager--sizes .vxe-input,
+[data-theme="light"] .vxe-pager--sizes .vxe-input {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+[data-theme="light"] .vxe-pager .vxe-pager--sizes .vxe-input .vxe-input--inner,
+[data-theme="light"] .vxe-pager--sizes .vxe-input .vxe-input--inner {
+  background-color: #ffffff !important;
+  color: #374151 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+[data-theme="light"] .vxe-pager .vxe-pager--goto .vxe-pager--goto-input,
+[data-theme="light"] .vxe-pager .vxe-pager--goto-input {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #374151 !important;
+}
+
+[data-theme="light"] .vxe-pager .vxe-pager--total,
+[data-theme="light"] .vxe-pager .vxe-pager--sizes {
+  color: #666666 !important;
 }
 </style>

@@ -69,6 +69,17 @@ interface Stock {
   updated_at: string
 }
 
+interface ProductGroup {
+  product_id: string
+  product_code: string
+  product_name: string
+  category?: string
+  warehouse_id: string
+  warehouse_name: string
+  specs: Stock[]
+  rowspan: number
+}
+
 interface Warehouse {
   id: string
   warehouse_code: string
@@ -97,6 +108,7 @@ const emit = defineEmits<{
 
 const loading = ref(false)
 const stocks = ref<Stock[]>([])
+const productGroups = ref<ProductGroup[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -166,9 +178,9 @@ const stockStatuses = [
 const columns = [
   { key: 'product_code', label: '商品编码', width: '120px' },
   { key: 'product_name', label: '商品名称' },
+  { key: 'warehouse_name', label: '仓库', width: '100px' },
   { key: 'spec_code', label: '规格编码', width: '120px' },
   { key: 'packaging', label: '包装规格', width: '100px' },
-  { key: 'warehouse_name', label: '仓库', width: '100px' },
   { key: 'quantity', label: '当前库存', width: '90px', align: 'right' as const },
   { key: 'inbound_count', label: '入库批次', width: '80px', align: 'center' as const },
   { key: 'outbound_count', label: '出库批次', width: '80px', align: 'center' as const },
@@ -191,6 +203,29 @@ const statusClassMap: Record<string, string> = {
 
 const formatStatus = (status: string) => statusMap[status] || status
 const getStatusClass = (status: string) => statusClassMap[status] || ''
+
+const groupStocksByProduct = (stockList: Stock[]): ProductGroup[] => {
+  const groupMap = new Map<string, ProductGroup>()
+  for (const stock of stockList) {
+    const key = `${stock.product_id}-${stock.warehouse_id}`
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        product_id: stock.product_id,
+        product_code: stock.product?.product_code || '',
+        product_name: stock.product?.product_name || '',
+        category: stock.product?.category,
+        warehouse_id: stock.warehouse_id,
+        warehouse_name: stock.warehouse?.warehouse_name || '',
+        specs: [],
+        rowspan: 0
+      })
+    }
+    groupMap.get(key)!.specs.push(stock)
+  }
+  const groups = Array.from(groupMap.values())
+  groups.forEach(g => { g.rowspan = g.specs.length })
+  return groups
+}
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-'
@@ -219,6 +254,7 @@ const loadStocks = async () => {
       ...item,
       status: formatStatus(item.status)
     }))
+    productGroups.value = groupStocksByProduct(stocks.value)
     total.value = res.total
   } catch (error) {
     console.error('加载库存列表失败:', error)
@@ -737,27 +773,37 @@ onMounted(() => {
         <tbody>
           <template v-if="loading">
             <tr>
-              <td :colspan="columns.length + 2" class="loading-cell">加载中...</td>
+              <td :colspan="11" class="loading-cell">加载中...</td>
             </tr>
           </template>
           <template v-else-if="stocks.length === 0">
             <tr>
-              <td :colspan="columns.length + 2" class="empty-cell">暂无数据</td>
+              <td :colspan="11" class="empty-cell">暂无数据</td>
             </tr>
           </template>
           <template v-else>
-            <template v-for="stock in stocks" :key="stock.id">
-              <tr :class="{ 'expanded-row': expandedStockId === stock.id }">
-                <td class="expand-cell">
+            <template v-for="group in productGroups" :key="group.product_id + '-' + group.warehouse_id">
+              <tr v-for="(stock, specIndex) in group.specs" :key="stock.id"
+                  :class="{ 'expanded-row': expandedStockId === stock.id }">
+                <td class="expand-cell" v-if="specIndex === 0" :rowspan="group.rowspan">
                   <button class="expand-btn" @click="toggleExpand(stock)">
                     {{ expandedStockId === stock.id ? '▼' : '▶' }}
                   </button>
                 </td>
-                <td>{{ stock.product?.product_code }}</td>
-                <td>{{ stock.product?.product_name }}</td>
+                <td v-if="specIndex === 0" :rowspan="group.rowspan" class="product-cell">
+                  <div class="product-info">
+                    <span class="product-code">{{ group.product_code }}</span>
+                  </div>
+                </td>
+                <td v-if="specIndex === 0" :rowspan="group.rowspan" class="product-name-cell">
+                  <div class="product-name-info">
+                    <span class="product-name">{{ group.product_name }}</span>
+                    <span class="product-category" v-if="group.category">{{ group.category }}</span>
+                  </div>
+                </td>
+                <td v-if="specIndex === 0" :rowspan="group.rowspan">{{ group.warehouse_name }}</td>
                 <td>{{ stock.spec?.spec_code }}</td>
                 <td>{{ stock.spec?.packaging || '-' }}</td>
-                <td>{{ stock.warehouse?.warehouse_name }}</td>
                 <td class="number-cell">{{ stock.quantity }}</td>
                 <td class="center-cell">
                   <span class="batch-count" :class="{ 'has-data': (stock.inbound_outbound_summary?.inbound_count ?? 0) > 0 }">
@@ -774,7 +820,7 @@ onMounted(() => {
                     {{ stock.status }}
                   </span>
                 </td>
-                <td>
+                <td v-if="specIndex === 0" :rowspan="group.rowspan" class="action-cell">
                   <div class="action-buttons">
                     <button class="btn-link" @click="openInboundModal(stock)">入库</button>
                     <button class="btn-link" @click="openOutboundModal(stock)">出库</button>
@@ -784,8 +830,8 @@ onMounted(() => {
                   </div>
                 </td>
               </tr>
-              <tr v-if="expandedStockId === stock.id" class="detail-row">
-                <td :colspan="columns.length + 2">
+              <tr v-if="expandedStockId && group.specs.some(s => s.id === expandedStockId)" class="detail-row">
+                <td :colspan="11">
                   <div class="stock-detail" v-if="stockDetail && detailLoading === false">
                     <div class="detail-summary">
                       <div class="summary-item">
@@ -1315,6 +1361,42 @@ onMounted(() => {
 
 .expand-btn:hover {
   color: var(--accent-blue);
+}
+
+.product-cell,
+.product-name-cell {
+  vertical-align: middle;
+}
+
+.product-info,
+.product-name-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.product-code {
+  color: var(--accent-blue);
+  font-weight: 500;
+}
+
+.product-name {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.product-category {
+  font-size: 11px;
+  color: var(--text-muted);
+  background-color: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 2px;
+}
+
+.action-cell {
+  vertical-align: middle;
 }
 
 .number-cell {
