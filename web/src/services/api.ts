@@ -417,6 +417,63 @@ export interface ProductSpecFormData {
   is_active?: boolean
 }
 
+export interface CategoryTreeNode {
+  id: string
+  name: string
+  parent_id: string | null
+  tax_code?: string
+  sort_order: number
+  is_shop_display: boolean
+  level: number
+  children?: CategoryTreeNode[]
+}
+
+export interface Category {
+  id: string
+  name: string
+  parent_id: string | null
+  tax_code?: string
+  sort_order: number
+  is_shop_display: boolean
+  level: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CategoryFormData {
+  name: string
+  parent_id?: string | null
+  tax_code?: string
+  sort_order?: number
+  is_shop_display?: boolean
+}
+
+export const categoryApi = {
+  list: (params?: { page?: number; page_size?: number; keyword?: string; parent_id?: string }) => {
+    return apiService.get<any>('/categories/', params)
+  },
+
+  getById: (id: string) => {
+    return apiService.get<any>(`/categories/${id}`)
+  },
+
+  create: (data: CategoryFormData) => {
+    return apiService.post<any>('/categories/', data)
+  },
+
+  update: (id: string, data: Partial<CategoryFormData>) => {
+    return apiService.put<any>(`/categories/${id}`, data)
+  },
+
+  delete: (id: string) => {
+    return apiService.delete<any>(`/categories/${id}`)
+  },
+
+  getTree: () => {
+    return apiService.get<any>('/categories/tree')
+  }
+}
+
 export const productApi = {
   list: (params: { page?: number; page_size?: number; status?: string; keyword?: string }) => {
     return apiService.get<any>('/products/', params)

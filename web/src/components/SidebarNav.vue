@@ -52,7 +52,15 @@ const allMenuItems: MenuItem[] = [
     ]
   },
   { id: 'crm', label: '客户管理', icon: 'crm' },
-  { id: 'product', label: '商品管理', icon: 'product' },
+  {
+    id: 'product',
+    label: '商品管理',
+    icon: 'product',
+    children: [
+      { id: 'category', label: '分类管理', icon: 'category' },
+      { id: 'product-list', label: '产品管理', icon: 'product-list' }
+    ]
+  },
   {
     id: 'system',
     label: '系统设置',
@@ -217,6 +225,12 @@ onMounted(async () => {
               </svg>
               <svg v-else-if="child.icon === 'intelligent'" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M21 10.12h-6.78l2.74-2.82c-2.73-2.7-7.15-2.8-9.88-.1-2.73 2.71-2.73 7.08 0 9.79s7.15 2.71 9.88 0C18.32 15.65 19 14.08 19 12.1h2c0 1.98-.88 4.55-2.64 6.29-3.51 3.48-9.21 3.48-12.72 0-3.5-3.47-3.53-9.11-.02-12.58s9.14-3.47 12.65 0L21 3v7.12zM12.5 8v4.25l3.5 2.08-.72 1.21L11 13V8h1.5z"/>
+              </svg>
+              <svg v-else-if="child.icon === 'category'" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM3 21.5h8v-8H3v8zm2-6h4v4H5v-4z"/>
+              </svg>
+              <svg v-else-if="child.icon === 'product-list'" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z"/>
               </svg>
             </span>
             <span class="nav-label">{{ child.label }}</span>

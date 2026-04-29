@@ -16,6 +16,7 @@ import InventoryWorkspace from './workspace/InventoryWorkspace.vue'
 import FinanceWorkspace from './workspace/FinanceWorkspace.vue'
 import CrmWorkspace from './workspace/CrmWorkspace.vue'
 import ProductWorkspace from './workspace/ProductWorkspace.vue'
+import CategoryWorkspace from './workspace/CategoryWorkspace.vue'
 import AccountManagement from './workspace/AccountManagement.vue'
 import IntelligentSettings from './workspace/IntelligentSettings.vue'
 import WarehouseWorkspace from './workspace/WarehouseWorkspace.vue'
@@ -84,6 +85,8 @@ const handleNavigate = (id: string, extraData?: Record<string, any>) => {
       'finance-report': '财务报表',
       'crm': '客户管理',
       'product': '商品管理',
+      'category': '分类管理',
+      'product-list': '产品管理',
       'system-account': '账号管理',
       'system-intelligent': '智能设置'
     }
@@ -144,6 +147,8 @@ const currentWorkspace = computed(() => {
   if (id.startsWith('inventory')) return InventoryWorkspace
   if (id.startsWith('finance')) return FinanceWorkspace
   if (id === 'crm') return CrmWorkspace
+  if (id === 'category') return CategoryWorkspace
+  if (id === 'product-list') return ProductWorkspace
   if (id === 'product') return ProductWorkspace
   if (id === 'system-account') return AccountManagement
   if (id === 'system-intelligent') return IntelligentSettings
@@ -155,7 +160,7 @@ const currentBreadcrumb = computed(() => {
 })
 
 const keepAliveList = computed(() => {
-  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderList', 'ProcurementOrderList', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace']
+  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderList', 'ProcurementOrderList', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace']
   return names
 })
 

@@ -3,6 +3,7 @@ from .health import health_router
 from .sales_order import sales_order_router
 from .customer import customer_router
 from .product import product_router
+from .category import category_router
 from .auth import auth_router
 from .role import role_router
 from .permission import permission_router
@@ -22,6 +23,7 @@ api_router.include_router(permission_router, prefix="/auth", tags=["权限管理
 api_router.include_router(sales_order_router, tags=["销售订单"])
 api_router.include_router(customer_router, tags=["客户管理"])
 api_router.include_router(product_router, tags=["商品管理"])
+api_router.include_router(category_router, tags=["分类管理"])
 api_router.include_router(procurement_router, tags=["采购单管理"])
 api_router.include_router(accounts_receivable_router, tags=["应收款管理"])
 api_router.include_router(llm_router, tags=["LLM 设置"])
