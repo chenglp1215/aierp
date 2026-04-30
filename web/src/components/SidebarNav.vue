@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { usePermission, MENU_PERMISSION_MAP } from '../hooks'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { usePermission, refreshPermissions, MENU_PERMISSION_MAP } from '../hooks'
 
 interface MenuItem {
   id: string
@@ -117,7 +117,24 @@ const isActive = (id: string) => activeMenu.value === id
 
 onMounted(async () => {
   await loadPermissions()
+  window.addEventListener('user-updated', handleUserUpdated)
+  window.addEventListener('storage', handleStorageChange)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('user-updated', handleUserUpdated)
+  window.removeEventListener('storage', handleStorageChange)
+})
+
+const handleUserUpdated = async () => {
+  await refreshPermissions()
+}
+
+const handleStorageChange = async (event: StorageEvent) => {
+  if (event.key === 'user') {
+    await refreshPermissions()
+  }
+}
 </script>
 
 <template>

@@ -50,11 +50,25 @@ const handleSettings = () => {
 onMounted(() => {
   getUserFromStorage()
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('user-updated', handleUserUpdated)
+  window.addEventListener('storage', handleStorageChange)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('user-updated', handleUserUpdated)
+  window.removeEventListener('storage', handleStorageChange)
 })
+
+const handleUserUpdated = () => {
+  getUserFromStorage()
+}
+
+const handleStorageChange = (event: StorageEvent) => {
+  if (event.key === 'user') {
+    getUserFromStorage()
+  }
+}
 </script>
 
 <template>

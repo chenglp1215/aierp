@@ -50,4 +50,4 @@ export const permissionDirectivePlugin = {
   }
 }
 
-export { usePermission, MENU_PERMISSION_MAP, BUTTON_PERMISSION_MAP } from './usePermission'
+export { usePermission, refreshPermissions, MENU_PERMISSION_MAP, BUTTON_PERMISSION_MAP } from './usePermission'

@@ -197,7 +197,11 @@ onMounted(async () => {
   try {
     await loadPermissions()
     initDefaultTabs()
-    await authApi.getMe()
+    const userInfo = await authApi.getMe()
+    if (userInfo) {
+      localStorage.setItem('user', JSON.stringify(userInfo))
+      window.dispatchEvent(new Event('user-updated'))
+    }
   } catch (error) {
     const keysToRemove = ['token', 'user', 'token_expires_at']
     keysToRemove.forEach(key => localStorage.removeItem(key))

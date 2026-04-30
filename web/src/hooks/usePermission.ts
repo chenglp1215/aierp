@@ -20,107 +20,112 @@ const permissions = ref<Permission[]>([])
 const userPermissions = ref<UserPermissions>({ permissions: [], role_codes: [] })
 const isLoaded = ref(false)
 
-export const usePermission = () => {
-  const loadPermissions = async () => {
-    if (isLoaded.value) return
+const flattenPermissions = (perms: Permission[]): Permission[] => {
+  const result: Permission[] = []
+  for (const perm of perms) {
+    result.push(perm)
+    if (perm.children && perm.children.length > 0) {
+      result.push(...flattenPermissions(perm.children))
+    }
+  }
+  return result
+}
 
-    try {
-      const tree = await permissionApi.getTree()
-      permissions.value = flattenPermissions(tree as Permission[])
+const loadPermissions = async (forceRefresh = false) => {
+  if (isLoaded.value && !forceRefresh) return
 
-      const userData = localStorage.getItem('user')
-      if (userData) {
-        const user = JSON.parse(userData)
+  try {
+    const tree = await permissionApi.getTree()
+    permissions.value = flattenPermissions(tree as Permission[])
 
-        let permCodes: string[] = []
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      const user = JSON.parse(userData)
 
-        if (user.permissions && Array.isArray(user.permissions)) {
-          permCodes = user.permissions
-        } else if (user.roles && Array.isArray(user.roles)) {
-          for (const role of user.roles) {
-            if (role.permissions && Array.isArray(role.permissions)) {
-              for (const perm of role.permissions) {
-                if (perm.code) {
-                  permCodes.push(perm.code)
-                }
+      let permCodes: string[] = []
+
+      if (user.permissions && Array.isArray(user.permissions)) {
+        permCodes = user.permissions
+      } else if (user.roles && Array.isArray(user.roles)) {
+        for (const role of user.roles) {
+          if (role.permissions && Array.isArray(role.permissions)) {
+            for (const perm of role.permissions) {
+              if (perm.code) {
+                permCodes.push(perm.code)
               }
             }
           }
-          permCodes = [...new Set(permCodes)]
         }
-
-        const roleCodes = (user.roles || []).map((r: any) => r.code || r).filter(Boolean)
-
-        userPermissions.value = {
-          permissions: permCodes,
-          role_codes: roleCodes
-        }
+        permCodes = [...new Set(permCodes)]
       }
 
-      isLoaded.value = true
-    } catch (error) {
-      console.error('加载权限失败:', error)
-    }
-  }
+      const roleCodes = (user.roles || []).map((r: any) => r.code || r).filter(Boolean)
 
-  const flattenPermissions = (perms: Permission[]): Permission[] => {
-    const result: Permission[] = []
-    for (const perm of perms) {
-      result.push(perm)
-      if (perm.children && perm.children.length > 0) {
-        result.push(...flattenPermissions(perm.children))
+      userPermissions.value = {
+        permissions: permCodes,
+        role_codes: roleCodes
       }
     }
-    return result
+
+    isLoaded.value = true
+  } catch (error) {
+    console.error('加载权限失败:', error)
   }
+}
 
-  const hasPermission = (code: string): boolean => {
-    if (userPermissions.value.role_codes.includes('super_admin')) {
-      return true
-    }
-    return userPermissions.value.permissions.includes(code)
+export const refreshPermissions = async () => {
+  isLoaded.value = false
+  return loadPermissions(true)
+}
+
+const hasPermission = (code: string): boolean => {
+  if (userPermissions.value.role_codes.includes('super_admin')) {
+    return true
   }
+  return userPermissions.value.permissions.includes(code)
+}
 
-  const hasAnyPermission = (codes: string[]): boolean => {
-    if (userPermissions.value.role_codes.includes('super_admin')) {
-      return true
-    }
-    return codes.some(code => userPermissions.value.permissions.includes(code))
+const hasAnyPermission = (codes: string[]): boolean => {
+  if (userPermissions.value.role_codes.includes('super_admin')) {
+    return true
   }
+  return codes.some(code => userPermissions.value.permissions.includes(code))
+}
 
-  const hasAllPermissions = (codes: string[]): boolean => {
-    if (userPermissions.value.role_codes.includes('super_admin')) {
-      return true
-    }
-    return codes.every(code => userPermissions.value.permissions.includes(code))
+const hasAllPermissions = (codes: string[]): boolean => {
+  if (userPermissions.value.role_codes.includes('super_admin')) {
+    return true
   }
+  return codes.every(code => userPermissions.value.permissions.includes(code))
+}
 
-  const getMenuPermissions = computed(() => {
-    return permissions.value.filter(p => p.type === 'menu')
-  })
+const getMenuPermissions = computed(() => {
+  return permissions.value.filter(p => p.type === 'menu')
+})
 
-  const getButtonPermissions = computed(() => {
-    return permissions.value.filter(p => p.type === 'button')
-  })
+const getButtonPermissions = computed(() => {
+  return permissions.value.filter(p => p.type === 'button')
+})
 
-  const isMenuVisible = (menuCode: string): boolean => {
-    return hasPermission(menuCode)
-  }
+const isMenuVisible = (menuCode: string): boolean => {
+  return hasPermission(menuCode)
+}
 
-  const isButtonVisible = (buttonCode: string): boolean => {
-    return hasPermission(buttonCode)
-  }
+const isButtonVisible = (buttonCode: string): boolean => {
+  return hasPermission(buttonCode)
+}
 
-  const clearPermissions = () => {
-    permissions.value = []
-    userPermissions.value = { permissions: [], role_codes: [] }
-    isLoaded.value = false
-  }
+const clearPermissions = () => {
+  permissions.value = []
+  userPermissions.value = { permissions: [], role_codes: [] }
+  isLoaded.value = false
+}
 
-  const updateUserPermissions = (perms: string[], roleCodes: string[]) => {
-    userPermissions.value = { permissions: perms, role_codes: roleCodes }
-  }
+const updateUserPermissions = (perms: string[], roleCodes: string[]) => {
+  userPermissions.value = { permissions: perms, role_codes: roleCodes }
+}
 
+export const usePermission = () => {
   return {
     permissions,
     userPermissions,
