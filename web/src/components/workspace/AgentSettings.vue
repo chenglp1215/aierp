@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineOptions({ name: 'AgentSettings' })
 
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { agentApi, skillApi, mcpApi, aiToolsApi } from '../../services/api'
 
 interface Agent {
@@ -198,12 +198,6 @@ const getSkillNames = (agent: Agent) => {
   if (!agent.skill_ids?.length) return '-'
   return agent.skill_ids
     .map(id => skills.value.find(s => s.id === id)?.name || id)
-    .join(', ')
-}
-const getToolNames = (agent: Agent) => {
-  if (!agent.tools_range?.length) return '-'
-  return agent.tools_range
-    .map(name => availableTools.value.find(t => t.name === name)?.cn_name || name)
     .join(', ')
 }
 const getMcpNames = (agent: Agent) => {

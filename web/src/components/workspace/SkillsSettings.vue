@@ -2,7 +2,7 @@
 defineOptions({ name: 'SkillsSettings' })
 
 import { ref, onMounted } from 'vue'
-import { skillApi, uploadApi } from '../../services/api'
+import { skillApi } from '../../services/api'
 
 interface Skill {
   id?: string
@@ -100,7 +100,7 @@ const parseFrontMatter = (content: string): Record<string, any> => {
       const colonIndex = line.indexOf(':')
       if (colonIndex > 0) {
         const key = line.substring(0, colonIndex).trim()
-        let value = line.substring(colonIndex + 1).trim()
+        let value: any = line.substring(colonIndex + 1).trim()
         if (value === 'true') value = true
         else if (value === 'false') value = false
         else if (!isNaN(Number(value))) value = Number(value)

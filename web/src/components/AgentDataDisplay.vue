@@ -20,6 +20,7 @@ export interface AgentData {
 
 export interface AgentResponse {
   text?: string
+  data?: AgentData
   related_data?: {
     type: 'list' | 'form' | 'info'
     data: AgentDataItem[] | AgentDataItem
@@ -75,7 +76,7 @@ const listHeaderDisplayNames = computed(() => {
 
 const listItems = computed(() => {
   if (!effectiveListData.value.length) return []
-  return effectiveListData.value.map(item => {
+  return effectiveListData.value.map((item: AgentDataItem) => {
     return listHeaders.value.map(key => {
       const field = item[key]
       return getValue(field)
@@ -154,7 +155,7 @@ const getFormDataText = (): string => {
   const data = resolvedData.value
   if (!data || data.type !== 'form' || !Array.isArray(data.data)) return ''
 
-  return data.data.map((item, idx) => {
+  return data.data.map((item: AgentDataItem, idx: number) => {
     const name = item.name as string || String(idx)
     const value = formValues.value[name] ?? getValue(item)
     const label = getDisplayName(item) || name

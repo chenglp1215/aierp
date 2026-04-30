@@ -15,7 +15,7 @@ const emit = defineEmits<{
   'warehouse-navigate': [id: string, extraData?: Record<string, any>]
 }>()
 
-const { loadPermissions, hasPermission, isLoaded } = usePermission()
+const { loadPermissions, hasPermission } = usePermission()
 const activeMenu = ref('dashboard')
 const expandedMenus = ref<string[]>(['sales'])
 

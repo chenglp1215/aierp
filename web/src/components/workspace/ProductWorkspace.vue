@@ -59,12 +59,6 @@ const flatCategories = computed(() => {
   return result
 })
 
-const getCategoryNameById = (id: string | undefined) => {
-  if (!id) return '-'
-  const cat = flatCategories.value.find(c => c.id === id)
-  return cat?.name || '-'
-}
-
 const loadCategories = async () => {
   categoriesLoading.value = true
   try {
@@ -261,42 +255,6 @@ const openEditProduct = (row: any) => {
   showProductModal.value = true
 }
 
-const handleSaveProduct = async () => {
-  if (!productForm.value.name?.trim()) {
-    window.showToast('请输入产品名称', 'warning')
-    return
-  }
-  formLoading.value = true
-  try {
-    if (editingProduct.value) {
-      await productApi.update(editingProduct.value.id, productForm.value)
-      window.showToast('产品更新成功', 'success')
-      const index = products.value.findIndex(p => p.id === editingProduct.value!.id)
-      if (index !== -1) {
-        const updated = products.value[index]
-        updated.product_code = productForm.value.product_code || updated.product_code
-        updated.name = productForm.value.name
-        updated.image_url = productForm.value.image_url
-        updated.brand = productForm.value.brand
-        updated.category_id = productForm.value.category_id
-        updated.tax_code = productForm.value.tax_code
-        updated.is_active = productForm.value.is_active
-      }
-    } else {
-      await productApi.create(productForm.value)
-      window.showToast('产品创建成功', 'success')
-      loadProducts()
-    }
-    showProductModal.value = false
-    loadStats()
-    buildVerticalTableData()
-  } catch (error: any) {
-    window.showToast(error.message || '操作失败', 'error')
-  } finally {
-    formLoading.value = false
-  }
-}
-
 const editingSpecId = ref<string | null>(null)
 const isAddingNewSpec = ref(false)
 const newSpecForm = ref({
@@ -467,47 +425,6 @@ const handleDelete = async () => {
   }
 }
 
-const resetSpecForm = () => {
-  specForm.value = {
-    spec_code: '',
-    packaging: '',
-    sales_spec: '',
-    price: 0,
-    cas_number: '',
-    is_active: true
-  }
-  editingSpec.value = null
-}
-
-const openCreateSpec = (row: any) => {
-  resetSpecForm()
-  editingSpec.value = { id: row.product_id, product_id: row.product_id } as ProductSpec
-  showSpecModal.value = true
-}
-
-const openEditSpec = (row: any) => {
-  const spec = products.value
-    .flatMap(p => p.specs || [])
-    .find(s => s.id === row.spec_id)
-  if (!spec) return
-  editingSpec.value = spec
-  specForm.value = {
-    spec_code: spec.spec_code,
-    packaging: spec.packaging,
-    sales_spec: spec.sales_spec,
-    price: spec.price,
-    cas_number: spec.cas_number,
-    is_active: spec.is_active
-  }
-  showSpecModal.value = true
-}
-
-const confirmDeleteSpec = (row: any) => {
-  deleteTargetId.value = row.spec_id
-  deleteTargetType.value = 'spec'
-  showDeleteConfirm.value = true
-}
-
 const handleSaveSpec = async () => {
   if (!specForm.value.price || specForm.value.price < 0) {
     window.showToast('请输入有效的价格', 'warning')
@@ -547,30 +464,6 @@ const handleSaveSpec = async () => {
     window.showToast(error.message || '操作失败', 'error')
   } finally {
     formLoading.value = false
-  }
-}
-
-const handleToggleSpecActive = async (row: any) => {
-  const spec = products.value
-    .flatMap(p => p.specs || [])
-    .find(s => s.id === row.spec_id)
-  if (!spec) return
-  const newStatus = !spec.is_active
-  try {
-    await productApi.toggleSpecActive(spec.id, newStatus)
-    window.showToast(`规格已${newStatus ? '激活' : '停用'}`, 'success')
-    for (const product of products.value) {
-      if (product.specs) {
-        const specItem = product.specs.find(s => s.id === spec.id)
-        if (specItem) {
-          specItem.is_active = newStatus
-          break
-        }
-      }
-    }
-    buildVerticalTableData()
-  } catch (error: any) {
-    window.showToast(error.message || '操作失败', 'error')
   }
 }
 

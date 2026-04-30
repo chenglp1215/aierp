@@ -42,8 +42,6 @@ interface Customer {
   updated_at?: string
 }
 
-type SpanMethod = (params: { row: any; columnIndex: number }) => { rowspan: number; colspan: number } | void
-
 const loading = ref(false)
 const customers = ref<Customer[]>([])
 const tableData = ref<any[]>([])
@@ -121,16 +119,6 @@ const getDefaultAddress = (customer: Customer) => {
     return null
   }
   return customer.shipping_addresses.find(addr => addr.is_default) || customer.shipping_addresses[0]
-}
-
-const formatDefaultRecipient = (customer: Customer) => {
-  const addr = getDefaultAddress(customer)
-  return addr?.recipient_name || '-'
-}
-
-const formatDefaultPhone = (customer: Customer) => {
-  const addr = getDefaultAddress(customer)
-  return addr?.recipient_phone || '-'
 }
 
 const formatDefaultAddress = (customer: Customer) => {

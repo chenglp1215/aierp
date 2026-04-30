@@ -3,7 +3,6 @@ defineOptions({ name: 'UserManagement' })
 
 import { ref, onMounted } from 'vue'
 import { authApi, roleApi } from '../../services/api'
-import { usePermission, BUTTON_PERMISSION_MAP } from '../../hooks'
 
 interface User {
   id: string
@@ -16,8 +15,6 @@ interface User {
   status: string
   created_at?: string
 }
-
-const { hasPermission } = usePermission()
 
 interface Role {
   id: string
