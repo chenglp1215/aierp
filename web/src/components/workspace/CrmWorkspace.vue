@@ -42,8 +42,11 @@ interface Customer {
   updated_at?: string
 }
 
+type SpanMethod = (params: { row: any; columnIndex: number }) => { rowspan: number; colspan: number } | void
+
 const loading = ref(false)
 const customers = ref<Customer[]>([])
+const tableData = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -113,16 +116,6 @@ const customerStatuses = [
   { value: 'inactive', label: '未激活' }
 ]
 
-const columns = [
-  { key: 'customer_code', label: '客户编码', width: '140px' },
-  { key: 'name', label: '客户名称' },
-  { key: 'default_recipient', label: '收货人' },
-  { key: 'default_phone', label: '联系电话' },
-  { key: 'default_address', label: '默认收货地址' },
-  { key: 'level', label: '客户级别' },
-  { key: 'status', label: '状态' }
-]
-
 const getDefaultAddress = (customer: Customer) => {
   if (!customer.shipping_addresses || customer.shipping_addresses.length === 0) {
     return null
@@ -180,6 +173,29 @@ const formatStatus = (status: string | undefined) => {
   return statusMap[val] || status
 }
 
+const buildTableData = () => {
+  const data: any[] = []
+  for (const customer of customers.value) {
+    const addr = getDefaultAddress(customer)
+    data.push({
+      _id: customer.id,
+      ...customer,
+      default_recipient: addr?.recipient_name || '-',
+      default_phone: addr?.recipient_phone || '-',
+      default_address: formatDefaultAddress(customer),
+      address_count: customer.shipping_addresses?.length || 0,
+      isFirst: true,
+      rowspan: 1
+    })
+  }
+  tableData.value = data
+}
+
+const seqMethod = ({ row }: { row: any }) => {
+  const firstRows = tableData.value.filter(r => r.isFirst)
+  return firstRows.findIndex(r => r._id === row._id) + 1 + (page.value - 1) * pageSize.value
+}
+
 const loadCustomers = async () => {
   loading.value = true
   try {
@@ -200,6 +216,7 @@ const loadCustomers = async () => {
       status_raw: (item.status || '').toString().toLowerCase()
     }))
     total.value = res.total
+    buildTableData()
   } catch (error) {
     console.error('加载客户列表失败:', error)
   } finally {
@@ -216,8 +233,9 @@ const loadStats = async () => {
   }
 }
 
-const handlePageChange = (newPage: number) => {
-  page.value = newPage
+const handlePageChange = ({ currentPage, pageSize: newPageSize }: { currentPage: number; pageSize: number }) => {
+  page.value = currentPage
+  pageSize.value = newPageSize
   loadCustomers()
 }
 
@@ -237,11 +255,6 @@ const resetFilters = () => {
   filterType.value = ''
   page.value = 1
   loadCustomers()
-}
-
-const clearKeyword = () => {
-  keyword.value = ''
-  handleSearch()
 }
 
 const resetCustomerForm = () => {
@@ -285,13 +298,17 @@ const openCreateCustomer = () => {
   showCustomerModal.value = true
 }
 
-const openEditCustomer = (customer: Customer) => {
+const openEditCustomer = (row: any) => {
+  const customer = customers.value.find(c => c.id === row.id)
+  if (!customer) return
   editingCustomer.value = customer
   customerForm.value = { ...customer }
   showCustomerModal.value = true
 }
 
-const openAddressModal = async (customer: Customer) => {
+const openAddressModal = async (row: any) => {
+  const customer = customers.value.find(c => c.id === row.id)
+  if (!customer) return
   selectedCustomer.value = customer
   selectedCustomerId.value = customer.id
   resetAddressForm()
@@ -343,6 +360,7 @@ const handleSaveCustomer = async () => {
       loadCustomers()
     }
     showCustomerModal.value = false
+    buildTableData()
   } catch (error: any) {
     window.showToast(error.message || '操作失败', 'error')
   } finally {
@@ -407,6 +425,7 @@ const handleDelete = async () => {
     showDeleteConfirm.value = false
     deleteTargetId.value = null
     loadStats()
+    buildTableData()
   } catch (error: any) {
     window.showToast(error.message || '删除失败', 'error')
   } finally {
@@ -448,6 +467,7 @@ const closeAddressModal = () => {
 
 onMounted(() => {
   loadCustomers()
+  loadStats()
 })
 </script>
 
@@ -490,78 +510,53 @@ onMounted(() => {
         <button class="filter-btn" @click="handleSearch">搜索</button>
         <button class="filter-btn reset-btn" @click="resetFilters" v-if="hasActiveFilters">重置</button>
       </div>
-      <div class="active-filters" v-if="hasActiveFilters">
-        <span class="filter-tag" v-if="keyword">
-          关键词: {{ keyword }}
-          <button class="tag-close" @click="clearKeyword">×</button>
-        </span>
-        <span class="filter-tag" v-if="filterType">
-          类型: {{ formatType(filterType) }}
-          <button class="tag-close" @click="filterType = ''; handleSearch()">×</button>
-        </span>
-        <span class="filter-tag" v-if="filterLevel">
-          级别: {{ formatLevel(filterLevel) }}
-          <button class="tag-close" @click="filterLevel = ''; handleSearch()">×</button>
-        </span>
-        <span class="filter-tag" v-if="filterStatus">
-          状态: {{ formatStatus(filterStatus) }}
-          <button class="tag-close" @click="filterStatus = ''; handleSearch()">×</button>
-        </span>
+    </div>
+
+    <div class="table-section" style="position: relative;">
+      <div v-if="loading" class="table-loading-overlay">
+        <div class="table-loading-content">加载中...</div>
       </div>
-    </div>
+      <vxe-table
+        :data="tableData"
+        :column-config="{ resizable: true }"
+        :seq-config="{ seqMethod: seqMethod }"
+      >
+        <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
+        <vxe-column field="customer_code" title="客户编码" width="140" class-name="col--center" />
+        <vxe-column field="name" title="客户名称" min-width="180" />
+        <vxe-column field="default_recipient" title="收货人" width="100" class-name="col--center" />
+        <vxe-column field="default_phone" title="联系电话" width="130" class-name="col--center" />
+        <vxe-column field="default_address" title="默认收货地址" min-width="200" show-overflow />
+        <vxe-column field="level" title="客户级别" width="100" class-name="col--center">
+          <template #default="{ row }">
+            <span class="level-tag" :class="row.level_raw">{{ row.level }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column field="status" title="状态" width="80" class-name="col--center">
+          <template #default="{ row }">
+            <span class="status-tag" :class="row.status_raw">{{ row.status }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column title="操作" width="280" fixed="right" class-name="col--center">
+          <template #default="{ row }">
+            <span class="action-btns">
+              <button class="btn-link" @click="openEditCustomer(row)">编辑</button>
+              <button class="btn-link highlight" @click="openAddressModal(row)">
+                收货地址 ({{ row.address_count }})
+              </button>
+              <button class="btn-link danger" @click="confirmDelete('customer', row.id)">删除</button>
+            </span>
+          </template>
+        </vxe-column>
+      </vxe-table>
 
-    <div class="table-section">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th v-for="col in columns" :key="col.key" :style="{ width: col.width }">
-                {{ col.label }}
-              </th>
-              <th style="width: 320px">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="loading">
-              <td :colspan="columns.length + 1" class="loading-cell">加载中...</td>
-            </tr>
-            <tr v-else-if="customers.length === 0">
-              <td :colspan="columns.length + 1" class="empty-cell">暂无数据</td>
-            </tr>
-            <tr v-else v-for="customer in customers" :key="customer.id">
-              <td>{{ customer.customer_code }}</td>
-              <td>{{ customer.name }}</td>
-              <td>{{ formatDefaultRecipient(customer) }}</td>
-              <td>{{ formatDefaultPhone(customer) }}</td>
-              <td class="address-cell" :title="formatDefaultAddress(customer)">{{ formatDefaultAddress(customer) }}</td>
-              <td>
-                <span class="level-tag" :class="customer.level_raw">
-                  {{ customer.level }}
-                </span>
-              </td>
-              <td>
-                <span class="status-tag" :class="customer.status_raw">
-                  {{ customer.status }}
-                </span>
-              </td>
-              <td>
-                <div class="action-buttons">
-                  <button class="btn-link" @click="openEditCustomer(customer)">编辑</button>
-                  <button class="btn-link highlight" @click="openAddressModal(customer)">
-                    收货地址 ({{ customer.shipping_addresses?.length || 0 }})
-                  </button>
-                  <button class="btn-link danger" @click="confirmDelete('customer', customer.id)">删除</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-    </div>
-
-    <div class="pagination" v-if="total > 0">
-        <span class="pagination-info">共 {{ total }} 条</span>
-        <button class="pagination-btn" :disabled="page === 1" @click="handlePageChange(page - 1)">上一页</button>
-        <span class="pagination-current">第 {{ page }} 页</span>
-        <button class="pagination-btn" :disabled="customers.length < pageSize" @click="handlePageChange(page + 1)">下一页</button>
+      <vxe-pager
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :total="total"
+        :layouts="['PrevPage', 'JumpNumber', 'NextPage', 'FullJump', 'Sizes', 'Total']"
+        @page-change="handlePageChange"
+      />
     </div>
 
     <div class="modal-overlay" v-if="showCustomerModal">
@@ -775,7 +770,7 @@ onMounted(() => {
 .crm-workspace {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
 }
 
 .workspace-header {
@@ -788,6 +783,7 @@ onMounted(() => {
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
+  margin: 0;
 }
 
 .primary-btn {
@@ -797,6 +793,8 @@ onMounted(() => {
   color: white;
   font-size: 14px;
   font-weight: 500;
+  border: none;
+  cursor: pointer;
   transition: all var(--transition-fast);
 }
 
@@ -807,11 +805,8 @@ onMounted(() => {
 .filter-section {
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 16px 20px;
+  padding: 12px 16px;
   box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .filter-row {
@@ -892,139 +887,51 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.active-filters {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.filter-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px 4px 12px;
-  background-color: rgba(0, 120, 212, 0.1);
-  border-radius: 16px;
-  font-size: 12px;
-  color: var(--accent-blue);
-}
-
-.tag-close {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background-color: rgba(0, 120, 212, 0.2);
-  border: none;
-  color: var(--accent-blue);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-}
-
-.tag-close:hover {
-  background-color: var(--accent-blue);
-  color: white;
-}
-
 .table-section {
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 12px 16px;
   box-shadow: var(--shadow-card);
 }
 
-.section-header {
-  display: flex;
+.action-btns {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.section-actions {
-  display: flex;
+  justify-content: center;
   gap: 8px;
 }
 
-.search-input {
-  padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
   font-size: 13px;
-  width: 200px;
-}
-
-.search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.action-btn {
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  background-color: transparent;
-  color: var(--text-secondary);
-  font-size: 13px;
-  border: 1px solid var(--border-color);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
   transition: all var(--transition-fast);
-}
-
-.action-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
-}
-
-.table-container {
-  overflow-x: auto;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.data-table th {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
-}
-
-.data-table td {
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
-.loading-cell,
-.empty-cell {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-muted);
-}
-
-.address-cell {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.btn-link:hover {
+  background-color: rgba(0, 120, 212, 0.1);
+}
+
+.btn-link.highlight {
+  color: var(--accent-purple);
+  font-weight: 500;
+}
+
+.btn-link.highlight:hover {
+  background-color: rgba(139, 92, 246, 0.1);
+}
+
+.btn-link.danger {
+  color: var(--accent-red);
+}
+
+.btn-link.danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 .level-tag,
@@ -1065,83 +972,30 @@ onMounted(() => {
   color: var(--accent-yellow);
 }
 
-.action-buttons {
-  display: flex;
-  gap: 4px;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: var(--accent-blue);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-}
-
-.btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
-}
-
-.btn-link.highlight {
-  color: var(--accent-purple);
-  font-weight: 500;
-}
-
-.btn-link.highlight:hover {
-  background-color: rgba(139, 92, 246, 0.1);
-}
-
-.btn-link.danger {
-  color: var(--accent-red);
-}
-
-.btn-link.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-}
-
-.pagination {
+.table-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
+  z-index: 100;
 }
 
-.pagination-info {
-  font-size: 13px;
-  color: var(--text-muted);
+[data-theme="dark"] .table-loading-overlay {
+  background-color: rgba(0, 0, 0, 0.8);
 }
 
-.pagination-btn {
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-secondary);
+.table-loading-content {
+  padding: 20px 40px;
+  background-color: var(--bg-card);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   color: var(--text-primary);
-  font-size: 13px;
-  border: 1px solid var(--border-color);
-  transition: all var(--transition-fast);
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background-color: var(--accent-blue);
-  color: white;
-  border-color: var(--accent-blue);
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pagination-current {
-  font-size: 13px;
-  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .modal-overlay {
@@ -1440,10 +1294,6 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .stats-row {
-    grid-template-columns: 1fr;
-  }
-
   .form-row {
     grid-template-columns: 1fr;
   }

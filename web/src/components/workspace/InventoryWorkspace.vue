@@ -97,6 +97,8 @@ interface ProductSpec {
   product_code?: string
 }
 
+type SpanMethod = (params: { row: any; columnIndex: number }) => { rowspan: number; colspan: number } | void
+
 const props = defineProps<{
   warehouseId?: string
   warehouseName?: string
@@ -109,6 +111,7 @@ const emit = defineEmits<{
 const loading = ref(false)
 const stocks = ref<Stock[]>([])
 const productGroups = ref<ProductGroup[]>([])
+const verticalTableData = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -175,18 +178,6 @@ const stockStatuses = [
   { value: 'overstock', label: '超额库存' }
 ]
 
-const columns = [
-  { key: 'product_code', label: '商品编码', width: '120px' },
-  { key: 'product_name', label: '商品名称' },
-  { key: 'warehouse_name', label: '仓库', width: '100px' },
-  { key: 'spec_code', label: '规格编码', width: '120px' },
-  { key: 'packaging', label: '包装规格', width: '100px' },
-  { key: 'quantity', label: '当前库存', width: '90px', align: 'right' as const },
-  { key: 'inbound_count', label: '入库批次', width: '80px', align: 'center' as const },
-  { key: 'outbound_count', label: '出库批次', width: '80px', align: 'center' as const },
-  { key: 'status', label: '状态', width: '80px' }
-]
-
 const statusMap: Record<string, string> = {
   normal: '正常',
   low_stock: '不足',
@@ -227,6 +218,59 @@ const groupStocksByProduct = (stockList: Stock[]): ProductGroup[] => {
   return groups
 }
 
+const buildVerticalTableData = () => {
+  const data: any[] = []
+  for (const group of productGroups.value) {
+    const specs = group.specs || []
+    for (let i = 0; i < specs.length; i++) {
+      const stock = specs[i]
+      data.push({
+        _id: `${group.product_id}_${group.warehouse_id}_${stock.spec_id}`,
+        product_id: group.product_id,
+        product_code: group.product_code,
+        product_name: group.product_name,
+        category: group.category,
+        warehouse_id: group.warehouse_id,
+        warehouse_name: group.warehouse_name,
+        spec_id: stock.spec_id,
+        spec_code: stock.spec?.spec_code || '',
+        packaging: stock.spec?.packaging || '-',
+        quantity: stock.quantity,
+        inbound_count: stock.inbound_outbound_summary?.inbound_count || 0,
+        outbound_count: stock.inbound_outbound_summary?.outbound_count || 0,
+        status: stock.status,
+        status_class: getStatusClass(stock.status),
+        stockId: stock.id,
+        isFirst: i === 0,
+        rowspan: i === 0 ? specs.length : 0,
+        group_rowspan: i === 0 ? specs.length : 0,
+        specs_length: specs.length
+      })
+    }
+  }
+  verticalTableData.value = data
+}
+
+const verticalSpanMethod: SpanMethod = ({ row, columnIndex }) => {
+  const productCols = [1, 2, 3]
+  const actionCol = 10
+  if (productCols.includes(columnIndex) && row.isFirst) {
+    return { rowspan: row.rowspan, colspan: 1 }
+  }
+  if (productCols.includes(columnIndex) || (columnIndex === actionCol && !row.isFirst)) {
+    return { rowspan: 0, colspan: 0 }
+  }
+  if (columnIndex === actionCol && row.isFirst) {
+    return { rowspan: row.rowspan, colspan: 1 }
+  }
+}
+
+const seqMethod = ({ row }: { row: any }) => {
+  if (!row.isFirst) return 0
+  const firstRows = verticalTableData.value.filter(r => r.isFirst)
+  return firstRows.findIndex(r => r._id === row._id) + 1 + (page.value - 1) * pageSize.value
+}
+
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -256,6 +300,7 @@ const loadStocks = async () => {
     }))
     productGroups.value = groupStocksByProduct(stocks.value)
     total.value = res.total
+    buildVerticalTableData()
   } catch (error) {
     console.error('加载库存列表失败:', error)
   } finally {
@@ -298,8 +343,9 @@ const updateStockInList = async (stockId: string) => {
   }
 }
 
-const handlePageChange = (newPage: number) => {
-  page.value = newPage
+const handlePageChange = ({ currentPage, pageSize: newPageSize }: { currentPage: number; pageSize: number }) => {
+  page.value = currentPage
+  pageSize.value = newPageSize
   loadStocks()
 }
 
@@ -419,13 +465,13 @@ const hideProductDropdown = () => {
   setTimeout(() => { showProductDropdown.value = false }, 200)
 }
 
-const toggleExpand = async (stock: Stock) => {
-  if (expandedStockId.value === stock.id) {
+const toggleExpand = async (row: any) => {
+  if (expandedStockId.value === row.stockId) {
     expandedStockId.value = null
     stockDetail.value = null
   } else {
-    expandedStockId.value = stock.id
-    await loadStockDetail(stock.id)
+    expandedStockId.value = row.stockId
+    await loadStockDetail(row.stockId)
   }
 }
 
@@ -487,7 +533,9 @@ const openCreateStock = () => {
   showStockModal.value = true
 }
 
-const _openEditStock = (stock: Stock) => {
+const openEditStock = (row: any) => {
+  const stock = stocks.value.find(s => s.id === row.stockId)
+  if (!stock) return
   editingStock.value = stock
   selectedSpec.value = {
     id: stock.spec_id,
@@ -510,19 +558,25 @@ const _openEditStock = (stock: Stock) => {
   showStockModal.value = true
 }
 
-const openInboundModal = (stock: Stock) => {
+const openInboundModal = (row: any) => {
+  const stock = stocks.value.find(s => s.id === row.stockId)
+  if (!stock) return
   inboundTargetStock.value = stock
   inboundForm.value = { quantity: 0, remarks: '' }
   showInboundModal.value = true
 }
 
-const openOutboundModal = (stock: Stock) => {
+const openOutboundModal = (row: any) => {
+  const stock = stocks.value.find(s => s.id === row.stockId)
+  if (!stock) return
   outboundTargetStock.value = stock
   outboundForm.value = { quantity: 0, remarks: '' }
   showOutboundModal.value = true
 }
 
-const openDetailModal = async (stock: Stock) => {
+const openDetailModal = async (row: any) => {
+  const stock = stocks.value.find(s => s.id === row.stockId)
+  if (!stock) return
   await loadStockDetail(stock.id)
   showDetailModal.value = true
 }
@@ -547,6 +601,7 @@ const handleSaveStock = async () => {
       if (expandedStockId.value === editingStock.value.id) {
         await loadStockDetail(editingStock.value.id)
       }
+      loadStocks()
     } else {
       const res = await stockApi.create(stockForm.value)
       if (res.status === 'duplicate') {
@@ -594,6 +649,7 @@ const handleInbound = async () => {
     if (expandedStockId.value === inboundTargetStock.value.id) {
       await loadStockDetail(inboundTargetStock.value.id)
     }
+    loadStocks()
   } catch (error: any) {
     window.showToast(error.message || '入库失败', 'error')
   } finally {
@@ -625,6 +681,7 @@ const handleOutbound = async () => {
     if (expandedStockId.value === outboundTargetStock.value.id) {
       await loadStockDetail(outboundTargetStock.value.id)
     }
+    loadStocks()
   } catch (error: any) {
     window.showToast(error.message || '出库失败', 'error')
   } finally {
@@ -632,20 +689,21 @@ const handleOutbound = async () => {
   }
 }
 
-const _handleDelete = async (stockId: string) => {
+const handleDelete = async (row: any) => {
   if (!confirm('确定要删除该库存记录吗？此操作不可恢复。')) return
 
   try {
-    await stockApi.delete(stockId)
+    await stockApi.delete(row.stockId)
     window.showToast('库存删除成功', 'success')
-    const index = stocks.value.findIndex(s => s.id === stockId)
+    const index = stocks.value.findIndex(s => s.id === row.stockId)
     if (index !== -1) {
       stocks.value.splice(index, 1)
     }
-    if (expandedStockId.value === stockId) {
+    if (expandedStockId.value === row.stockId) {
       expandedStockId.value = null
       stockDetail.value = null
     }
+    loadStocks()
   } catch (error: any) {
     window.showToast(error.message || '删除失败', 'error')
   }
@@ -759,135 +817,76 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="table-section">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th style="width: 40px"></th>
-            <th v-for="col in columns" :key="col.key" :style="{ width: col.width, textAlign: col.align || 'left' }">
-              {{ col.label }}
-            </th>
-            <th style="width: 200px">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <template v-if="loading">
-            <tr>
-              <td :colspan="11" class="loading-cell">加载中...</td>
-            </tr>
+    <div class="table-section" style="position: relative;">
+      <div v-if="loading" class="table-loading-overlay">
+        <div class="table-loading-content">加载中...</div>
+      </div>
+      <vxe-table
+        :data="verticalTableData"
+        :column-config="{ resizable: true }"
+        :span-method="verticalSpanMethod"
+        :seq-config="{ seqMethod: seqMethod }"
+      >
+        <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
+        <vxe-column field="expand" title="" width="40" class-name="col--center">
+          <template #default="{ row }">
+            <button class="expand-btn" @click="toggleExpand(row)">
+              {{ expandedStockId === row.stockId ? '▼' : '▶' }}
+            </button>
           </template>
-          <template v-else-if="stocks.length === 0">
-            <tr>
-              <td :colspan="11" class="empty-cell">暂无数据</td>
-            </tr>
+        </vxe-column>
+        <vxe-column field="product_code" title="商品编码" width="120" class-name="col--center" />
+        <vxe-column field="product_name" title="商品名称" min-width="180">
+          <template #default="{ row }">
+            <div class="product-name-info">
+              <span class="product-name">{{ row.product_name }}</span>
+              <span class="product-category" v-if="row.category">{{ row.category }}</span>
+            </div>
           </template>
-          <template v-else>
-            <template v-for="group in productGroups" :key="group.product_id + '-' + group.warehouse_id">
-              <tr v-for="(stock, specIndex) in group.specs" :key="stock.id"
-                  :class="{ 'expanded-row': expandedStockId === stock.id }">
-                <td class="expand-cell" v-if="specIndex === 0" :rowspan="group.rowspan">
-                  <button class="expand-btn" @click="toggleExpand(stock)">
-                    {{ expandedStockId === stock.id ? '▼' : '▶' }}
-                  </button>
-                </td>
-                <td v-if="specIndex === 0" :rowspan="group.rowspan" class="product-cell">
-                  <div class="product-info">
-                    <span class="product-code">{{ group.product_code }}</span>
-                  </div>
-                </td>
-                <td v-if="specIndex === 0" :rowspan="group.rowspan" class="product-name-cell">
-                  <div class="product-name-info">
-                    <span class="product-name">{{ group.product_name }}</span>
-                    <span class="product-category" v-if="group.category">{{ group.category }}</span>
-                  </div>
-                </td>
-                <td v-if="specIndex === 0" :rowspan="group.rowspan">{{ group.warehouse_name }}</td>
-                <td>{{ stock.spec?.spec_code }}</td>
-                <td>{{ stock.spec?.packaging || '-' }}</td>
-                <td class="number-cell">{{ stock.quantity }}</td>
-                <td class="center-cell">
-                  <span class="batch-count" :class="{ 'has-data': (stock.inbound_outbound_summary?.inbound_count ?? 0) > 0 }">
-                    {{ stock.inbound_outbound_summary?.inbound_count || 0 }}
-                  </span>
-                </td>
-                <td class="center-cell">
-                  <span class="batch-count" :class="{ 'has-data': (stock.inbound_outbound_summary?.outbound_count ?? 0) > 0 }">
-                    {{ stock.inbound_outbound_summary?.outbound_count || 0 }}
-                  </span>
-                </td>
-                <td>
-                  <span class="status-tag" :class="getStatusClass(stock.status)">
-                    {{ stock.status }}
-                  </span>
-                </td>
-                <td v-if="specIndex === 0" :rowspan="group.rowspan" class="action-cell">
-                  <div class="action-buttons">
-                    <button class="btn-link" @click="openInboundModal(stock)">入库</button>
-                    <button class="btn-link" @click="openOutboundModal(stock)">出库</button>
-                    <button class="btn-link" @click="openDetailModal(stock)">详情</button>
-                    <button class="btn-link" @click="_openEditStock(stock)">编辑</button>
-                    <button class="btn-link danger" @click="_handleDelete(stock.id)">删除</button>
-                  </div>
-                </td>
-              </tr>
-              <tr v-if="expandedStockId && group.specs.some(s => s.id === expandedStockId)" class="detail-row">
-                <td :colspan="11">
-                  <div class="stock-detail" v-if="stockDetail && detailLoading === false">
-                    <div class="detail-summary">
-                      <div class="summary-item">
-                        <span class="summary-label">入库总计:</span>
-                        <span class="summary-value success">{{ stockDetail.stock.inbound_outbound_summary?.total_inbound || 0 }}</span>
-                      </div>
-                      <div class="summary-item">
-                        <span class="summary-label">出库总计:</span>
-                        <span class="summary-value danger">{{ stockDetail.stock.inbound_outbound_summary?.total_outbound || 0 }}</span>
-                      </div>
-                    </div>
-                    <div class="batches-container">
-                      <div class="batches-section">
-                        <h4 class="batches-title">入库批次记录</h4>
-                        <div class="batches-list" v-if="stockDetail.inbound_batches.length > 0">
-                          <div class="batch-item" v-for="batch in stockDetail.inbound_batches" :key="batch.id">
-                            <span class="batch-code">{{ batch.batch_code }}</span>
-                            <span class="batch-qty success">+{{ batch.quantity }}</span>
-                            <span class="batch-time">{{ formatDate(batch.created_at) }}</span>
-                            <span class="batch-operator">{{ batch.operator_name || '-' }}</span>
-                            <span class="batch-remarks">{{ batch.remarks || '-' }}</span>
-                          </div>
-                        </div>
-                        <div class="batches-empty" v-else>暂无入库记录</div>
-                      </div>
-                      <div class="batches-section">
-                        <h4 class="batches-title">出库批次记录</h4>
-                        <div class="batches-list" v-if="stockDetail.outbound_batches.length > 0">
-                          <div class="batch-item" v-for="batch in stockDetail.outbound_batches" :key="batch.id">
-                            <span class="batch-code">{{ batch.batch_code }}</span>
-                            <span class="batch-qty danger">-{{ batch.quantity }}</span>
-                            <span class="batch-time">{{ formatDate(batch.created_at) }}</span>
-                            <span class="batch-operator">{{ batch.operator_name || '-' }}</span>
-                            <span class="batch-remarks">{{ batch.remarks || '-' }}</span>
-                          </div>
-                        </div>
-                        <div class="batches-empty" v-else>暂无出库记录</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="detail-loading" v-else-if="detailLoading">
-                    加载中...
-                  </div>
-                </td>
-              </tr>
-            </template>
+        </vxe-column>
+        <vxe-column field="warehouse_name" title="仓库" width="100" class-name="col--center" />
+        <vxe-column field="spec_code" title="规格编码" width="120" class-name="col--center" />
+        <vxe-column field="packaging" title="包装规格" width="100" />
+        <vxe-column field="quantity" title="当前库存" width="90" class-name="col--center">
+          <template #default="{ row }">
+            <span class="number-cell">{{ row.quantity }}</span>
           </template>
-        </tbody>
-      </table>
-    </div>
+        </vxe-column>
+        <vxe-column field="inbound_count" title="入库批次" width="80" class-name="col--center">
+          <template #default="{ row }">
+            <span class="batch-count" :class="{ 'has-data': row.inbound_count > 0 }">{{ row.inbound_count }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column field="outbound_count" title="出库批次" width="80" class-name="col--center">
+          <template #default="{ row }">
+            <span class="batch-count" :class="{ 'has-data': row.outbound_count > 0 }">{{ row.outbound_count }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column field="status" title="状态" width="80" class-name="col--center">
+          <template #default="{ row }">
+            <span class="status-tag" :class="row.status_class">{{ row.status }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column title="操作" width="220" fixed="right" class-name="col--center">
+          <template #default="{ row }">
+            <span class="action-btns">
+              <button class="btn-link" @click="openInboundModal(row)">入库</button>
+              <button class="btn-link" @click="openOutboundModal(row)">出库</button>
+              <button class="btn-link" @click="openDetailModal(row)">详情</button>
+              <button class="btn-link" @click="openEditStock(row)">编辑</button>
+              <button class="btn-link danger" @click="handleDelete(row)">删除</button>
+            </span>
+          </template>
+        </vxe-column>
+      </vxe-table>
 
-    <div class="pagination" v-if="total > 0">
-      <span class="pagination-info">共 {{ total }} 条</span>
-      <button class="pagination-btn" :disabled="page === 1" @click="handlePageChange(page - 1)">上一页</button>
-      <span class="pagination-current">第 {{ page }} 页</span>
-      <button class="pagination-btn" :disabled="stocks.length < pageSize" @click="handlePageChange(page + 1)">下一页</button>
+      <vxe-pager
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :total="total"
+        :layouts="['PrevPage', 'JumpNumber', 'NextPage', 'FullJump', 'Sizes', 'Total']"
+        @page-change="handlePageChange"
+      />
     </div>
 
     <div class="modal-overlay" v-if="showStockModal">
@@ -1087,7 +1086,7 @@ onMounted(() => {
 .inventory-workspace {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
 }
 
 .workspace-header {
@@ -1129,6 +1128,7 @@ onMounted(() => {
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
+  margin: 0;
 }
 
 .primary-btn {
@@ -1138,6 +1138,8 @@ onMounted(() => {
   color: white;
   font-size: 14px;
   font-weight: 500;
+  border: none;
+  cursor: pointer;
   transition: all var(--transition-fast);
 }
 
@@ -1148,11 +1150,8 @@ onMounted(() => {
 .filter-section {
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 16px 20px;
+  padding: 12px 16px;
   box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .filter-row {
@@ -1165,11 +1164,6 @@ onMounted(() => {
 .filter-item {
   display: flex;
   align-items: center;
-}
-
-.filter-item.search-filter {
-  flex: 1;
-  min-width: 200px;
 }
 
 .filter-buttons {
@@ -1313,41 +1307,8 @@ onMounted(() => {
 .table-section {
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 12px 16px;
   box-shadow: var(--shadow-card);
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.data-table th {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
-}
-
-.data-table td {
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
-.expanded-row {
-  background-color: rgba(0, 120, 212, 0.05);
-}
-
-.expand-cell {
-  width: 40px;
-  text-align: center;
 }
 
 .expand-btn {
@@ -1363,21 +1324,10 @@ onMounted(() => {
   color: var(--accent-blue);
 }
 
-.product-cell,
-.product-name-cell {
-  vertical-align: middle;
-}
-
-.product-info,
 .product-name-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.product-code {
-  color: var(--accent-blue);
-  font-weight: 500;
 }
 
 .product-name {
@@ -1395,17 +1345,8 @@ onMounted(() => {
   margin-top: 2px;
 }
 
-.action-cell {
-  vertical-align: middle;
-}
-
 .number-cell {
-  text-align: right !important;
   font-family: monospace;
-}
-
-.center-cell {
-  text-align: center !important;
 }
 
 .batch-count {
@@ -1420,13 +1361,6 @@ onMounted(() => {
 .batch-count.has-data {
   background-color: rgba(0, 120, 212, 0.1);
   color: var(--accent-blue);
-}
-
-.loading-cell,
-.empty-cell {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-muted);
 }
 
 .status-tag {
@@ -1456,9 +1390,11 @@ onMounted(() => {
   color: var(--accent-blue);
 }
 
-.action-buttons {
-  display: flex;
-  gap: 4px;
+.action-btns {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .btn-link {
@@ -1485,169 +1421,30 @@ onMounted(() => {
   background-color: rgba(239, 68, 68, 0.1);
 }
 
-.detail-row td {
-  padding: 0;
-  background-color: var(--bg-secondary);
-}
-
-.stock-detail {
-  padding: 16px 20px;
-}
-
-.detail-summary {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.summary-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.summary-label {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.summary-value {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.summary-value.success {
-  color: var(--accent-green);
-}
-
-.summary-value.danger {
-  color: var(--accent-red);
-}
-
-.batches-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.batches-section {
-  background-color: var(--bg-card);
-  border-radius: var(--radius-md);
-  padding: 12px;
-}
-
-.batches-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  margin: 0 0 12px 0;
-}
-
-.batches-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.batch-item {
-  display: grid;
-  grid-template-columns: 120px 60px 140px 80px 1fr;
-  gap: 8px;
-  align-items: center;
-  padding: 8px;
-  background-color: var(--bg-secondary);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-}
-
-.batch-code {
-  color: var(--accent-blue);
-  font-weight: 500;
-}
-
-.batch-qty {
-  font-weight: 600;
-}
-
-.batch-qty.success {
-  color: var(--accent-green);
-}
-
-.batch-qty.danger {
-  color: var(--accent-red);
-}
-
-.batch-time {
-  color: var(--text-muted);
-}
-
-.batch-operator {
-  color: var(--text-secondary);
-}
-
-.batch-remarks {
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.batches-empty {
-  text-align: center;
-  padding: 20px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.detail-loading {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-muted);
-}
-
-.pagination {
+.table-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
+  z-index: 100;
 }
 
-.pagination-info {
-  font-size: 13px;
-  color: var(--text-muted);
+[data-theme="dark"] .table-loading-overlay {
+  background-color: rgba(0, 0, 0, 0.8);
 }
 
-.pagination-btn {
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-secondary);
+.table-loading-content {
+  padding: 20px 40px;
+  background-color: var(--bg-card);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   color: var(--text-primary);
-  font-size: 13px;
-  border: 1px solid var(--border-color);
-  transition: all var(--transition-fast);
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background-color: var(--accent-blue);
-  color: white;
-  border-color: var(--accent-blue);
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pagination-current {
-  font-size: 13px;
-  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .modal-overlay {
@@ -2033,17 +1830,8 @@ onMounted(() => {
     margin: 16px;
   }
 
-  .batches-container {
-    grid-template-columns: 1fr;
-  }
-
   .detail-batches {
     grid-template-columns: 1fr;
-  }
-
-  .batch-item {
-    grid-template-columns: 1fr;
-    gap: 4px;
   }
 }
 </style>

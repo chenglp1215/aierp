@@ -30,6 +30,7 @@ interface ManagerCandidate {
 
 const loading = ref(false)
 const warehouses = ref<Warehouse[]>([])
+const tableData = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -61,14 +62,6 @@ const warehouseStatuses = [
   { value: 'maintenance', label: '维护中' }
 ]
 
-const columns = [
-  { key: 'warehouse_code', label: '仓库编码', width: '180px' },
-  { key: 'name', label: '仓库名称' },
-  { key: 'address', label: '仓库地址' },
-  { key: 'manager_name', label: '管理员', width: '100px' },
-  { key: 'status', label: '状态', width: '80px' }
-]
-
 const statusMap: Record<string, string> = {
   active: '启用',
   inactive: '停用',
@@ -76,6 +69,20 @@ const statusMap: Record<string, string> = {
 }
 
 const formatStatus = (status: string) => statusMap[status] || status
+
+const buildTableData = () => {
+  tableData.value = warehouses.value.map(w => ({
+    _id: w.id,
+    ...w,
+    display_status: formatStatus(w.status),
+    status_class: w.status
+  }))
+}
+
+const seqMethod = ({ row }: { row: any }) => {
+  const index = tableData.value.findIndex(r => r._id === row._id)
+  return index + 1 + (page.value - 1) * pageSize.value
+}
 
 const loadWarehouses = async () => {
   loading.value = true
@@ -86,11 +93,9 @@ const loadWarehouses = async () => {
       keyword: keyword.value || undefined,
       status: filterStatus.value || undefined
     })
-    warehouses.value = res.items.map((item: Warehouse) => ({
-      ...item,
-      display_status: formatStatus(item.status)
-    }))
+    warehouses.value = res.items
     total.value = res.total
+    buildTableData()
   } catch (error) {
     console.error('加载仓库列表失败:', error)
   } finally {
@@ -98,8 +103,9 @@ const loadWarehouses = async () => {
   }
 }
 
-const handlePageChange = (newPage: number) => {
-  page.value = newPage
+const handlePageChange = ({ currentPage, pageSize: newPageSize }: { currentPage: number; pageSize: number }) => {
+  page.value = currentPage
+  pageSize.value = newPageSize
   loadWarehouses()
 }
 
@@ -119,15 +125,10 @@ const resetFilters = () => {
   loadWarehouses()
 }
 
-const clearKeyword = () => {
-  keyword.value = ''
-  handleSearch()
-}
-
-const viewInventory = (warehouse: Warehouse) => {
+const viewInventory = (row: any) => {
   emit('navigate', 'inventory', {
-    warehouseId: warehouse.id,
-    warehouseName: warehouse.name
+    warehouseId: row.id,
+    warehouseName: row.name
   })
 }
 
@@ -173,15 +174,17 @@ const openCreateWarehouse = () => {
   showWarehouseModal.value = true
 }
 
-const openEditWarehouse = (warehouse: Warehouse) => {
+const openEditWarehouse = (row: any) => {
+  const warehouse = warehouses.value.find(w => w.id === row.id)
+  if (!warehouse) return
   editingWarehouse.value = warehouse
   warehouseForm.value = { ...warehouse }
   loadManagerCandidates()
   showWarehouseModal.value = true
 }
 
-const confirmDelete = (warehouseId: string) => {
-  deleteTargetId.value = warehouseId
+const confirmDelete = (row: any) => {
+  deleteTargetId.value = row.id
   showDeleteConfirm.value = true
 }
 
@@ -276,62 +279,45 @@ onMounted(() => {
         <button class="filter-btn" @click="handleSearch">搜索</button>
         <button class="filter-btn reset-btn" @click="resetFilters" v-if="hasActiveFilters">重置</button>
       </div>
-      <div class="active-filters" v-if="hasActiveFilters">
-        <span class="filter-tag" v-if="keyword">
-          关键词: {{ keyword }}
-          <button class="tag-close" @click="clearKeyword">×</button>
-        </span>
-        <span class="filter-tag" v-if="filterStatus">
-          状态: {{ formatStatus(filterStatus) }}
-          <button class="tag-close" @click="filterStatus = ''; handleSearch()">×</button>
-        </span>
+    </div>
+
+    <div class="table-section" style="position: relative;">
+      <div v-if="loading" class="table-loading-overlay">
+        <div class="table-loading-content">加载中...</div>
       </div>
-    </div>
+      <vxe-table
+        :data="tableData"
+        :column-config="{ resizable: true }"
+        :seq-config="{ seqMethod: seqMethod }"
+      >
+        <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
+        <vxe-column field="warehouse_code" title="仓库编码" width="180" class-name="col--center" />
+        <vxe-column field="name" title="仓库名称" min-width="180" />
+        <vxe-column field="address" title="仓库地址" min-width="200" show-overflow />
+        <vxe-column field="manager_name" title="管理员" width="120" class-name="col--center" />
+        <vxe-column field="display_status" title="状态" width="80" class-name="col--center">
+          <template #default="{ row }">
+            <span class="status-tag" :class="row.status_class">{{ row.display_status }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column title="操作" width="240" fixed="right" class-name="col--center">
+          <template #default="{ row }">
+            <span class="action-btns">
+              <button class="btn-link" @click="viewInventory(row)">查看库存</button>
+              <button class="btn-link" @click="openEditWarehouse(row)">编辑</button>
+              <button class="btn-link danger" @click="confirmDelete(row)">删除</button>
+            </span>
+          </template>
+        </vxe-column>
+      </vxe-table>
 
-    <div class="table-section">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th v-for="col in columns" :key="col.key" :style="{ width: col.width }">
-              {{ col.label }}
-            </th>
-            <th style="width: 200px">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading">
-            <td :colspan="columns.length + 1" class="loading-cell">加载中...</td>
-          </tr>
-          <tr v-else-if="warehouses.length === 0">
-            <td :colspan="columns.length + 1" class="empty-cell">暂无数据</td>
-          </tr>
-          <tr v-else v-for="warehouse in warehouses" :key="warehouse.id">
-            <td>{{ warehouse.warehouse_code }}</td>
-            <td>{{ warehouse.name }}</td>
-            <td>{{ warehouse.address }}</td>
-            <td>{{ warehouse.manager_name }}</td>
-            <td>
-              <span class="status-tag" :class="warehouse.status">
-                {{ warehouse.display_status }}
-              </span>
-            </td>
-            <td>
-              <div class="action-buttons">
-                <button class="btn-link" @click="viewInventory(warehouse)">查看库存</button>
-                <button class="btn-link" @click="openEditWarehouse(warehouse)">编辑</button>
-                <button class="btn-link danger" @click="confirmDelete(warehouse.id)">删除</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="pagination" v-if="total > 0">
-      <span class="pagination-info">共 {{ total }} 条</span>
-      <button class="pagination-btn" :disabled="page === 1" @click="handlePageChange(page - 1)">上一页</button>
-      <span class="pagination-current">第 {{ page }} 页</span>
-      <button class="pagination-btn" :disabled="warehouses.length < pageSize" @click="handlePageChange(page + 1)">下一页</button>
+      <vxe-pager
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :total="total"
+        :layouts="['PrevPage', 'JumpNumber', 'NextPage', 'FullJump', 'Sizes', 'Total']"
+        @page-change="handlePageChange"
+      />
     </div>
 
     <div class="modal-overlay" v-if="showWarehouseModal">
@@ -413,7 +399,7 @@ onMounted(() => {
 .warehouse-workspace {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
 }
 
 .workspace-header {
@@ -426,6 +412,7 @@ onMounted(() => {
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
+  margin: 0;
 }
 
 .primary-btn {
@@ -435,6 +422,8 @@ onMounted(() => {
   color: white;
   font-size: 14px;
   font-weight: 500;
+  border: none;
+  cursor: pointer;
   transition: all var(--transition-fast);
 }
 
@@ -445,11 +434,8 @@ onMounted(() => {
 .filter-section {
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 16px 20px;
+  padding: 12px 16px;
   box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .filter-row {
@@ -530,108 +516,18 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.active-filters {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.filter-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px 4px 12px;
-  background-color: rgba(0, 120, 212, 0.1);
-  border-radius: 16px;
-  font-size: 12px;
-  color: var(--accent-blue);
-}
-
-.tag-close {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background-color: rgba(0, 120, 212, 0.2);
-  border: none;
-  color: var(--accent-blue);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-}
-
-.tag-close:hover {
-  background-color: var(--accent-blue);
-  color: white;
-}
-
 .table-section {
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 12px 16px;
   box-shadow: var(--shadow-card);
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.data-table th {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
-}
-
-.data-table td {
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
-.loading-cell,
-.empty-cell {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-muted);
-}
-
-.status-tag {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.status-tag.active {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
-}
-
-.status-tag.inactive {
-  background-color: rgba(128, 128, 128, 0.1);
-  color: var(--text-muted);
-}
-
-.status-tag.maintenance {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: var(--accent-yellow);
-}
-
-.action-buttons {
-  display: flex;
-  gap: 4px;
+.action-btns {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .btn-link {
@@ -658,45 +554,52 @@ onMounted(() => {
   background-color: rgba(239, 68, 68, 0.1);
 }
 
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
+.status-tag {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
 }
 
-.pagination-info {
-  font-size: 13px;
+.status-tag.active {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--accent-green);
+}
+
+.status-tag.inactive {
+  background-color: rgba(128, 128, 128, 0.1);
   color: var(--text-muted);
 }
 
-.pagination-btn {
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-secondary);
+.status-tag.maintenance {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--accent-yellow);
+}
+
+.table-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+[data-theme="dark"] .table-loading-overlay {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.table-loading-content {
+  padding: 20px 40px;
+  background-color: var(--bg-card);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   color: var(--text-primary);
-  font-size: 13px;
-  border: 1px solid var(--border-color);
-  transition: all var(--transition-fast);
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background-color: var(--accent-blue);
-  color: white;
-  border-color: var(--accent-blue);
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pagination-current {
-  font-size: 13px;
-  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .modal-overlay {
