@@ -22,7 +22,7 @@ async def list_roles(
     return await role_service.list_roles(page, page_size, status, keyword)
 
 
-@role_router.get("/{role_id}", response_model=Role)
+@role_router.get("/{role_id}/", response_model=Role)
 async def get_role(
     role_id: str,
     current_user: dict = Depends(require_permission("role.view"))
@@ -51,7 +51,7 @@ async def create_role(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@role_router.put("/{role_id}", response_model=dict)
+@role_router.put("/{role_id}/", response_model=dict)
 async def update_role(
     role_id: str,
     role_data: RoleUpdate,
@@ -74,7 +74,7 @@ async def update_role(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@role_router.delete("/{role_id}", response_model=dict)
+@role_router.delete("/{role_id}/", response_model=dict)
 async def delete_role(
     role_id: str,
     current_user: dict = Depends(require_permission("role.delete"))

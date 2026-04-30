@@ -75,21 +75,21 @@ export const usePermission = () => {
   }
 
   const hasPermission = (code: string): boolean => {
-    if (userPermissions.value.role_codes.includes('admin')) {
+    if (userPermissions.value.role_codes.includes('super_admin')) {
       return true
     }
     return userPermissions.value.permissions.includes(code)
   }
 
   const hasAnyPermission = (codes: string[]): boolean => {
-    if (userPermissions.value.role_codes.includes('admin')) {
+    if (userPermissions.value.role_codes.includes('super_admin')) {
       return true
     }
     return codes.some(code => userPermissions.value.permissions.includes(code))
   }
 
   const hasAllPermissions = (codes: string[]): boolean => {
-    if (userPermissions.value.role_codes.includes('admin')) {
+    if (userPermissions.value.role_codes.includes('super_admin')) {
       return true
     }
     return codes.every(code => userPermissions.value.permissions.includes(code))

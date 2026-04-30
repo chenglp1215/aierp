@@ -57,7 +57,7 @@ async def websocket_chat(
     agent = agent_manager.get_agent(agent_id)
 
     user_permissions = user.get("permissions", []) if user else []
-    if "admin" in [each_role.get("code") for each_role in user.get("roles", [])]:
+    if "super_admin" in [each_role.get("code") for each_role in user.get("roles", [])]:
         user_permissions = None
     try:
         start = True

@@ -1,20 +1,26 @@
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 
 export type Theme = 'dark' | 'light'
 
 const STORAGE_KEY = 'app-theme'
 
-const isDark = ref(true)
-
-const initTheme = () => {
+const getSavedTheme = (): boolean => {
   const saved = localStorage.getItem(STORAGE_KEY)
-  if (saved === 'light' || saved === 'dark') {
-    isDark.value = saved === 'dark'
+  if (saved === 'light') {
+    return false
   }
+  if (saved === 'dark') {
+    return true
+  }
+  return true
 }
 
+const isDark = ref(getSavedTheme())
+
 const applyTheme = (dark: boolean) => {
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+  if (document.documentElement) {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+  }
 }
 
 const toggleTheme = () => {
@@ -28,12 +34,13 @@ const setTheme = (theme: Theme) => {
 watch(isDark, (dark) => {
   localStorage.setItem(STORAGE_KEY, dark ? 'dark' : 'light')
   applyTheme(dark)
-}, { immediate: true })
-
-onMounted(() => {
-  initTheme()
-  applyTheme(isDark.value)
 })
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => applyTheme(isDark.value))
+} else {
+  applyTheme(isDark.value)
+}
 
 export function useTheme() {
   return {

@@ -88,6 +88,8 @@ class SalesOrderService(BaseService):
         data["created_at"] = datetime.now()
         data["updated_at"] = datetime.now()
         data["id"] = await self.create(data)
+        if "_id" in data:
+            data.pop("_id")
         return data["order_no"], data["id"]
 
     async def confirm_order(self, order_no: str, supplier_id: Optional[str] = None, supplier_name: Optional[str] = None) -> Dict[str, Any]:

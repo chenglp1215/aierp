@@ -58,7 +58,7 @@ def require_permission(*permissions: str) -> Callable:
         for each_role in user_roles:
             user_perms.update(set([each_perm.get("code") for each_perm in each_role.get("permissions", [])]))
 
-        if "admin" in role_codes:
+        if "super_admin" in role_codes or "admin" in role_codes:
             return current_user
 
         logger.info(f"用户名： {current_user.get('username')} , 用户权限: {user_perms}")
@@ -142,7 +142,7 @@ async def change_password(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@auth_router.get("/users", response_model=UserListResponse)
+@auth_router.get("/users/", response_model=UserListResponse)
 async def list_users(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -154,7 +154,7 @@ async def list_users(
     return await auth_service.list_users(page, page_size, status, keyword)
 
 
-@auth_router.get("/users/{user_id}", response_model=User)
+@auth_router.get("/users/{user_id}/", response_model=User)
 async def get_user(
     user_id: str,
     current_user: User = Depends(require_permission("user.view"))
@@ -166,7 +166,7 @@ async def get_user(
     return user
 
 
-@auth_router.post("/users", response_model=dict)
+@auth_router.post("/users/", response_model=dict)
 async def create_user(
     user_data: UserCreate,
     current_user: User = Depends(require_permission("user.create"))
@@ -183,7 +183,7 @@ async def create_user(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@auth_router.put("/users/{user_id}", response_model=dict)
+@auth_router.put("/users/{user_id}/", response_model=dict)
 async def update_user(
     user_id: str,
     user_data: UserUpdate,
@@ -196,7 +196,7 @@ async def update_user(
     return {"status": "success", "message": "用户更新成功"}
 
 
-@auth_router.delete("/users/{user_id}", response_model=dict)
+@auth_router.delete("/users/{user_id}/", response_model=dict)
 async def delete_user(
     user_id: str,
     current_user: User = Depends(require_permission("user.delete"))

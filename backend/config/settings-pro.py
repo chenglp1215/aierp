@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    CORS_ORIGINS: list = ["*"]
+    CORS_ORIGINS: list = ["http://132.232.212.151:9003"]
 
     LOG_LEVEL: str = "INFO"
 

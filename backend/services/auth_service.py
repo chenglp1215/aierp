@@ -144,6 +144,14 @@ class AuthService(BaseService):
             if existing_email:
                 raise ValueError("邮箱已存在")
 
+        if user_data.phone:
+            existing_phone = await self.find_one({"phone": user_data.phone})
+            if existing_phone:
+                raise ValueError("手机号已被使用")
+
+        if not user_data.username.replace("_", "").replace("-", "").isalnum():
+            raise ValueError("用户名只能包含字母、数字、下划线和连字符")
+
         data = user_data.model_dump()
         data["password"] = self.get_password_hash(data["password"])
         data["status"] = UserStatus.ACTIVE.value
@@ -165,6 +173,16 @@ class AuthService(BaseService):
     async def update_user(self, user_id: str, user_data: UserUpdate) -> bool:
         """更新用户信息"""
         data = user_data.model_dump(exclude_unset=True)
+
+        if "email" in data and data["email"]:
+            existing = await self.find_one({"email": data["email"], "_id": {"$ne": ObjectId(user_id)}})
+            if existing:
+                raise ValueError("邮箱已被其他用户使用")
+
+        if "phone" in data and data["phone"]:
+            existing = await self.find_one({"phone": data["phone"], "_id": {"$ne": ObjectId(user_id)}})
+            if existing:
+                raise ValueError("手机号已被其他用户使用")
 
         if "new_password" in data and data["new_password"]:
             hashed_password = self.get_password_hash(data["new_password"])
@@ -278,11 +296,13 @@ class RoleService(BaseService):
 
         data = role_data.model_dump()
         data["id"] = await self.create(data)
+        if "_id" in data:
+            data.pop("_id")
         return data
 
     async def update_role(self, role_id: str, role_data: RoleUpdate) -> bool:
         """更新角色"""
-        data = role_data.model_dump(exclude_unset=True)
+        data = role_data.model_dump(exclude_unset=True) if isinstance(role_data, RoleUpdate) else dict(role_data)
 
         if "permission_ids" in data and data["permission_ids"]:
             perm_ids = list(set(data["permission_ids"]))

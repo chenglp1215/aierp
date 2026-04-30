@@ -27,7 +27,7 @@ async def get_permission_tree(
     return await permission_service.get_permission_tree()
 
 
-@permission_router.get("/{permission_id}", response_model=Permission)
+@permission_router.get("/{permission_id}/", response_model=Permission)
 async def get_permission(
     permission_id: str,
     current_user: dict = Depends(require_permission("permission.view"))

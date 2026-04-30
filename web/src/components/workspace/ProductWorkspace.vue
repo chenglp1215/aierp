@@ -150,29 +150,53 @@ const buildVerticalTableData = () => {
   const data: any[] = []
   for (const group of productGroups.value) {
     const specs = group.product.specs || []
-    for (let i = 0; i < specs.length; i++) {
-      const spec = specs[i]
+    if (specs.length === 0) {
       data.push({
-        _id: `${group.product.id}_${spec.id}`,
+        _id: `${group.product.id}_empty`,
         product_id: group.product.id,
         product_code: group.product.product_code,
         product_name: group.product.name,
         brand: group.product.brand,
         category: group.product.category_name || '-',
         product_is_active: group.product.is_active ?? true,
-        spec_id: spec.id,
-        spec_code: spec.spec_code,
-        packaging: spec.packaging,
-        sales_spec: spec.sales_spec,
-        price: spec.price,
-        spec_is_active: spec.is_active,
-        stock_quantity: spec.stock_quantity || 0,
-        stock_status: spec.stock_status,
-        isFirst: i === 0,
-        rowspan: i === 0 ? specs.length : 0,
-        product_rowspan: i === 0 ? specs.length : 0,
-        specs_length: specs.length
+        spec_id: '',
+        spec_code: '-',
+        packaging: '-',
+        sales_spec: '-',
+        price: 0,
+        spec_is_active: false,
+        stock_quantity: 0,
+        stock_status: '',
+        isFirst: true,
+        rowspan: 1,
+        product_rowspan: 1,
+        specs_length: 0
       })
+    } else {
+      for (let i = 0; i < specs.length; i++) {
+        const spec = specs[i]
+        data.push({
+          _id: `${group.product.id}_${spec.id}`,
+          product_id: group.product.id,
+          product_code: group.product.product_code,
+          product_name: group.product.name,
+          brand: group.product.brand,
+          category: group.product.category_name || '-',
+          product_is_active: group.product.is_active ?? true,
+          spec_id: spec.id,
+          spec_code: spec.spec_code || '-',
+          packaging: spec.packaging || '-',
+          sales_spec: spec.sales_spec || '-',
+          price: spec.price,
+          spec_is_active: spec.is_active,
+          stock_quantity: spec.stock_quantity || 0,
+          stock_status: spec.stock_status,
+          isFirst: i === 0,
+          rowspan: i === 0 ? specs.length : 0,
+          product_rowspan: i === 0 ? specs.length : 0,
+          specs_length: specs.length
+        })
+      }
     }
   }
   verticalTableData.value = data
@@ -292,25 +316,6 @@ const cancelAddNewSpec = () => {
   }
 }
 
-const confirmAddNewSpec = () => {
-  if (!newSpecForm.value.price || newSpecForm.value.price < 0) {
-    window.showToast('请输入有效的价格', 'warning')
-    return
-  }
-  const newSpec: ProductSpec = {
-    id: `temp_${Date.now()}`,
-    product_id: editingProduct.value!.id,
-    spec_code: newSpecForm.value.spec_code,
-    packaging: newSpecForm.value.packaging,
-    sales_spec: newSpecForm.value.sales_spec,
-    price: newSpecForm.value.price,
-    cas_number: newSpecForm.value.cas_number,
-    is_active: newSpecForm.value.is_active
-  }
-  specsListInModal.value.push(newSpec)
-  isAddingNewSpec.value = false
-}
-
 const startEditSpec = (spec: ProductSpec) => {
   editingSpecId.value = spec.id
   editingSpecBackup.value = { ...spec }
@@ -327,15 +332,6 @@ const cancelEditSpec = () => {
   editingSpecBackup.value = null
 }
 
-const saveSpecFromRow = (spec: ProductSpec) => {
-  if (!spec.price || spec.price < 0) {
-    window.showToast('请输入有效的价格', 'warning')
-    return
-  }
-  editingSpecId.value = null
-  editingSpecBackup.value = null
-}
-
 const deleteSpecInModal = (specId: string) => {
   const index = specsListInModal.value.findIndex(s => s.id === specId)
   if (index !== -1) {
@@ -344,6 +340,43 @@ const deleteSpecInModal = (specId: string) => {
 }
 
 const handleSaveProductWithSpecs = async () => {
+  if (editingSpecId.value) {
+    const spec = specsListInModal.value.find(s => s.id === editingSpecId.value)
+    if (spec) {
+      if (!spec.price || spec.price < 0) {
+        window.showToast('请输入有效的价格', 'warning')
+        return
+      }
+    }
+    editingSpecId.value = null
+    editingSpecBackup.value = null
+  }
+  if (isAddingNewSpec.value) {
+    if (!newSpecForm.value.price || newSpecForm.value.price < 0) {
+      window.showToast('请输入有效的价格', 'warning')
+      return
+    }
+    const newSpec: ProductSpec = {
+      id: `temp_${Date.now()}`,
+      product_id: editingProduct.value?.id || '',
+      spec_code: newSpecForm.value.spec_code,
+      packaging: newSpecForm.value.packaging,
+      sales_spec: newSpecForm.value.sales_spec,
+      price: newSpecForm.value.price,
+      cas_number: newSpecForm.value.cas_number,
+      is_active: newSpecForm.value.is_active
+    }
+    specsListInModal.value.push(newSpec)
+    isAddingNewSpec.value = false
+    newSpecForm.value = {
+      spec_code: '',
+      packaging: '',
+      sales_spec: '',
+      price: 0,
+      cas_number: '',
+      is_active: true
+    }
+  }
   if (!productForm.value.name?.trim()) {
     window.showToast('请输入产品名称', 'warning')
     return
@@ -678,7 +711,6 @@ const handleEscKey = (e: KeyboardEvent) => {
                     <td><input type="checkbox" v-model="spec.is_active" class="inline-checkbox" /></td>
                     <td>
                       <button class="btn-link" @click="cancelEditSpec">取消</button>
-                      <button class="btn-link" @click="saveSpecFromRow(spec)">保存</button>
                     </td>
                   </template>
                   <template v-else>
@@ -703,7 +735,6 @@ const handleEscKey = (e: KeyboardEvent) => {
                   <td><input type="checkbox" v-model="newSpecForm.is_active" class="inline-checkbox" /></td>
                   <td>
                     <button class="btn-link" @click="cancelAddNewSpec">取消</button>
-                    <button class="btn-link" @click="confirmAddNewSpec">保存</button>
                   </td>
                 </tr>
                 <tr v-if="specsListInModal.length === 0 && !isAddingNewSpec">

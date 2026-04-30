@@ -1,4 +1,8 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+const getApiBaseUrl = () => {
+  return `${window.location.protocol}//${window.location.host}/api/v1`
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || getApiBaseUrl()
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
@@ -159,23 +163,23 @@ export const authApi = {
   },
 
   listUsers: (params: { page?: number; page_size?: number; status?: string; keyword?: string }) => {
-    return apiService.get<any>('/auth/users', params)
+    return apiService.get<any>('/auth/users/', params)
   },
 
   getUser: (id: string) => {
-    return apiService.get<any>(`/auth/users/${id}`)
+    return apiService.get<any>(`/auth/users/${id}/`)
   },
 
   createUser: (data: any) => {
-    return apiService.post<any>('/auth/users', data)
+    return apiService.post<any>('/auth/users/', data)
   },
 
   updateUser: (id: string, data: any) => {
-    return apiService.put<any>(`/auth/users/${id}`, data)
+    return apiService.put<any>(`/auth/users/${id}/`, data)
   },
 
   deleteUser: (id: string) => {
-    return apiService.delete<any>(`/auth/users/${id}`)
+    return apiService.delete<any>(`/auth/users/${id}/`)
   },
 
   resetPassword: (id: string, newPassword: string) => {
@@ -189,23 +193,23 @@ export const authApi = {
 
 export const roleApi = {
   list: (params: { page?: number; page_size?: number; status?: string; keyword?: string }) => {
-    return apiService.get<any>('/auth/roles', params)
+    return apiService.get<any>('/auth/roles/', params)
   },
 
   getById: (id: string) => {
-    return apiService.get<any>(`/auth/roles/${id}`)
+    return apiService.get<any>(`/auth/roles/${id}/`)
   },
 
   create: (data: any) => {
-    return apiService.post<any>('/auth/roles', data)
+    return apiService.post<any>('/auth/roles/', data)
   },
 
   update: (id: string, data: any) => {
-    return apiService.put<any>(`/auth/roles/${id}`, data)
+    return apiService.put<any>(`/auth/roles/${id}/`, data)
   },
 
   delete: (id: string) => {
-    return apiService.delete<any>(`/auth/roles/${id}`)
+    return apiService.delete<any>(`/auth/roles/${id}/`)
   },
 
   updateStatus: (id: string, status: string) => {
@@ -215,7 +219,7 @@ export const roleApi = {
 
 export const permissionApi = {
   list: (params: { page?: number; page_size?: number; keyword?: string }) => {
-    return apiService.get<any>('/auth/permissions', params)
+    return apiService.get<any>('/auth/permissions/', params)
   },
 
   getTree: () => {
@@ -223,7 +227,7 @@ export const permissionApi = {
   },
 
   getById: (id: string) => {
-    return apiService.get<any>(`/auth/permissions/${id}`)
+    return apiService.get<any>(`/auth/permissions/${id}/`)
   }
 }
 
@@ -744,7 +748,12 @@ export const stockApi = {
   }
 }
 
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000/api/v1'
+const getWsBaseUrl = () => {
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${wsProtocol}//${window.location.host}/api/v1`
+}
+
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || getWsBaseUrl()
 
 export interface ChatMessage {
   type: 'text' | 'system' | 'ping' | 'pong' | 'image' | 'file' | 'stream' | 'stream_start' | 'stream_end' | 'error' | 'tool_call_start' | 'tool_call_end'

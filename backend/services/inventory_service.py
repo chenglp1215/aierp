@@ -45,6 +45,8 @@ class WarehouseService(BaseService):
             data["warehouse_code"] = _generate_code("WH")
         data["status"] = WarehouseStatus.ACTIVE.value
         data['id'] = await self.create(data)
+        if "_id" in data:
+            data.pop("_id")
         return data
 
     async def update_warehouse(self, warehouse_code: str, warehouse_data: WarehouseUpdate) -> bool:
@@ -129,6 +131,8 @@ class InboundBatchService(BaseService):
         data["operator_name"] = operator_name
         data["batch_code"] = _generate_code("IN")
         data["id"] = await self.create(data)
+        if "_id" in data:
+            data.pop("_id")
         return data
 
     async def get_inbound_batches_by_inventory(
@@ -308,6 +312,8 @@ class StockService(BaseService):
         data["status"] = StockStatus.NORMAL.value
         _id = await self.create(data)
         data["id"] = _id
+        if "_id" in data:
+            data.pop("_id")
         return data
 
     async def find_stock_by_warehouse_and_spec(self, warehouse_id: str, spec_id: str) -> Optional[Dict[str, Any]]:

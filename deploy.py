@@ -49,10 +49,14 @@ def build_frontend(project_root):
 
     if not os.path.exists(os.path.join(web_dir, "node_modules")):
         log_info("安装前端依赖...")
-        os.system("npm install")
+        os.system(f"cd {web_dir} && npm install")
 
     log_info("执行 npm run build...")
-    os.system("npm run build")
+    result = os.system(f"cd {web_dir} && npm run build")
+
+    if result != 0:
+        log_error("前端构建失败")
+        sys.exit(1)
 
     dist_dir = os.path.join(web_dir, "dist")
     if not os.path.exists(dist_dir):
@@ -130,16 +134,29 @@ def transfer_and_deploy(password, temp_dir, backend_tar, frontend_tar):
         bash {REMOTE_PATH}/restart.sh
     '''
     stdin, stdout, stderr = ssh.exec_command(remote_script)
+
+    stdout_lines = stdout.read().decode('utf-8', errors='ignore')
+    stderr_lines = stderr.read().decode('utf-8', errors='ignore')
     exit_status = stdout.channel.recv_exit_status()
 
+    if stdout_lines:
+        for line in stdout_lines.strip().split('\n'):
+            if line.strip():
+                log_info(f"[远程] {line}")
+    if stderr_lines:
+        for line in stderr_lines.strip().split('\n'):
+            if line.strip() and 'error' not in line.lower() and 'fail' not in line.lower():
+                log_info(f"[远程] {line}")
+            elif line.strip():
+                log_error(f"[远程] {line}")
+
     if exit_status != 0:
-        error = stderr.read().decode('utf-8', errors='ignore')
-        log_error(f"远程执行失败: {error}")
+        log_error(f"远程执行失败，退出码: {exit_status}")
         ssh.close()
         sys.exit(1)
 
     ssh.close()
-    log_info("文件传输完成")
+    log_info("部署完成")
 
 
 def main():

@@ -31,7 +31,7 @@ async def init_fixed_roles():
 
     fixed_roles = [
         {
-            "code": "admin",
+            "code": "super_admin",
             "name": "超级管理员",
             "description": "系统超级管理员，拥有所有权限",
             "is_fixed": True,
@@ -68,7 +68,7 @@ async def init_fixed_roles():
             "email": "admin@example.com",
             "phone": "13800138000",
             "status": "active",
-            "role_ids": [role_ids["admin"]],
+            "role_ids": [role_ids["super_admin"]],
             "created_at": datetime.now(),
             "updated_at": datetime.now()
         },
@@ -117,7 +117,7 @@ async def init_fixed_roles():
     print("✅ 固化角色初始化完成!")
     print("="*50)
     print("\n📋 角色信息:")
-    print(f"   超级管理员 (admin): {role_ids.get('admin', 'N/A')}")
+    print(f"   超级管理员 (super_admin): {role_ids.get('super_admin', 'N/A')}")
     print(f"   仓库管理员 (warehouse_admin): {role_ids.get('warehouse_admin', 'N/A')}")
 
     print("\n📋 测试账号:")

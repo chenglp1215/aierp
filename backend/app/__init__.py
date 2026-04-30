@@ -9,121 +9,20 @@ from app.middleware import LoggingMiddleware, AuthMiddleware
 
 logger = logging.getLogger(__name__)
 
-
-async def init_admin_user():
-    """初始化管理员账号"""
-    from services.auth_service import auth_service, role_service, permission_service
-
-    try:
-        existing_admin = await auth_service.find_one({"username": "admin"})
-        if existing_admin:
-            logger.info("管理员账号已存在")
-            return
-
-        all_perms = await permission_service.collection.find({}).to_list(length=None)
-        all_perm_ids = [str(perm["_id"]) for perm in all_perms]
-
-        admin_role = await role_service.find_one({"code": "admin"})
-        if not admin_role:
-            role_id = await role_service.create({
-                "code": "admin",
-                "name": "管理员",
-                "description": "系统管理员角色",
-                "permission_ids": all_perm_ids,
-                "status": "active",
-                "is_fixed": True
-            })
-            admin_role_id = role_id
-            logger.info(f"创建管理员角色成功: {admin_role_id}")
-        else:
-            await role_service.update(admin_role["id"], {"permission_ids": all_perm_ids, "is_fixed": True})
-            admin_role_id = admin_role["id"]
-            logger.info("管理员角色已存在，已更新权限")
-
-        from models.auth import UserCreate
-        user_data = UserCreate(
-            username="admin",
-            password="admin123",
-            email="admin@example.com",
-            full_name="系统管理员",
-            role_ids=[admin_role_id]
-        )
-
-        user_id = await auth_service.create_user(user_data)
-        logger.info(f"创建管理员账号成功: {user_id}")
-
-    except Exception as e:
-        logger.error(f"初始化管理员账号失败: {e}")
-
-
-async def init_default_roles():
-    """初始化默认角色"""
-    from services.auth_service import role_service, permission_service
-
-    try:
-        existing_role = await role_service.find_one({"code": "user"})
-        if existing_role:
-            logger.info("普通用户角色已存在，跳过")
-            return
-
-        basic_perms = await permission_service.collection.find({
-            "code": {"$in": [
-                "dashboard.view", "chat.view",
-                "customer.view", "customer.create", "customer.edit",
-                "product.view", "product.create", "product.edit",
-                "order.view", "order.create", "order.edit", "order.confirm",
-                "procurement.view", "procurement.create", "procurement.edit",
-                "receivable.view", "receivable.create", "receivable.edit", "receivable.record",
-                "warehouse.view", "warehouse.create", "warehouse.edit",
-                "stock.view", "stock.create", "stock.edit",
-                "finance.invoice.view", "finance.payment.view",
-                "intelligent.settings.view"
-            ]}
-        }).to_list(length=None)
-
-        basic_perm_ids = [str(perm["_id"]) for perm in basic_perms]
-
-        role_id = await role_service.create({
-            "code": "user",
-            "name": "普通用户",
-            "description": "普通用户角色，拥有基础权限",
-            "permission_ids": basic_perm_ids,
-            "status": "active"
-        })
-        logger.info(f"创建普通用户角色成功: {role_id}")
-
-    except Exception as e:
-        logger.error(f"初始化默认角色失败: {e}")
-
-
-async def init_default_agents():
-    """初始化默认 Agent"""
-    from services.ai_service import agent_service
-
-    try:
-        await agent_service.init_default_agents()
-    except Exception as e:
-        logger.error(f"初始化默认 Agent 失败: {e}")
-
-
-async def init_agent_manager():
-    """初始化 Agent 管理器"""
-    from app.agent import agent_manager
-
-    try:
-        await agent_manager.initialize()
-        logger.info("Agent 管理器初始化完成")
-    except Exception as e:
-        logger.error(f"初始化 Agent 管理器失败: {e}")
+SUPER_ADMIN_CODE = "super_admin"
+WAREHOUSE_ADMIN_CODE = "warehouse_admin"
+USER_ROLE_CODE = "user"
 
 
 async def init_default_permissions():
-    """初始化默认权限集"""
+    """初始化默认权限集（幂等：已存在则跳过）"""
     from services.auth_service import permission_service
 
     try:
-        await permission_service.collection.delete_many({})
-        logger.info("已清空权限数据，准备重新初始化")
+        existing_count = await permission_service.collection.count_documents({})
+        if existing_count > 0:
+            logger.info(f"权限已存在（共 {existing_count} 条），跳过初始化")
+            return
 
         menu_permissions = [
             {"code": "dashboard.view", "name": "工作台查看", "type": "menu", "sort_order": 1, "parent_id": None},
@@ -230,12 +129,151 @@ async def init_default_permissions():
         logger.error(f"初始化默认权限失败: {e}")
 
 
+async def init_fixed_roles():
+    """初始化固化角色组：超级管理员和仓库管理员（幂等：已存在则跳过）"""
+    from services.auth_service import role_service, permission_service
+
+    try:
+        existing_fixed = await role_service.collection.count_documents({"is_fixed": True})
+        if existing_fixed > 0:
+            logger.info(f"固化角色已存在（共 {existing_fixed} 条），跳过初始化")
+            return
+
+        all_perms = await permission_service.collection.find({}).to_list(length=None)
+        all_perm_ids = [str(perm["_id"]) for perm in all_perms]
+
+        super_admin_id = await role_service.create({
+            "code": SUPER_ADMIN_CODE,
+            "name": "超级管理员",
+            "description": "系统超级管理员，拥有所有权限",
+            "permission_ids": all_perm_ids,
+            "status": "active",
+            "is_fixed": True
+        })
+        logger.info(f"创建超级管理员角色成功: {super_admin_id}")
+
+        warehouse_perms = await permission_service.collection.find({
+            "code": {"$in": [
+                "warehouse.view", "warehouse.create", "warehouse.edit", "warehouse.delete",
+                "inventory.stock.view", "inventory.stock.edit",
+                "inventory.check.view", "inventory.check.edit",
+            ]}
+        }).to_list(length=None)
+        warehouse_perm_ids = [str(perm["_id"]) for perm in warehouse_perms]
+
+        warehouse_admin_id = await role_service.create({
+            "code": WAREHOUSE_ADMIN_CODE,
+            "name": "仓库管理员",
+            "description": "仓库管理员，负责仓库日常管理",
+            "permission_ids": warehouse_perm_ids,
+            "status": "active",
+            "is_fixed": True
+        })
+        logger.info(f"创建仓库管理员角色成功: {warehouse_admin_id}")
+
+    except Exception as e:
+        logger.error(f"初始化固化角色组失败: {e}")
+
+
+async def init_admin_user():
+    """初始化管理员账号（幂等：已存在则跳过）"""
+    from services.auth_service import auth_service, role_service
+
+    try:
+        existing_admin = await auth_service.find_one({"username": "admin"})
+        if existing_admin:
+            logger.info("管理员账号已存在，跳过")
+            return
+
+        super_admin_role = await role_service.find_one({"code": SUPER_ADMIN_CODE})
+        if not super_admin_role:
+            logger.error("超级管理员角色不存在，请先初始化固化角色")
+            return
+
+        from models.auth import UserCreate
+        user_data = UserCreate(
+            username="admin",
+            password="admin123",
+            email="admin@example.com",
+            full_name="系统管理员",
+            role_ids=[super_admin_role["id"]]
+        )
+
+        user_id = await auth_service.create_user(user_data)
+        logger.info(f"创建管理员账号成功，绑定超级管理员角色")
+
+    except Exception as e:
+        logger.error(f"初始化管理员账号失败: {e}")
+
+
+async def init_default_roles():
+    """初始化默认角色：普通用户（幂等：已存在则跳过）"""
+    from services.auth_service import role_service, permission_service
+
+    try:
+        existing_role = await role_service.find_one({"code": USER_ROLE_CODE})
+        if existing_role:
+            logger.info("普通用户角色已存在，跳过")
+            return
+
+        basic_perms = await permission_service.collection.find({
+            "code": {"$in": [
+                "dashboard.view", "chat.view",
+                "customer.view", "customer.create", "customer.edit",
+                "product.view", "product.create", "product.edit",
+                "order.view", "order.create", "order.edit", "order.confirm",
+                "procurement.view", "procurement.create", "procurement.edit",
+                "receivable.view", "receivable.create", "receivable.edit", "receivable.record",
+                "warehouse.view", "warehouse.create", "warehouse.edit",
+                "stock.view", "stock.create", "stock.edit",
+                "finance.invoice.view", "finance.payment.view",
+                "intelligent.settings.view"
+            ]}
+        }).to_list(length=None)
+
+        basic_perm_ids = [str(perm["_id"]) for perm in basic_perms]
+
+        role_id = await role_service.create({
+            "code": USER_ROLE_CODE,
+            "name": "普通用户",
+            "description": "普通用户角色，拥有基础权限",
+            "permission_ids": basic_perm_ids,
+            "status": "active"
+        })
+        logger.info(f"创建普通用户角色成功: {role_id}")
+
+    except Exception as e:
+        logger.error(f"初始化默认角色失败: {e}")
+
+
+async def init_default_agents():
+    """初始化默认 Agent（幂等：已存在则跳过）"""
+    from services.ai_service import agent_service
+
+    try:
+        await agent_service.init_default_agents()
+    except Exception as e:
+        logger.error(f"初始化默认 Agent 失败: {e}")
+
+
+async def init_agent_manager():
+    """初始化 Agent 管理器"""
+    from app.agent import agent_manager
+
+    try:
+        await agent_manager.initialize()
+        logger.info("Agent 管理器初始化完成")
+    except Exception as e:
+        logger.error(f"初始化 Agent 管理器失败: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
     await init_default_permissions()
-    await init_default_roles()
+    await init_fixed_roles()
     await init_admin_user()
+    await init_default_roles()
     await init_default_agents()
     await init_agent_manager()
     yield
@@ -253,12 +291,20 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         docs_url="/docs" if settings.DEBUG else None,
         redoc_url="/redoc" if settings.DEBUG else None,
+        redirect_slashes=False,
     )
+
+    if settings.CORS_ORIGINS == ["*"]:
+        allow_origins = ["*"]
+        allow_credentials = False
+    else:
+        allow_origins = settings.CORS_ORIGINS
+        allow_credentials = True
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=allow_origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

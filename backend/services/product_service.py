@@ -38,6 +38,8 @@ class ProductSpecService(BaseService):
         if not data.get("spec_code"):
             data["spec_code"] = self._generate_spec_code()
         data["id"] = await self.create(data)
+        if "_id" in data:
+            data.pop("_id")
         return data
 
     async def update_spec(self, id: str, spec_data: ProductSpecUpdate) -> bool:
@@ -204,15 +206,15 @@ class ProductService(BaseService):
         if not data.get("product_code"):
             data["product_code"] = self._generate_product_code()
         data["id"] = await self.create(data)
-
         created_specs = []
         for spec_data in specs_data:
             spec_data["product_id"] = data["id"]
             spec_create = ProductSpecCreate(**spec_data)
             spec = await self.spec_service.create_spec(spec_create)
             created_specs.append(spec)
-
         data["specs"] = created_specs
+        if "_id" in data:
+            data.pop("_id")
         return data
 
     async def update_product(self, id: str, product_data: ProductUpdate) -> bool:

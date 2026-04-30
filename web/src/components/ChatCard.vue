@@ -862,7 +862,7 @@ onUnmounted(() => {
 }
 
 .message-bubble {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--bg-secondary);
   padding: 14px 18px;
   border-radius: var(--radius-md);
   font-size: 14px;

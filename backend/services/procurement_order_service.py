@@ -42,6 +42,8 @@ class ProcurementOrderService(BaseService):
         data["status"] = ProcurementOrderStatus.PENDING.value
         data["sales_order_id"] = sales_order_id
         data["id"] = await self.create(data)
+        if "_id" in data:
+            data.pop("_id")
         return data
 
     async def update_procurement_order(
