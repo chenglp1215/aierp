@@ -16,6 +16,7 @@
     "xe-utils": "^4.0.4"
   },
   "devDependencies": {
+    "@types/estree": "^1.0.8",
     "@vitejs/plugin-vue": "^5.2.3",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
