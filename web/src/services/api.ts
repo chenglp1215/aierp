@@ -89,7 +89,18 @@ class ApiService {
       throw new Error(error.detail || `HTTP error! status: ${response.status}`)
     }
 
-    return response.json()
+    const data = await response.json()
+    if (data.status === 'error') {
+      if (data.validation_errors) {
+        const messages = Object.entries(data.validation_errors as Record<string, string[]>)
+          .map(([field, errors]) => `${field}: ${(errors as string[]).join(', ')}`)
+          .join('; ')
+        throw new Error(`${data.message || '操作失败'} - ${messages}`)
+      }
+      throw new Error(data.message || '操作失败')
+    }
+
+    return data
   }
 
   get<T>(endpoint: string, params?: Record<string, any>, skipAuth = false): Promise<T> {
