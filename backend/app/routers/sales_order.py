@@ -36,7 +36,7 @@ async def create_sales_order(
     await accounts_receivable_service.create_receivable(receivable_data)
 
     return {
-        "status": "success",
+        "status": True,
         "message": "订单创建成功",          
         "result": {"order_no": order_no}
     }
@@ -89,7 +89,7 @@ async def update_sales_order(
     if not success:
         raise HTTPException(status_code=404, detail="订单不存在或更新失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "订单更新成功"
     }
 
@@ -104,7 +104,7 @@ async def delete_sales_order(
     if not success:
         raise HTTPException(status_code=404, detail="订单不存在或删除失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "订单删除成功"
     }
 
@@ -120,7 +120,7 @@ async def update_order_status(
     if not success:
         raise HTTPException(status_code=404, detail="订单不存在或状态更新失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "订单状态更新成功"
     }
 
@@ -136,7 +136,7 @@ async def update_payment_status(
     if not success:
         raise HTTPException(status_code=404, detail="订单不存在或付款状态更新失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "付款状态更新成功"
     }
 
@@ -153,6 +153,6 @@ async def confirm_sales_order(
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("message"))
     return {
-        "status": "success",
+        "status": True,
         "message": result.get("message")
     }

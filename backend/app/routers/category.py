@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query, Depends
+"""
+分类管理 - API路由
+"""
+from fastapi import APIRouter, Query, Depends
 from typing import Optional
 
 from models.category import (
@@ -10,6 +13,7 @@ from models.category import (
 )
 from services.category_service import category_service
 from .auth import get_current_active_user, require_permission
+from app.decorators import handle_result, success_response, error_response
 
 category_router = APIRouter(prefix="/categories", tags=["分类管理"])
 
@@ -22,13 +26,9 @@ async def create_category(
     """创建分类"""
     try:
         category_data = await category_service.create_category(category)
-        return {
-            "status": "success",
-            "message": "分类创建成功",
-            "result": category_data
-        }
+        return success_response("分类创建成功", category_data)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return error_response(str(e))
 
 
 @category_router.get("/", response_model=CategoryListResponse)
@@ -53,13 +53,10 @@ async def list_categories(
 async def get_category_tree(_: dict = Depends(require_permission("category.view"))):
     """获取分类树形结构"""
     tree = await category_service.get_category_tree()
-    return {
-        "status": "success",
-        "result": tree
-    }
+    return success_response("获取分类树形结构成功", tree)
 
 
-@category_router.get("/{category_id}", response_model=Category)
+@category_router.get("/{category_id}", response_model=dict)
 async def get_category(
     category_id: str,
     _: dict = Depends(require_permission("category.view"))
@@ -67,8 +64,8 @@ async def get_category(
     """获取分类详情"""
     category = await category_service.get_by_id(category_id)
     if not category:
-        raise HTTPException(status_code=404, detail="分类不存在")
-    return category
+        return error_response("分类不存在")
+    return success_response("获取分类详情成功", category)
 
 
 @category_router.put("/{category_id}", response_model=dict)
@@ -80,14 +77,9 @@ async def update_category(
     """更新分类"""
     try:
         success = await category_service.update_category(category_id, category)
-        if not success:
-            raise HTTPException(status_code=404, detail="分类不存在或更新失败")
-        return {
-            "status": "success",
-            "message": "分类更新成功"
-        }
+        return handle_result(success, "分类更新成功", "分类不存在或更新失败")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return error_response(str(e))
 
 
 @category_router.delete("/{category_id}", response_model=dict)
@@ -98,11 +90,6 @@ async def delete_category(
     """删除分类"""
     try:
         success = await category_service.delete_category(category_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="分类不存在或删除失败")
-        return {
-            "status": "success",
-            "message": "分类删除成功"
-        }
+        return handle_result(success, "分类删除成功", "分类不存在或删除失败")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return error_response(str(e))

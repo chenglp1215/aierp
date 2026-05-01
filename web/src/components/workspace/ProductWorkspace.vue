@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { productApi, uploadApi, categoryApi, type Product, type ProductSpec, type ProductFormData, type ProductSpecFormData, type CategoryTreeNode } from '../../services/api'
+import { productApi, uploadApi, categoryApi, brandApi, type Product, type ProductSpec, type ProductFormData, type ProductSpecFormData, type CategoryTreeNode, type Brand } from '../../services/api'
 
 type SpanMethod = (params: { row: any; columnIndex: number }) => { rowspan: number; colspan: number } | void
 
@@ -37,12 +37,14 @@ const imageUploading = ref(false)
 const categories = ref<CategoryTreeNode[]>([])
 const categoriesLoading = ref(false)
 
-const filterBrand = ref('')
+const brands = ref<Brand[]>([])
+const brandsLoading = ref(false)
+
+const filterBrandId = ref('')
 const filterCategoryId = ref('')
 
 const brandOptions = computed(() => {
-  const brands = products.value.map(p => p.brand).filter(Boolean) as string[]
-  return [...new Set(brands)].sort()
+  return brands.value.filter(b => b.is_active !== false).map(b => ({ id: b.id, name: b.name }))
 })
 
 const flatCategories = computed(() => {
@@ -71,11 +73,23 @@ const loadCategories = async () => {
   }
 }
 
+const loadBrands = async () => {
+  brandsLoading.value = true
+  try {
+    const res = await brandApi.getAll({ is_active: true })
+    brands.value = res.result || []
+  } catch (error) {
+    console.error('加载品牌失败:', error)
+  } finally {
+    brandsLoading.value = false
+  }
+}
+
 const productForm = ref<ProductFormData>({
   product_code: '',
   name: '',
   image_url: '',
-  brand: '',
+  brand_id: '',
   category_id: '',
   tax_code: '',
   is_active: true
@@ -129,15 +143,15 @@ const loadProducts = async () => {
       page: page.value,
       page_size: pageSize.value,
       keyword: keyword.value || undefined,
-      brand: filterBrand.value || undefined,
+      brand_id: filterBrandId.value || undefined,
       category_id: filterCategoryId.value || undefined
     })
-    products.value = res.items
+    products.value = res.result?.items || []
     productGroups.value = products.value.map(p => ({
       product: p,
       rowspan: p.specs?.length || 1
     }))
-    total.value = res.total
+    total.value = res.result?.total || 0
     buildVerticalTableData()
   } catch (error) {
     console.error('加载产品列表失败:', error)
@@ -156,7 +170,7 @@ const buildVerticalTableData = () => {
         product_id: group.product.id,
         product_code: group.product.product_code,
         product_name: group.product.name,
-        brand: group.product.brand,
+        brand_name: group.product.brand_name,
         category: group.product.category_name || '-',
         product_is_active: group.product.is_active ?? true,
         spec_id: '',
@@ -180,7 +194,7 @@ const buildVerticalTableData = () => {
           product_id: group.product.id,
           product_code: group.product.product_code,
           product_name: group.product.name,
-          brand: group.product.brand,
+          brand_name: group.product.brand_name,
           category: group.product.category_name || '-',
           product_is_active: group.product.is_active ?? true,
           spec_id: spec.id,
@@ -244,16 +258,16 @@ const handleSearch = () => {
 
 const resetFilters = () => {
   keyword.value = ''
-  filterBrand.value = ''
+  filterBrandId.value = ''
   filterCategoryId.value = ''
   page.value = 1
   loadProducts()
 }
 
-const hasActiveFilters = computed(() => !!(keyword.value || filterBrand.value || filterCategoryId.value))
+const hasActiveFilters = computed(() => !!(keyword.value || filterBrandId.value || filterCategoryId.value))
 
 const resetProductForm = () => {
-  productForm.value = { product_code: '', name: '', image_url: '', brand: '', category_id: '', tax_code: '', is_active: true }
+  productForm.value = { product_code: '', name: '', image_url: '', brand_id: '', category_id: '', tax_code: '', is_active: true }
   editingProduct.value = null
 }
 
@@ -270,7 +284,7 @@ const openEditProduct = (row: any) => {
     product_code: product.product_code,
     name: product.name,
     image_url: product.image_url || '',
-    brand: product.brand,
+    brand_id: product.brand_id,
     category_id: product.category_id,
     tax_code: product.tax_code || '',
     is_active: product.is_active ?? true
@@ -433,6 +447,10 @@ const handleDelete = async () => {
       await productApi.delete(deleteTargetId.value)
       window.showToast('产品删除成功', 'success')
       products.value = products.value.filter(p => p.id !== deleteTargetId.value)
+      productGroups.value = products.value.map(p => ({
+        product: p,
+        rowspan: p.specs?.length || 1
+      }))
       total.value--
     } else {
       await productApi.deleteSpec(deleteTargetId.value)
@@ -527,6 +545,7 @@ onMounted(() => {
   loadProducts()
   loadStats()
   loadCategories()
+  loadBrands()
   document.addEventListener('keydown', handleEscKey)
 })
 
@@ -559,9 +578,9 @@ const handleEscKey = (e: KeyboardEvent) => {
             @keyup.enter="handleSearch"
           />
         </div>
-        <select v-model="filterBrand" class="filter-select">
+        <select v-model="filterBrandId" class="filter-select">
           <option value="">全部品牌</option>
-          <option v-for="brand in brandOptions" :key="brand" :value="brand">{{ brand }}</option>
+          <option v-for="brand in brandOptions" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
         </select>
         <select v-model="filterCategoryId" class="filter-select">
           <option value="">全部分类</option>
@@ -585,7 +604,7 @@ const handleEscKey = (e: KeyboardEvent) => {
         <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
         <vxe-column field="product_code" title="产品编号" width="130" class-name="col--center" />
         <vxe-column field="product_name" title="产品名称" min-width="180" class-name="col--center" />
-        <vxe-column field="brand" title="品牌" width="100" class-name="col--center" />
+        <vxe-column field="brand_name" title="品牌" width="100" class-name="col--center" />
         <vxe-column field="category" title="分类" width="100" class-name="col--center" />
         <vxe-column field="product_is_active" title="产品有效" width="80" class-name="col--center">
           <template #default="{ row }">
@@ -645,7 +664,12 @@ const handleEscKey = (e: KeyboardEvent) => {
           <div class="form-row">
             <div class="form-group">
               <label>品牌</label>
-              <input type="text" v-model="productForm.brand" placeholder="品牌名称" />
+              <select v-model="productForm.brand_id" class="form-select" :disabled="brandsLoading">
+                <option value="">请选择品牌</option>
+                <option v-for="brand in brandOptions" :key="brand.id" :value="brand.id">
+                  {{ brand.name }}
+                </option>
+              </select>
             </div>
             <div class="form-group">
               <label>分类</label>

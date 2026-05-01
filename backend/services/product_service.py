@@ -8,6 +8,7 @@ from datetime import datetime
 from .base_service import BaseService
 from models.product import ProductCreate, ProductUpdate, ProductSpecCreate, ProductSpecUpdate
 from services.category_service import category_service
+from services.brand_service import brand_service
 from validators.customer_validator import (
     PRODUCT_CREATE_CONFIG,
     PRODUCT_UPDATE_CONFIG,
@@ -271,7 +272,7 @@ class ProductService(BaseService):
         page: int = 1,
         page_size: int = 20,
         keyword: Optional[str] = None,
-        brand: Optional[str] = None,
+        brand_id: Optional[str] = None,
         category_id: Optional[str] = None
     ) -> Dict[str, Any]:
         filters = {}
@@ -280,8 +281,8 @@ class ProductService(BaseService):
                 {"product_code": {"$regex": keyword, "$options": "i"}},
                 {"name": {"$regex": keyword, "$options": "i"}}
             ]
-        if brand:
-            filters["brand"] = brand
+        if brand_id:
+            filters["brand_id"] = brand_id
         if category_id:
             filters["category_id"] = category_id
 
@@ -322,10 +323,15 @@ class ProductService(BaseService):
         category_ids = list(set([p.get("category_id") for p in products if p.get("category_id")]))
         logger.info(f"Category ids to fetch: {category_ids}")
         category_map = await self._get_categories_map(category_ids)
-        logger.info(f"【Category map】: {len(category_map)}")    
+        logger.info(f"【Category map】: {len(category_map)}")
+
+        brand_ids = list(set([p.get("brand_id") for p in products if p.get("brand_id")]))
+        brand_map = await self._get_brands_map(brand_ids)
+
         for product in products:
             product["specs"] = specs_map.get(product["id"], [])
-            product["category_name"] = category_map.get(product["category_id"], None)
+            product["category_name"] = category_map.get(product.get("category_id"), None)
+            product["brand_name"] = brand_map.get(product.get("brand_id"), None)
         return {"total": total, "page": page, "page_size": page_size, "items": products}
 
     async def _get_categories_map(self, category_ids: List[str]) -> Dict[str, str]:
@@ -337,6 +343,15 @@ class ProductService(BaseService):
             result[str(doc["id"])] = doc.get("name", "")
         return result
 
+    async def _get_brands_map(self, brand_ids: List[str]) -> Dict[str, str]:
+        if not brand_ids:
+            return {}
+        brand_list = await brand_service.find_many({"_id": {"$in": [ObjectId(bid) for bid in brand_ids]}})
+        result = {}
+        for doc in brand_list:
+            result[str(doc["id"])] = doc.get("name", "")
+        return result
+
     async def get_product_with_specs(self, product_id: str) -> Optional[Dict[str, Any]]:
         product = await self.get_by_id(product_id)
         if not product:
@@ -344,10 +359,15 @@ class ProductService(BaseService):
         specs = await self.spec_service.get_specs_by_product_id(product_id)
         product["specs"] = specs
         if product.get("category_id"):
-            category_map = await self._get_categories_map([product["category_id"]])
-            product["category_name"] = category_map.get(product["category_id"])
+            category_map = await self._get_categories_map([product.get("category_id")])
+            product["category_name"] = category_map.get(product.get("category_id"))
         else:
             product["category_name"] = None
+        if product.get("brand_id"):
+            brand_map = await self._get_brands_map([product.get("brand_id")])
+            product["brand_name"] = brand_map.get(product.get("brand_id"))
+        else:
+            product["brand_name"] = None
         return product
 
     async def get_product_stats(self) -> Dict[str, Any]:
@@ -415,10 +435,15 @@ class ProductService(BaseService):
             specs = await self.spec_service.get_specs_by_product_id(item["id"])
             item["specs"] = specs
             if item.get("category_id"):
-                category_map = await self._get_categories_map([item["category_id"]])
-                item["category_name"] = category_map.get(item["category_id"])
+                category_map = await self._get_categories_map([item.get("category_id")])
+                item["category_name"] = category_map.get(item.get("category_id"))
             else:
                 item["category_name"] = None
+            if item.get("brand_id"):
+                brand_map = await self._get_brands_map([item.get("brand_id")])
+                item["brand_name"] = brand_map.get(item.get("brand_id"))
+            else:
+                item["brand_name"] = None
 
         return items
 

@@ -46,8 +46,9 @@ const loadCategoryTree = async () => {
     const res = await categoryApi.getTree()
     categoryTree.value = res.result || []
     expandAll()
-  } catch (error) {
+  } catch (error: any) {
     console.error('加载分类树失败:', error)
+    window.showToast(error.message || '加载分类树失败', 'error')
   } finally {
     loading.value = false
   }

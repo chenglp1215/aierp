@@ -163,6 +163,8 @@ export const MENU_PERMISSION_MAP: Record<string, string> = {
   'finance-report': 'finance.report.view',
   'crm': 'customer.menu',
   'product': 'product.menu',
+  'category': 'category.view',
+  'brand': 'brand.view',
   'system': 'system.menu',
   'system-account': 'user.menu',
   'system-intelligent': 'intelligent.settings.view',

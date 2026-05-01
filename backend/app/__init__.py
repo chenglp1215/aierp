@@ -282,6 +282,8 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     from fastapi.staticfiles import StaticFiles
+    from fastapi.exceptions import RequestValidationError
+    from fastapi.responses import JSONResponse
     import os
 
     app = FastAPI(
@@ -293,6 +295,26 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.DEBUG else None,
         redirect_slashes=False,
     )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request, exc):
+        errors = []
+        for error in exc.errors():
+            loc = error.get("loc", [])
+            field = ".".join(str(l) for l in loc[1:] if l != "body")
+            errors.append({
+                "field": field,
+                "message": error.get("msg", ""),
+                "type": error.get("type", "")
+            })
+        return JSONResponse(
+            status_code=422,
+            content={
+                "status": "error",
+                "message": "数据验证失败",
+                "validation_errors": errors
+            }
+        )
 
     if settings.CORS_ORIGINS == ["*"]:
         allow_origins = ["*"]

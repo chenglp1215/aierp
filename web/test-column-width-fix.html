@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>列宽调整测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .info {
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .code-change {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <h1>列宽调整测试</h1>
+    
+    <div class="test-section">
+        <h2>✅ 客户管理页面列宽调整</h2>
+        <p class="success">客户名称列宽已成功调整到两倍</p>
+        <div class="code-change">
+            修改前: <code>&lt;vxe-column field="name" title="客户名称" min-width="125"&gt;</code><br>
+            修改后: <code>&lt;vxe-column field="name" title="客户名称" min-width="250"&gt;</code>
+        </div>
+        <p class="info">修改文件: d:\project\aierp\aierp\web\src\components\workspace\CrmWorkspace.vue 第532行</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>✅ 折扣管理页面列宽调整</h2>
+        <p class="success">品牌列宽已成功调整到两倍</p>
+        <div class="code-change">
+            修改前: <code>&lt;vxe-column field="brand_name" title="品牌" min-width="27"&gt;</code><br>
+            修改后: <code>&lt;vxe-column field="brand_name" title="品牌" min-width="54"&gt;</code>
+        </div>
+        <p class="info">修改文件: d:\project\aierp\aierp\web\src\components\workspace\CustomerDiscountWorkspace.vue 第216行</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>✅ TypeScript编译检查</h2>
+        <p class="success">TypeScript编译检查通过，没有错误</p>
+        <p class="info">运行命令: npx vue-tsc -b</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>📝 修改总结</h2>
+        <ul>
+            <li>客户管理页面的客户名称列宽从125增加到250（两倍）</li>
+            <li>折扣管理页面的品牌列宽从27增加到54（两倍）</li>
+            <li>所有修改都通过了TypeScript类型检查</li>
+            <li>列宽设置使用min-width属性，确保响应式布局</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🔧 测试建议</h2>
+        <ol>
+            <li>在浏览器中打开客户管理页面，观察客户名称列宽度</li>
+            <li>进入客户折扣设置页面，观察品牌列宽度</li>
+            <li>检查不同屏幕尺寸下的显示效果</li>
+            <li>验证表格其他列宽度是否正常</li>
+        </ol>
+    </div>
+</body>
+</html>

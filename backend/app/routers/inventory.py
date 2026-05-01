@@ -26,7 +26,7 @@ async def create_warehouse(
     _: dict = Depends(require_permission("warehouse.create"))
 ):
     warehouse_data = await warehouse_service.create_warehouse(warehouse)
-    return {"status": "success", "message": "仓库创建成功", "result": {"code": warehouse_data["warehouse_code"]}}
+    return {"status": True, "message": "仓库创建成功", "result": {"code": warehouse_data["warehouse_code"]}}
 
 
 @warehouse_router.get("/", response_model=WarehouseListResponse)
@@ -47,7 +47,7 @@ async def search_warehouses(
     _: dict = Depends(require_permission("warehouse.view"))
 ):
     items = await warehouse_service.search_warehouses(keyword, limit)
-    return {"status": "success", "result": items}
+    return {"status": True, "result": items}
 
 
 @warehouse_router.get("/manager-candidates", response_model=dict)
@@ -59,7 +59,7 @@ async def get_warehouse_manager_candidates(
 
     warehouse_admin_role = await role_service.find_one({"code": "warehouse_admin"})
     if not warehouse_admin_role:
-        return {"status": "success", "result": []}
+        return {"status": True, "result": []}
 
     warehouse_admin_role_id = str(warehouse_admin_role["id"])
 
@@ -84,7 +84,7 @@ async def get_warehouse_manager_candidates(
             "full_name": full_name or username
         })
 
-    return {"status": "success", "result": candidates}
+    return {"status": True, "result": candidates}
 
 
 @warehouse_router.get("/{warehouse_code}", response_model=Warehouse)
@@ -107,7 +107,7 @@ async def update_warehouse(
     success = await warehouse_service.update_warehouse(warehouse_code, warehouse)
     if not success:
         raise HTTPException(status_code=404, detail="仓库不存在或更新失败")
-    return {"status": "success", "message": "仓库更新成功"}
+    return {"status": True, "message": "仓库更新成功"}
 
 
 @warehouse_router.delete("/{warehouse_code}", response_model=dict)
@@ -118,7 +118,7 @@ async def delete_warehouse(
     success = await warehouse_service.delete_warehouse(warehouse_code)
     if not success:
         raise HTTPException(status_code=404, detail="仓库不存在或删除失败")
-    return {"status": "success", "message": "仓库删除成功"}
+    return {"status": True, "message": "仓库删除成功"}
 
 
 @warehouse_router.patch("/{warehouse_code}/status", response_model=dict)
@@ -135,7 +135,7 @@ async def update_warehouse_status(
     success = await warehouse_service.update_status(warehouse_code, status_enum)
     if not success:
         raise HTTPException(status_code=404, detail="仓库不存在或状态更新失败")
-    return {"status": "success", "message": "仓库状态更新成功"}
+    return {"status": True, "message": "仓库状态更新成功"}
 
 
 @stock_router.post("/", response_model=dict, status_code=201)
@@ -145,7 +145,7 @@ async def create_stock(
 ):
     try:
         stock_data = await stock_service.create_stock(stock)
-        return {"status": "success", "message": "库存创建成功", "result": {"id": stock_data["id"]}}
+        return {"status": True, "message": "库存创建成功", "result": {"id": stock_data["id"]}}
     except ValueError as e:
         if str(e).startswith("DUPLICATE_STOCK:"):
             existing_id = str(e).split(":")[1]
@@ -176,7 +176,7 @@ async def list_stocks(
 @stock_router.get("/stats", response_model=dict)
 async def get_stock_stats(_: dict = Depends(require_permission("stock.view"))):
     stats = await stock_service.get_stock_stats()
-    return {"status": "success", "result": stats}
+    return {"status": True, "result": stats}
 
 
 @stock_router.get("/search", response_model=dict)
@@ -186,7 +186,7 @@ async def search_stocks(
     _: dict = Depends(require_permission("stock.view"))
 ):
     items = await stock_service.search_stocks(keyword, limit)
-    return {"status": "success", "result": items}
+    return {"status": True, "result": items}
 
 
 @stock_router.get("/{stock_id}", response_model=Stock)
@@ -220,7 +220,7 @@ async def update_stock(
     success = await stock_service.update_stock(stock_id, stock)
     if not success:
         raise HTTPException(status_code=404, detail="库存不存在或更新失败")
-    return {"status": "success", "message": "库存更新成功"}
+    return {"status": True, "message": "库存更新成功"}
 
 
 @stock_router.delete("/{stock_id}", response_model=dict)
@@ -231,7 +231,7 @@ async def delete_stock(
     success = await stock_service.delete(stock_id)
     if not success:
         raise HTTPException(status_code=404, detail="库存不存在或删除失败")
-    return {"status": "success", "message": "库存删除成功"}
+    return {"status": True, "message": "库存删除成功"}
 
 
 @stock_router.post("/{stock_id}/inbound", response_model=dict)
@@ -247,7 +247,7 @@ async def inbound_stock(
         result = await stock_service.inbound(stock_id, quantity, remarks, operator_id, operator_name)
         if not result:
             raise HTTPException(status_code=404, detail="库存不存在")
-        return {"status": "success", "message": "入库成功", "result": result}
+        return {"status": True, "message": "入库成功", "result": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -265,7 +265,7 @@ async def outbound_stock(
         result = await stock_service.outbound(stock_id, quantity, remarks, operator_id, operator_name)
         if not result:
             raise HTTPException(status_code=404, detail="库存不存在")
-        return {"status": "success", "message": "出库成功", "result": result}
+        return {"status": True, "message": "出库成功", "result": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

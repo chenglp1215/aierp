@@ -27,19 +27,19 @@ async def create_customer(
     is_valid, errors = customer_service.validate_customer_create(customer)
     if not is_valid:
         return {
-            "status": "error",
+            "status": False,
             "message": "客户创建参数验证失败",
             "validation_errors": errors
         }
     customer_data = await customer_service.create_customer(customer)
     return {
-        "status": "success",
+        "status": True,
         "message": "客户创建成功",
         "result": customer_data
     }
 
 
-@customer_router.get("/", response_model=CustomerListResponse)
+@customer_router.get("/", response_model=dict)
 async def list_customers(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -56,7 +56,10 @@ async def list_customers(
         level=level,
         keyword=keyword
     )
-    return result
+    return {
+        "status": True,
+        "result": result
+    }
 
 
 @customer_router.get("/stats", response_model=dict)
@@ -64,7 +67,7 @@ async def get_customer_stats(_: dict = Depends(require_permission("customer.view
     """获取客户统计信息"""
     stats = await customer_service.get_customer_stats()
     return {
-        "status": "success",
+        "status": True,
         "result": stats
     }
 
@@ -78,7 +81,7 @@ async def search_customers(
     """搜索客户（用于下拉选择等）"""
     items = await customer_service.search_customers(keyword, limit)
     return {
-        "status": "success",
+        "status": True,
         "result": items
     }
 
@@ -105,7 +108,7 @@ async def update_customer(
     is_valid, errors = customer_service.validate_customer_update(customer)
     if not is_valid:
         return {
-            "status": "error",
+            "status": False,
             "message": "客户更新参数验证失败",
             "validation_errors": errors
         }
@@ -113,7 +116,7 @@ async def update_customer(
     if not success:
         raise HTTPException(status_code=404, detail="客户不存在或更新失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "客户更新成功"
     }
 
@@ -128,7 +131,7 @@ async def delete_customer(
     if not success:
         raise HTTPException(status_code=404, detail="客户不存在或删除失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "客户删除成功"
     }
 
@@ -144,7 +147,7 @@ async def update_customer_status(
     if not success:
         raise HTTPException(status_code=404, detail="客户不存在或状态更新失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "客户状态更新成功"
     }
 
@@ -159,7 +162,7 @@ async def add_shipping_address(
     is_valid, errors = customer_service.validate_shipping_address_create(address)
     if not is_valid:
         return {
-            "status": "error",
+            "status": False,
             "message": "收货地址参数验证失败",
             "validation_errors": errors
         }
@@ -167,7 +170,7 @@ async def add_shipping_address(
     if not result:
         raise HTTPException(status_code=404, detail="客户不存在")
     return {
-        "status": "success",
+        "status": True,
         "message": "收货地址添加成功",
         "result": result
     }
@@ -184,7 +187,7 @@ async def update_shipping_address(
     is_valid, errors = customer_service.validate_shipping_address_update(address)
     if not is_valid:
         return {
-            "status": "error",
+            "status": False,
             "message": "收货地址参数验证失败",
             "validation_errors": errors
         }
@@ -192,7 +195,7 @@ async def update_shipping_address(
     if not success:
         raise HTTPException(status_code=404, detail="客户不存在或地址不存在")
     return {
-        "status": "success",
+        "status": True,
         "message": "收货地址更新成功"
     }
 
@@ -208,7 +211,7 @@ async def delete_shipping_address(
     if not success:
         raise HTTPException(status_code=404, detail="客户不存在或地址不存在")
     return {
-        "status": "success",
+        "status": True,
         "message": "收货地址删除成功"
     }
 
@@ -224,6 +227,6 @@ async def set_default_shipping_address(
     if not success:
         raise HTTPException(status_code=404, detail="客户不存在或地址不存在")
     return {
-        "status": "success",
+        "status": True,
         "message": "默认收货地址设置成功"
     }

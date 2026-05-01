@@ -109,7 +109,7 @@ async def register(user_data: UserCreate):
     try:
         user_id = await auth_service.create_user(user_data)
         return {
-            "status": "success",
+            "status": True,
             "message": "注册成功",
             "result": {"id": user_id}
         }
@@ -137,7 +137,7 @@ async def change_password(
         )
         if not success:
             raise HTTPException(status_code=400, detail="修改密码失败")
-        return {"status": "success", "message": "密码修改成功"}
+        return {"status": True, "message": "密码修改成功"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -175,7 +175,7 @@ async def create_user(
     try:
         user_id = await auth_service.create_user(user_data)
         return {
-            "status": "success",
+            "status": True,
             "message": "用户创建成功",
             "result": {"id": user_id}
         }
@@ -193,7 +193,7 @@ async def update_user(
     success = await auth_service.update_user(user_id, user_data)
     if not success:
         raise HTTPException(status_code=404, detail="用户不存在或更新失败")
-    return {"status": "success", "message": "用户更新成功"}
+    return {"status": True, "message": "用户更新成功"}
 
 
 @auth_router.delete("/users/{user_id}/", response_model=dict)
@@ -205,7 +205,7 @@ async def delete_user(
     success = await auth_service.delete(user_id)
     if not success:
         raise HTTPException(status_code=404, detail="用户不存在或删除失败")
-    return {"status": "success", "message": "用户删除成功"}
+    return {"status": True, "message": "用户删除成功"}
 
 
 @auth_router.patch("/users/{user_id}/password", response_model=dict)
@@ -219,7 +219,7 @@ async def reset_password(
         success = await auth_service.reset_password(user_id, password_data.new_password)
         if not success:
             raise HTTPException(status_code=404, detail="用户不存在")
-        return {"status": "success", "message": "密码重置成功"}
+        return {"status": True, "message": "密码重置成功"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -234,4 +234,4 @@ async def update_user_status(
     success = await auth_service.update(user_id, {"status": status})
     if not success:
         raise HTTPException(status_code=404, detail="用户不存在")
-    return {"status": "success", "message": "用户状态更新成功"}
+    return {"status": True, "message": "用户状态更新成功"}

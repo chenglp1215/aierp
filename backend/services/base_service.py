@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, List, Type
 from datetime import datetime
 import logging
 
-from validators.base_validator import validate, ValidationError
+from validators.base_validator import validate
 
 logger = logging.getLogger(__name__)
 
@@ -127,13 +127,9 @@ class BaseService:
     def validate_data(
         self,
         data: Dict[str, Any],
-        config: Dict[str, Any],
-        raise_exception: bool = False
+        config: Dict[str, Any]
     ) -> tuple[bool, Optional[Dict[str, List[str]]]]:
-        success, errors = validate(data, config)
-        if raise_exception and not success:
-            raise ValidationError(errors)
-        return success, errors
+        return validate(data, config)
 
     async def validate_unique(
         self,

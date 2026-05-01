@@ -25,7 +25,7 @@ async def create_procurement_order(
         order, sales_order_id
     )
     return {
-        "status": "success",
+        "status": True,
         "message": "采购单创建成功",
         "result": {"id": order_data["id"]}
     }
@@ -74,7 +74,7 @@ async def update_procurement_order(
     if not success:
         raise HTTPException(status_code=404, detail="采购单不存在或更新失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "采购单更新成功"
     }
 
@@ -89,7 +89,7 @@ async def delete_procurement_order(
     if not success:
         raise HTTPException(status_code=404, detail="采购单不存在或删除失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "采购单删除成功"
     }
 
@@ -105,6 +105,6 @@ async def update_procurement_order_status(
     if not success:
         raise HTTPException(status_code=404, detail="采购单不存在或状态更新失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "采购单状态更新成功"
     }

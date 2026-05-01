@@ -23,7 +23,7 @@ async def create_receivable(
     """创建应收单"""
     receivable_id = await accounts_receivable_service.create_receivable(receivable)
     return {
-        "status": "success",
+        "status": True,
         "message": "应收单创建成功",
         "result": {"id": receivable_id}
     }
@@ -72,7 +72,7 @@ async def update_receivable(
     if not success:
         raise HTTPException(status_code=404, detail="应收单不存在或更新失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "应收单更新成功"
     }
 
@@ -87,7 +87,7 @@ async def delete_receivable(
     if not success:
         raise HTTPException(status_code=404, detail="应收单不存在或删除失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "应收单删除成功"
     }
 
@@ -103,7 +103,7 @@ async def record_payment(
     if not success:
         raise HTTPException(status_code=404, detail="应收单不存在或收款记录失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "收款记录成功"
     }
 
@@ -119,6 +119,6 @@ async def update_receivable_status(
     if not success:
         raise HTTPException(status_code=404, detail="应收单不存在或状态更新失败")
     return {
-        "status": "success",
+        "status": True,
         "message": "应收单状态更新成功"
     }

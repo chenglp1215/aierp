@@ -17,9 +17,11 @@ import FinanceWorkspace from './workspace/FinanceWorkspace.vue'
 import CrmWorkspace from './workspace/CrmWorkspace.vue'
 import ProductWorkspace from './workspace/ProductWorkspace.vue'
 import CategoryWorkspace from './workspace/CategoryWorkspace.vue'
+import BrandWorkspace from './workspace/BrandWorkspace.vue'
 import AccountManagement from './workspace/AccountManagement.vue'
 import IntelligentSettings from './workspace/IntelligentSettings.vue'
 import WarehouseWorkspace from './workspace/WarehouseWorkspace.vue'
+import CustomerDiscountWorkspace from './workspace/CustomerDiscountWorkspace.vue'
 import { authApi } from '../services/api'
 import { usePermission, MENU_PERMISSION_MAP } from '../hooks'
 
@@ -36,6 +38,7 @@ interface Tab {
 const isMobileMenuOpen = ref(false)
 const activeTabId = ref('dashboard')
 const inventoryDrillDownData = ref<{ warehouseId?: string; warehouseName?: string } | null>(null)
+const customerDiscountDrillDownData = ref<{ customerId?: string; customerName?: string } | null>(null)
 const openTabs = ref<Tab[]>([
   { id: 'dashboard', label: '工作台', closable: false },
   { id: 'chat', label: '智能助手', closable: false }
@@ -66,6 +69,20 @@ const handleNavigate = (id: string, extraData?: Record<string, any>) => {
     return
   }
 
+  if (extraData?.customerId) {
+    customerDiscountDrillDownData.value = {
+      customerId: extraData.customerId,
+      customerName: extraData.customerName || ''
+    }
+    const label = extraData.customerName ? `${extraData.customerName} - 折扣设置` : '折扣设置'
+    const tabExists = openTabs.value.find(t => t.id === 'customer-discount-drilldown')
+    if (!tabExists) {
+      openTabs.value.push({ id: 'customer-discount-drilldown', label, closable: true })
+    }
+    activeTabId.value = 'customer-discount-drilldown'
+    return
+  }
+
   const tabExists = openTabs.value.find(t => t.id === id)
   if (!tabExists) {
     const labelMap: Record<string, string> = {
@@ -86,6 +103,7 @@ const handleNavigate = (id: string, extraData?: Record<string, any>) => {
       'crm': '客户管理',
       'product': '商品管理',
       'category': '分类管理',
+      'brand': '品牌管理',
       'product-list': '产品管理',
       'system-account': '账号管理',
       'system-intelligent': '智能设置'
@@ -129,6 +147,23 @@ const handleInventoryBack = () => {
   activeTabId.value = 'warehouse-list'
 }
 
+const handleCustomerDiscountBack = () => {
+  const idx = openTabs.value.findIndex(t => t.id === 'customer-discount-drilldown')
+  if (idx > -1) {
+    openTabs.value.splice(idx, 1)
+  }
+  customerDiscountDrillDownData.value = null
+  activeTabId.value = 'crm'
+}
+
+const handleBack = () => {
+  if (activeTabId.value === 'customer-discount-drilldown') {
+    handleCustomerDiscountBack()
+  } else if (activeTabId.value === 'inventory-drilldown') {
+    handleInventoryBack()
+  }
+}
+
 const handleSettings = () => {
   console.log('Settings')
 }
@@ -148,10 +183,12 @@ const currentWorkspace = computed(() => {
   if (id.startsWith('finance')) return FinanceWorkspace
   if (id === 'crm') return CrmWorkspace
   if (id === 'category') return CategoryWorkspace
+  if (id === 'brand') return BrandWorkspace
   if (id === 'product-list') return ProductWorkspace
   if (id === 'product') return ProductWorkspace
   if (id === 'system-account') return AccountManagement
   if (id === 'system-intelligent') return IntelligentSettings
+  if (id === 'customer-discount-drilldown') return CustomerDiscountWorkspace
   return DashboardWorkspace
 })
 
@@ -160,7 +197,7 @@ const currentBreadcrumb = computed(() => {
 })
 
 const keepAliveList = computed(() => {
-  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderList', 'ProcurementOrderList', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace']
+  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderList', 'ProcurementOrderList', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'BrandWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace', 'CustomerDiscountWorkspace']
   return names
 })
 
@@ -207,6 +244,12 @@ onMounted(async () => {
     keysToRemove.forEach(key => localStorage.removeItem(key))
     router.push('/login')
   }
+
+  // 监听折扣导航事件
+  window.addEventListener('navigate-to-discount', (event: any) => {
+    const { customerId, customerName } = event.detail
+    handleNavigate('customer-discount-drilldown', { customerId, customerName })
+  })
 })
 </script>
 
@@ -263,7 +306,13 @@ onMounted(async () => {
 
       <div class="content-area">
         <KeepAlive :include="keepAliveList">
-          <component :is="currentWorkspace" :key="activeTabId" v-bind="activeTabId === 'inventory-drilldown' ? inventoryDrillDownData : {}" @back="handleInventoryBack" @navigate="handleNavigate" />
+          <component 
+            :is="currentWorkspace" 
+            :key="activeTabId" 
+            v-bind="activeTabId === 'inventory-drilldown' ? inventoryDrillDownData : activeTabId === 'customer-discount-drilldown' ? customerDiscountDrillDownData : {}" 
+            @back="handleBack" 
+            @navigate="handleNavigate" 
+          />
         </KeepAlive>
       </div>
 

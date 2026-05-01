@@ -50,7 +50,7 @@ async def get_llm_model(model_id: str):
 async def create_llm_model(model_data: LlmModelCreate):
     """创建 LLM 模型"""
     model_data = await llm_service.create_model(model_data.model_dump())
-    return {"status": "success", "message": "模型创建成功", "result": {"id": model_data["id"]}}
+    return {"status": True, "message": "模型创建成功", "result": {"id": model_data["id"]}}
 
 
 @llm_router.put("/models/{model_id}", response_model=dict)
@@ -59,7 +59,7 @@ async def update_llm_model(model_id: str, model_data: LlmModelUpdate):
     success = await llm_service.update_model(model_id, model_data.model_dump(exclude_unset=True))
     if not success:
         raise HTTPException(status_code=404, detail="模型不存在或更新失败")
-    return {"status": "success", "message": "模型更新成功"}
+    return {"status": True, "message": "模型更新成功"}
 
 
 @llm_router.delete("/models/{model_id}", response_model=dict)
@@ -68,7 +68,7 @@ async def delete_llm_model(model_id: str):
     success = await llm_service.delete(model_id)
     if not success:
         raise HTTPException(status_code=404, detail="模型不存在或删除失败")
-    return {"status": "success", "message": "模型删除成功"}
+    return {"status": True, "message": "模型删除成功"}
 
 
 @llm_router.post("/models/{model_id}/test", response_model=dict)
@@ -77,7 +77,7 @@ async def test_llm_model(model_id: str):
     model = await llm_service.get_by_id(model_id)
     if not model:
         raise HTTPException(status_code=404, detail="模型不存在")
-    return {"status": "success", "message": "连接测试成功"}
+    return {"status": True, "message": "连接测试成功"}
 
 
 @llm_router.get("/config", response_model=Optional[LlmConfig])
@@ -95,7 +95,7 @@ async def update_llm_config(config_data: LlmConfig):
     success = await llm_config_service.update_config(config_data.model_dump())
     if not success:
         raise HTTPException(status_code=500, detail="配置更新失败")
-    return {"status": "success", "message": "配置更新成功"}
+    return {"status": True, "message": "配置更新成功"}
 
 
 # ========== Knowledge Base Routes ==========
@@ -124,7 +124,7 @@ async def get_knowledge_base(kb_id: str):
 async def create_knowledge_base(kb_data: KnowledgeBaseCreate):
     """创建知识库"""
     kb_id = await knowledge_base_service.create_knowledge_base(kb_data.model_dump())
-    return {"status": "success", "message": "知识库创建成功", "result": {"id": kb_id}}
+    return {"status": True, "message": "知识库创建成功", "result": {"id": kb_id}}
 
 
 @kb_router.put("/collections/{kb_id}", response_model=dict)
@@ -133,7 +133,7 @@ async def update_knowledge_base(kb_id: str, kb_data: KnowledgeBaseUpdate):
     success = await knowledge_base_service.update_knowledge_base(kb_id, kb_data.model_dump(exclude_unset=True))
     if not success:
         raise HTTPException(status_code=404, detail="知识库不存在或更新失败")
-    return {"status": "success", "message": "知识库更新成功"}
+    return {"status": True, "message": "知识库更新成功"}
 
 
 @kb_router.delete("/collections/{kb_id}", response_model=dict)
@@ -142,7 +142,7 @@ async def delete_knowledge_base(kb_id: str):
     success = await knowledge_base_service.delete(kb_id)
     if not success:
         raise HTTPException(status_code=404, detail="知识库不存在或删除失败")
-    return {"status": "success", "message": "知识库删除成功"}
+    return {"status": True, "message": "知识库删除成功"}
 
 
 # ========== MCP Routes ==========
@@ -171,7 +171,7 @@ async def get_mcp_server(server_id: str):
 async def create_mcp_server(server_data: McpServerCreate):
     """创建 MCP 服务器"""
     server_id = await mcp_service.create_server(server_data.model_dump())
-    return {"status": "success", "message": "服务器创建成功", "result": {"id": server_id}}
+    return {"status": True, "message": "服务器创建成功", "result": {"id": server_id}}
 
 
 @mcp_router.put("/servers/{server_id}", response_model=dict)
@@ -180,7 +180,7 @@ async def update_mcp_server(server_id: str, server_data: McpServerUpdate):
     success = await mcp_service.update_server(server_id, server_data.model_dump(exclude_unset=True))
     if not success:
         raise HTTPException(status_code=404, detail="服务器不存在或更新失败")
-    return {"status": "success", "message": "服务器更新成功"}
+    return {"status": True, "message": "服务器更新成功"}
 
 
 @mcp_router.delete("/servers/{server_id}", response_model=dict)
@@ -189,7 +189,7 @@ async def delete_mcp_server(server_id: str):
     success = await mcp_service.delete(server_id)
     if not success:
         raise HTTPException(status_code=404, detail="服务器不存在或删除失败")
-    return {"status": "success", "message": "服务器删除成功"}
+    return {"status": True, "message": "服务器删除成功"}
 
 
 @mcp_router.post("/servers/{server_id}/test", response_model=dict)
@@ -198,7 +198,7 @@ async def test_mcp_server(server_id: str):
     server = await mcp_service.get_by_id(server_id)
     if not server:
         raise HTTPException(status_code=404, detail="服务器不存在")
-    return {"status": "success", "message": "连接测试成功"}
+    return {"status": True, "message": "连接测试成功"}
 
 
 @mcp_router.get("/servers/{server_id}/tools", response_model=dict)
@@ -236,7 +236,7 @@ async def get_skill(skill_id: str):
 async def create_skill(skill_data: SkillCreate):
     """创建技能"""
     skill_data = await skill_service.create_skill(skill_data.model_dump())
-    return {"status": "success", "message": "技能创建成功", "result": skill_data}
+    return {"status": True, "message": "技能创建成功", "result": skill_data}
 
 
 @skill_router.put("/{skill_id}", response_model=dict)
@@ -245,7 +245,7 @@ async def update_skill(skill_id: str, skill_data: SkillUpdate):
     success = await skill_service.update_skill(skill_id, skill_data.model_dump(exclude_unset=True))
     if not success:
         raise HTTPException(status_code=404, detail="技能不存在或更新失败")
-    return {"status": "success", "message": "技能更新成功"}
+    return {"status": True, "message": "技能更新成功"}
 
 
 @skill_router.delete("/{skill_id}", response_model=dict)
@@ -254,7 +254,7 @@ async def delete_skill(skill_id: str):
     success = await skill_service.delete(skill_id)
     if not success:
         raise HTTPException(status_code=404, detail="技能不存在或删除失败")
-    return {"status": "success", "message": "技能删除成功"}
+    return {"status": True, "message": "技能删除成功"}
 
 
 @skill_router.patch("/{skill_id}/enable", response_model=dict)
@@ -263,7 +263,7 @@ async def enable_skill(skill_id: str):
     success = await skill_service.enable_skill(skill_id)
     if not success:
         raise HTTPException(status_code=404, detail="技能不存在")
-    return {"status": "success", "message": "技能启用成功"}
+    return {"status": True, "message": "技能启用成功"}
 
 
 @skill_router.patch("/{skill_id}/disable", response_model=dict)
@@ -272,7 +272,7 @@ async def disable_skill(skill_id: str):
     success = await skill_service.disable_skill(skill_id)
     if not success:
         raise HTTPException(status_code=404, detail="技能不存在")
-    return {"status": "success", "message": "技能禁用成功"}
+    return {"status": True, "message": "技能禁用成功"}
 
 
 # ========== Agent Routes ==========
@@ -301,7 +301,7 @@ async def create_agent(agent_data: AgentCreate):
     """创建 Agent"""
     agent_id = await agent_service.create_agent(agent_data.model_dump())
     await agent_manager.reload_agents()
-    return {"status": "success", "message": "Agent 创建成功", "result": {"id": agent_id}}
+    return {"status": True, "message": "Agent 创建成功", "result": {"id": agent_id}}
 
 
 @agent_router.put("/{agent_id}", response_model=dict)
@@ -311,7 +311,7 @@ async def update_agent(agent_id: str, agent_data: AgentUpdate):
     if not success:
         raise HTTPException(status_code=404, detail="Agent 不存在或更新失败")
     await agent_manager.reload_agents()
-    return {"status": "success", "message": "Agent 更新成功"}
+    return {"status": True, "message": "Agent 更新成功"}
 
 
 @agent_router.delete("/{agent_id}", response_model=dict)
@@ -321,7 +321,7 @@ async def delete_agent(agent_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="Agent 不存在或删除失败")
     await agent_manager.reload_agents()
-    return {"status": "success", "message": "Agent 删除成功"}
+    return {"status": True, "message": "Agent 删除成功"}
 
 
 # ========== AI Tools Routes ==========

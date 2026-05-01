@@ -56,7 +56,7 @@ class ProductBase(BaseModel):
     product_code: str = Field(..., min_length=1, max_length=50, description="商品编号")
     name: str = Field(..., min_length=1, max_length=200, description="商品名称")
     image_url: Optional[str] = Field(None, max_length=500, description="商品图片")
-    brand: Optional[str] = Field(None, max_length=100, description="品牌")
+    brand_id: Optional[str] = Field(None, max_length=100, description="品牌ID")
     category_id: Optional[str] = Field(None, max_length=100, description="分类ID")
     tax_code: Optional[str] = Field(None, max_length=50, description="税务编码")
     is_active: bool = Field(default=True, description="是否有效")
@@ -70,7 +70,7 @@ class ProductUpdate(BaseModel):
     product_code: Optional[str] = Field(None, min_length=1, max_length=50)
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     image_url: Optional[str] = Field(None, max_length=500)
-    brand: Optional[str] = Field(None, max_length=100)
+    brand_id: Optional[str] = Field(None, max_length=100)
     category_id: Optional[str] = Field(None, max_length=100)
     tax_code: Optional[str] = Field(None, max_length=50)
     is_active: Optional[bool] = None
@@ -79,6 +79,7 @@ class ProductUpdate(BaseModel):
 
 class Product(ProductBase):
     id: str = Field(..., description="商品ID")
+    brand_name: Optional[str] = Field(None, description="品牌名称")
     category_name: Optional[str] = Field(None, description="分类名称")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
@@ -91,7 +92,8 @@ class Product(ProductBase):
                 "product_code": "PROD20260420001",
                 "name": "有机红茶",
                 "image_url": "https://example.com/images/red-tea.jpg",
-                "brand": "茶语轩",
+                "brand_id": "507f1f77bcf86cd799439011",
+                "brand_name": "茶语轩",
                 "category_id": "507f1f77bcf86cd799439011",
                 "category_name": "茶叶",
                 "tax_code": "TAX001",
@@ -127,3 +129,47 @@ class ProductSpecListResponse(BaseModel):
     page: int = Field(..., description="当前页码")
     page_size: int = Field(..., description="每页记录数")
     items: List[ProductSpec] = Field(..., description="规格列表")
+
+
+class BrandBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="品牌名称")
+    logo_url: Optional[str] = Field(None, max_length=500, description="品牌Logo")
+    description: Optional[str] = Field(None, max_length=500, description="品牌描述")
+    is_active: bool = Field(default=True, description="是否有效")
+
+
+class BrandCreate(BrandBase):
+    pass
+
+
+class BrandUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    logo_url: Optional[str] = Field(None, max_length=500)
+    description: Optional[str] = Field(None, max_length=500)
+    is_active: Optional[bool] = None
+
+
+class Brand(BrandBase):
+    id: str = Field(..., description="品牌ID")
+    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "507f1f77bcf86cd799439011",
+                "name": "茶语轩",
+                "logo_url": "https://example.com/images/brand-logo.png",
+                "description": "知名茶叶品牌",
+                "is_active": True,
+                "created_at": "2026-05-01T10:00:00",
+                "updated_at": "2026-05-01T10:00:00"
+            }
+        }
+
+
+class BrandListResponse(BaseModel):
+    total: int = Field(..., description="总记录数")
+    page: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页记录数")
+    items: List[Brand] = Field(..., description="品牌列表")

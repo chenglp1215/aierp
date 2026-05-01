@@ -106,6 +106,6 @@ async def delete_file(
         file_path = os.path.join(settings.UPLOAD_DIR, f"{file_id}{ext}")
         if os.path.exists(file_path):
             os.remove(file_path)
-            return {"status": "success", "message": "文件已删除"}
+            return {"status": True, "message": "文件已删除"}
 
     raise HTTPException(status_code=404, detail="文件不存在")

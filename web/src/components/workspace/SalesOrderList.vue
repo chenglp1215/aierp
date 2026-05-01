@@ -210,7 +210,7 @@ const loadCustomers = async () => {
 const loadProducts = async () => {
   try {
     const res = await productApi.list({ page_size: 100 })
-    productList.value = res.items.map((p: any) => ({
+    productList.value = (res.result?.items || []).map((p: any) => ({
       id: p.id,
       name: p.name,
       code: p.product_code,

@@ -43,7 +43,7 @@ async def create_role(
     try:
         role_data = await role_service.create_role(role_data)
         return {
-            "status": "success",
+            "status": True,
             "message": "角色创建成功",
             "result": {"id": role_data["id"]}
         }
@@ -69,7 +69,7 @@ async def update_role(
         success = await role_service.update_role(role_id, role_data)
         if not success:
             raise HTTPException(status_code=404, detail="角色不存在或更新失败")
-        return {"status": "success", "message": "角色更新成功"}
+        return {"status": True, "message": "角色更新成功"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -90,7 +90,7 @@ async def delete_role(
     success = await role_service.delete(role_id)
     if not success:
         raise HTTPException(status_code=404, detail="角色不存在或删除失败")
-    return {"status": "success", "message": "角色删除成功"}
+    return {"status": True, "message": "角色删除成功"}
 
 
 @role_router.patch("/{role_id}/status", response_model=dict)
@@ -103,4 +103,4 @@ async def update_role_status(
     success = await role_service.update(role_id, {"status": status})
     if not success:
         raise HTTPException(status_code=404, detail="角色不存在")
-    return {"status": "success", "message": "角色状态更新成功"}
+    return {"status": True, "message": "角色状态更新成功"}

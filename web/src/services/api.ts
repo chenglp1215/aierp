@@ -382,6 +382,210 @@ export const customerApi = {
   }
 }
 
+// customers-v2 API (新版本客户管理)
+export interface InvoiceInfo {
+  id?: string
+  invoice_title: string
+  tax_number: string
+  bank_name: string
+  bank_account: string
+  is_default?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ShippingAddressV2 {
+  id?: string
+  recipient_name: string
+  recipient_phone: string
+  province?: string
+  province_code?: string
+  city?: string
+  city_code?: string
+  district?: string
+  address: string
+  is_default?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CustomerV2 {
+  id: string
+  customer_code: string
+  name: string
+  customer_type: 'terminal' | 'dealer'  // 终端、经销商
+  research_group?: string  // 课题组信息（仅终端客户）
+  contact_info?: {
+    contact_person?: string
+    contact_phone?: string
+    contact_email?: string
+  }
+  invoice_infos: InvoiceInfo[]
+  shipping_addresses: ShippingAddressV2[]
+  sales_user_id?: string
+  sales_user_name?: string
+  status: string
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CustomerV2ListItem {
+  id: string
+  customer_code: string
+  name: string
+  customer_type: 'terminal' | 'dealer'
+  research_group?: string
+  contact_person?: string
+  contact_phone?: string
+  default_shipping_address?: ShippingAddressV2
+  invoice_count: number
+  shipping_address_count: number
+  sales_user_name?: string
+  status: string
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ProvinceInfo {
+  code: string
+  name: string
+  cities: string[]
+}
+
+export interface CityInfo {
+  code: string
+  name: string
+  province_code: string
+}
+
+export interface SalesUser {
+  id: string
+  username: string
+  display_name?: string
+  email?: string
+}
+
+export const customerV2Api = {
+  // 获取客户列表
+  list: (params: { page?: number; page_size?: number; status?: string; keyword?: string; customer_type?: string; sales_user_id?: string }) => {
+    return apiService.get<any>('/customers-v2/', params)
+  },
+
+  // 获取客户详情
+  getById: (id: string) => {
+    return apiService.get<any>(`/customers-v2/${id}`)
+  },
+
+  // 创建客户
+  create: (data: any) => {
+    return apiService.post<any>('/customers-v2/', data)
+  },
+
+  // 更新客户
+  update: (id: string, data: any) => {
+    return apiService.put<any>(`/customers-v2/${id}`, data)
+  },
+
+  // 删除客户
+  delete: (id: string) => {
+    return apiService.delete<any>(`/customers-v2/${id}`)
+  },
+
+  // 获取客户统计
+  getStats: () => {
+    return apiService.get<any>('/customers-v2/stats')
+  },
+
+  // 搜索客户
+  search: (keyword: string, limit?: number) => {
+    return apiService.get<any>('/customers-v2/search', { keyword, limit })
+  },
+
+  // 更新客户状态
+  updateStatus: (id: string, status: string) => {
+    return apiService.patch<any>(`/customers-v2/${id}/status`, { status })
+  },
+
+  // 更新联系人信息
+  updateContactInfo: (id: string, data: { contact_person?: string; contact_phone?: string; contact_email?: string }) => {
+    return apiService.put<any>(`/customers-v2/${id}/contact-info`, data)
+  },
+
+  // 添加开票信息
+  addInvoiceInfo: (customerId: string, data: InvoiceInfo) => {
+    return apiService.post<any>(`/customers-v2/${customerId}/invoice-infos`, data)
+  },
+
+  // 更新开票信息
+  updateInvoiceInfo: (customerId: string, invoiceId: string, data: InvoiceInfo) => {
+    return apiService.put<any>(`/customers-v2/${customerId}/invoice-infos/${invoiceId}`, data)
+  },
+
+  // 删除开票信息
+  deleteInvoiceInfo: (customerId: string, invoiceId: string) => {
+    return apiService.delete<any>(`/customers-v2/${customerId}/invoice-infos/${invoiceId}`)
+  },
+
+  // 设置默认开票信息
+  setDefaultInvoiceInfo: (customerId: string, invoiceId: string) => {
+    return apiService.patch<any>(`/customers-v2/${customerId}/invoice-infos/${invoiceId}/default`)
+  },
+
+  // 添加收货地址
+  addShippingAddress: (customerId: string, data: ShippingAddressV2) => {
+    return apiService.post<any>(`/customers-v2/${customerId}/shipping-addresses`, data)
+  },
+
+  // 更新收货地址
+  updateShippingAddress: (customerId: string, addressId: string, data: ShippingAddressV2) => {
+    return apiService.put<any>(`/customers-v2/${customerId}/shipping-addresses/${addressId}`, data)
+  },
+
+  // 删除收货地址
+  deleteShippingAddress: (customerId: string, addressId: string) => {
+    return apiService.delete<any>(`/customers-v2/${customerId}/shipping-addresses/${addressId}`)
+  },
+
+  // 设置默认收货地址
+  setDefaultShippingAddress: (customerId: string, addressId: string) => {
+    return apiService.patch<any>(`/customers-v2/${customerId}/shipping-addresses/${addressId}/default`)
+  },
+
+  // 获取销售员列表
+  getSalesUsers: (keyword?: string) => {
+    return apiService.get<any>('/customers-v2/sales-users/list', keyword ? { keyword } : undefined)
+  },
+
+  // 转移客户
+  transfer: (customerId: string, newSalesUserId: string) => {
+    return apiService.patch<any>(`/customers-v2/${customerId}/transfer`, { new_sales_user_id: newSalesUserId })
+  },
+}
+
+export const provinceApi = {
+  // 获取所有省份
+  getProvinces: () => {
+    return apiService.get<any>('/province-city/provinces')
+  },
+
+  // 获取省份下的城市
+  getCities: (province: string) => {
+    return apiService.get<any>('/province-city/cities', { province })
+  },
+
+  // 获取省份下的区县
+  getDistricts: (province: string, city: string) => {
+    return apiService.get<any>('/province-city/districts', { province, city })
+  },
+
+  // 搜索省/市/区
+  searchLocations: (keyword: string) => {
+    return apiService.get<any>('/province-city/search', { keyword })
+  }
+}
+
 export interface ProductSpec {
   id: string
   product_id: string
@@ -402,7 +606,8 @@ export interface Product {
   product_code: string
   name: string
   image_url?: string
-  brand?: string
+  brand_id?: string
+  brand_name?: string
   category_id?: string
   category_name?: string
   tax_code?: string
@@ -416,7 +621,7 @@ export interface ProductFormData {
   product_code?: string
   name: string
   image_url?: string
-  brand?: string
+  brand_id?: string
   category_id?: string
   tax_code?: string
   is_active?: boolean
@@ -491,7 +696,7 @@ export const categoryApi = {
 }
 
 export const productApi = {
-  list: (params: { page?: number; page_size?: number; status?: string; keyword?: string; brand?: string; category_id?: string }) => {
+  list: (params: { page?: number; page_size?: number; status?: string; keyword?: string; brand_id?: string; category_id?: string }) => {
     return apiService.get<any>('/products/', params)
   },
 
@@ -549,6 +754,91 @@ export const productApi = {
 
   searchSpecs: (keyword: string, limit?: number) => {
     return apiService.get<any>('/products/specs/search', { keyword, limit })
+  }
+}
+
+export interface Brand {
+  id: string
+  name: string
+  logo_url?: string
+  description?: string
+  is_active: boolean
+  product_count?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface BrandFormData {
+  name: string
+  logo_url?: string
+  description?: string
+  is_active?: boolean
+}
+
+export const brandApi = {
+  list: (params: { page?: number; page_size?: number; keyword?: string; is_active?: boolean }) => {
+    return apiService.get<any>('/brands/', params)
+  },
+
+  getAll: (params?: { is_active?: boolean }) => {
+    return apiService.get<any>('/brands/all', params)
+  },
+
+  getById: (id: string) => {
+    return apiService.get<any>(`/brands/${id}`)
+  },
+
+  create: (data: BrandFormData) => {
+    return apiService.post<any>('/brands/', data)
+  },
+
+  update: (id: string, data: Partial<BrandFormData>) => {
+    return apiService.put<any>(`/brands/${id}`, data)
+  },
+
+  delete: (id: string) => {
+    return apiService.delete<any>(`/brands/${id}`)
+  },
+
+  toggleActive: (id: string, isActive: boolean) => {
+    return apiService.patch<any>(`/brands/${id}/toggle-active?is_active=${isActive}`)
+  }
+}
+
+export const customerDiscountApi = {
+  // 获取客户折扣列表
+  list: (params: { page?: number; page_size?: number; customer_id?: string; brand_id?: string; is_active?: boolean }) => {
+    return apiService.get<any>('/customer-discounts/', params)
+  },
+
+  // 获取客户折扣详情
+  getById: (id: string) => {
+    return apiService.get<any>(`/customer-discounts/${id}`)
+  },
+
+  // 创建客户折扣
+  create: (data: { customer_id: string; brand_id: string; discount_value: number; is_active?: boolean }) => {
+    return apiService.post<any>('/customer-discounts/', data)
+  },
+
+  // 更新客户折扣
+  update: (id: string, data: { discount_value?: number; is_active?: boolean }) => {
+    return apiService.put<any>(`/customer-discounts/${id}`, data)
+  },
+
+  // 删除客户折扣
+  delete: (id: string) => {
+    return apiService.delete<any>(`/customer-discounts/${id}`)
+  },
+
+  // 切换客户折扣状态
+  toggleStatus: (id: string, isActive: boolean) => {
+    return apiService.patch<any>(`/customer-discounts/${id}/status?is_active=${isActive}`)
+  },
+
+  // 获取指定客户和品牌的折扣
+  getByCustomerAndBrand: (customerId: string, brandId: string) => {
+    return apiService.get<any>(`/customer-discounts/customer/${customerId}/brand/${brandId}`)
   }
 }
 
