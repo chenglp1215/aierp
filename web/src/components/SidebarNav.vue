@@ -33,6 +33,15 @@ const allMenuItems: MenuItem[] = [
     ]
   },
   {
+    id: 'purchase',
+    label: '采购管理',
+    icon: 'purchase',
+    children: [
+      { id: 'purchase-order', label: '采购单', icon: 'purchase-order' },
+      { id: 'supplier', label: '供应商', icon: 'supplier' }
+    ]
+  },
+  {
     id: 'inventory',
     label: '库存管理',
     icon: 'inventory',
@@ -170,6 +179,9 @@ const handleStorageChange = async (event: StorageEvent) => {
             <svg v-else-if="item.icon === 'sales'" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.89-2-2-2zm0 14H5V8h14v10z"/>
             </svg>
+            <svg v-else-if="item.icon === 'purchase'" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
             <svg v-else-if="item.icon === 'inventory'" viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-1 14H5V9h14v7zm1-5H4V4h16v3z"/>
             </svg>
@@ -216,6 +228,9 @@ const handleStorageChange = async (event: StorageEvent) => {
               </svg>
               <svg v-else-if="child.icon === 'return'" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 7v4H5.83l3.58-3.59L8 6l-6 6 6 6 1.41-1.41L5.83 13H21V7z"/>
+              </svg>
+              <svg v-else-if="child.icon === 'purchase-order'" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3H5c-1.11 0-2 .89-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.11-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
               </svg>
               <svg v-else-if="child.icon === 'stock'" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-1 14H5V9h14v7zm1-5H4V4h16v3z"/>

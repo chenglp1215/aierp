@@ -243,67 +243,304 @@ export const permissionApi = {
 }
 
 export const salesOrderApi = {
-  list: (params: { page?: number; page_size?: number; status?: string; customer_id?: string; keyword?: string }) => {
+  // 获取订单列表
+  list: (params: { page?: number; page_size?: number; status?: string; customer_id?: string; order_no?: string }) => {
     return apiService.get<any>('/sales-orders/', params)
   },
 
+  // 获取订单详情
   getByOrderNo: (orderNo: string) => {
     return apiService.get<any>(`/sales-orders/${orderNo}`)
   },
 
-  create: (data: any) => {
+  // 创建订单
+  create: (data: {
+    order_date: string
+    customer_id: string
+    sale_user_id?: string
+    deliver_info?: {
+      addr: string
+      province: string
+      city: string
+      person_name: string
+      person_tel: string
+    }
+    expect_deliver_date?: string
+    settle_type: string
+    invoice_info?: {
+      invoice_title: string
+      invoice_type?: string
+      tax_number: string
+      bank_name: string
+      bank_account: string
+    }
+    remark?: string
+    items: Array<{
+      row_no: number
+      product_id: string
+      spec_id: string
+      brand_id?: string
+      brand_name?: string
+      qty: number
+      price: number
+      discount: number
+      warehouse_id: string
+      shipping_method: string
+    }>
+  }) => {
     return apiService.post<any>('/sales-orders/', data)
   },
 
-  update: (orderNo: string, data: any) => {
+  // 创建并提交订单（直接审核通过）
+  createAndSubmit: (data: {
+    order_date: string
+    customer_id: string
+    sale_user_id?: string
+    deliver_info?: {
+      addr: string
+      province: string
+      city: string
+      person_name: string
+      person_tel: string
+    }
+    expect_deliver_date?: string
+    settle_type: string
+    invoice_info?: {
+      invoice_title: string
+      invoice_type?: string
+      tax_number: string
+      bank_name: string
+      bank_account: string
+    }
+    remark?: string
+    items: Array<{
+      row_no: number
+      product_id: string
+      spec_id: string
+      brand_id?: string
+      brand_name?: string
+      qty: number
+      price: number
+      discount: number
+      warehouse_id: string
+      shipping_method: string
+    }>
+  }) => {
+    return apiService.post<any>('/sales-orders/create-and-submit', data)
+  },
+
+  // 更新订单
+  update: (orderNo: string, data: {
+    order_date?: string
+    customer_id?: string
+    sale_user_id?: string
+    deliver_info?: {
+      addr: string
+      province: string
+      city: string
+      person_name: string
+      person_tel: string
+    }
+    expect_deliver_date?: string
+    settle_type?: string
+    invoice_info?: {
+      invoice_title: string
+      invoice_type?: string
+      tax_number: string
+      bank_name: string
+      bank_account: string
+    }
+    remark?: string
+  }) => {
     return apiService.put<any>(`/sales-orders/${orderNo}`, data)
   },
 
+  // 删除订单
   delete: (orderNo: string) => {
     return apiService.delete<any>(`/sales-orders/${orderNo}`)
   },
 
-  updateStatus: (orderNo: string, status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/status`, { status })
+  // 更新订单状态
+  updateOrderStatus: (orderNo: string, status: string) => {
+    return apiService.patch<any>(`/sales-orders/${orderNo}/order-status`, { status })
   },
 
-  updatePaymentStatus: (orderNo: string, payment_status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/payment-status`, { payment_status })
-  },
-
+  // 确认订单
   confirm: (orderNo: string) => {
-    return apiService.post<any>(`/sales-orders/${orderNo}/confirm`)
+    return apiService.patch<any>(`/sales-orders/${orderNo}/order-status`, { status: 'confirmed' })
+  },
+
+  // 更新状态（别名）
+  updateStatus: (orderNo: string, status: string) => {
+    return apiService.patch<any>(`/sales-orders/${orderNo}/order-status`, { status })
+  },
+
+  // 更新发货状态
+  updateDeliveryStatus: (orderNo: string, delivery_status: string) => {
+    return apiService.patch<any>(`/sales-orders/${orderNo}/delivery-status`, { delivery_status })
+  },
+
+  // 更新收货状态
+  updateReceiveStatus: (orderNo: string, receive_status: string) => {
+    return apiService.patch<any>(`/sales-orders/${orderNo}/receive-status`, { receive_status })
+  },
+
+  // 更新开票状态
+  updateInvoiceStatus: (orderNo: string, invoice_status: string) => {
+    return apiService.patch<any>(`/sales-orders/${orderNo}/invoice-status`, { invoice_status })
+  },
+
+  // 获取订单状态流转记录
+  getStatusFlows: (orderNo: string) => {
+    return apiService.get<any>(`/sales-orders/${orderNo}/status-flows`)
+  },
+
+  // 下推采购
+  pushToPurchase: (orderNo: string, items: { row_no: number }[]) => {
+    return apiService.post<any>(`/sales-orders/${orderNo}/push-to-purchase`, { items })
   }
 }
 
-export const procurementOrderApi = {
-  list: (params: { page?: number; page_size?: number; status?: string; keyword?: string }) => {
-    return apiService.get<any>('/procurement-orders/', params)
+export const purchaseOrderApi = {
+  // 获取采购单列表
+  list: (params: { page?: number; page_size?: number; status?: string; purchase_type?: string; brand_id?: string; supplier_id?: string; purchase_no?: string; source_sale_order_no?: string }) => {
+    return apiService.get<any>('/purchase-orders/', params)
   },
 
-  getById: (id: string) => {
-    return apiService.get<any>(`/procurement-orders/${id}`)
+  // 快速搜索采购单
+  search: (keyword: string, limit?: number) => {
+    return apiService.get<any>('/purchase-orders/search', { keyword, limit })
   },
 
-  create: (data: any) => {
-    return apiService.post<any>('/procurement-orders/', data)
+  // 获取采购单详情
+  getByPurchaseNo: (purchaseNo: string) => {
+    return apiService.get<any>(`/purchase-orders/${purchaseNo}`)
   },
 
-  update: (id: string, data: any) => {
-    return apiService.put<any>(`/procurement-orders/${id}`, data)
+  // 创建采购单
+  create: (data: {
+    purchase_type: string
+    source_sale_order_no?: string
+    source_sale_order_id?: string
+    brand_id?: string
+    supplier_id: string
+    purchase_user_id?: string
+    receive_info?: {
+      type?: string
+      warehouse_id?: string
+      customer_addr?: string
+      province?: string
+      city?: string
+      contact_person?: string
+      contact_tel?: string
+    }
+    expect_arrive_date?: string
+    settle_type: string
+    remark?: string
+    items: Array<{
+      row_no: number
+      product_id: string
+      spec_id?: string
+      brand_id?: string
+      purchase_qty: number
+      purchase_price: number
+      discount?: number
+      shipping_method?: string
+      source_sale_row_no?: number
+      warehouse_id?: string
+    }>
+  }) => {
+    return apiService.post<any>('/purchase-orders/', data)
   },
 
-  delete: (id: string) => {
-    return apiService.delete<any>(`/procurement-orders/${id}`)
+  // 更新采购单
+  update: (purchaseNo: string, data: {
+    purchase_type?: string
+    brand_id?: string
+    supplier_id?: string
+    purchase_user_id?: string
+    receive_info?: {
+      type?: string
+      warehouse_id?: string
+      customer_addr?: string
+      province?: string
+      city?: string
+      contact_person?: string
+      contact_tel?: string
+    }
+    expect_arrive_date?: string
+    settle_type?: string
+    freight_amt?: number
+    remark?: string
+    items?: Array<{
+      row_no: number
+      product_id: string
+      spec_id?: string
+      brand_id?: string
+      purchase_qty: number
+      purchase_price: number
+      discount?: number
+      shipping_method?: string
+      source_sale_row_no?: number
+      warehouse_id?: string
+    }>
+  }) => {
+    return apiService.put<any>(`/purchase-orders/${purchaseNo}`, data)
   },
 
-  updateStatus: (id: string, status: string) => {
-    return apiService.patch<any>(`/procurement-orders/${id}/status`, { status })
+  // 删除采购单
+  delete: (purchaseNo: string) => {
+    return apiService.delete<any>(`/purchase-orders/${purchaseNo}`)
+  },
+
+  // 更新采购状态
+  updatePurchaseStatus: (purchaseNo: string, status: string) => {
+    return apiService.patch<any>(`/purchase-orders/${purchaseNo}/purchase-status`, { status })
+  },
+
+  // 更新入库状态
+  updateInStatus: (purchaseNo: string, in_status: string) => {
+    return apiService.patch<any>(`/purchase-orders/${purchaseNo}/in-status`, { in_status })
+  },
+
+  // 更新付款状态
+  updatePayStatus: (purchaseNo: string, pay_status: string) => {
+    return apiService.patch<any>(`/purchase-orders/${purchaseNo}/pay-status`, { pay_status })
+  },
+
+  // 审核采购单
+  approve: (purchaseNo: string) => {
+    return apiService.post<any>(`/purchase-orders/${purchaseNo}/approve`, {})
+  },
+
+  // 撤回采购单（删除采购单，更新销售单）
+  recall: (purchaseNo: string) => {
+    return apiService.post<any>(`/purchase-orders/${purchaseNo}/recall`, {})
+  },
+
+  // 结案采购单
+  close: (purchaseNo: string) => {
+    return apiService.post<any>(`/purchase-orders/${purchaseNo}/close`, {})
+  },
+
+  // 重审采购单（撤回到草稿）
+  reaudit: (purchaseNo: string) => {
+    return apiService.post<any>(`/purchase-orders/${purchaseNo}/reaudit`, {})
+  },
+
+  // 作废采购单
+  void: (purchaseNo: string) => {
+    return apiService.post<any>(`/purchase-orders/${purchaseNo}/void`, {})
+  },
+
+  // 获取状态流转记录
+  getStatusFlows: (purchaseNo: string) => {
+    return apiService.get<any>(`/purchase-orders/${purchaseNo}/status-flows`)
   }
 }
 
 export const receivableApi = {
-  list: (params: { page?: number; page_size?: number; status?: string; customer_id?: string; keyword?: string }) => {
+  list: (params: { page?: number; page_size?: number; status?: string; customer_id?: string; keyword?: string; sales_order_no?: string }) => {
     return apiService.get<any>('/accounts-receivable/', params)
   },
 
@@ -386,6 +623,7 @@ export const customerApi = {
 export interface InvoiceInfo {
   id?: string
   invoice_title: string
+  invoice_type: string
   tax_number: string
   bank_name: string
   bank_account: string
@@ -762,6 +1000,8 @@ export interface Brand {
   name: string
   logo_url?: string
   description?: string
+  purchaser_id?: string
+  purchaser_name?: string
   is_active: boolean
   product_count?: number
   created_at?: string
@@ -772,6 +1012,7 @@ export interface BrandFormData {
   name: string
   logo_url?: string
   description?: string
+  purchaser_id?: string
   is_active?: boolean
 }
 
@@ -802,6 +1043,48 @@ export const brandApi = {
 
   toggleActive: (id: string, isActive: boolean) => {
     return apiService.patch<any>(`/brands/${id}/toggle-active?is_active=${isActive}`)
+  },
+
+  getPurchaserCandidates: (keyword?: string) => {
+    return apiService.get<any>('/brands/purchaser-candidates', keyword ? { keyword } : {})
+  },
+
+  batchGetPurchasers: (brandIds: string[]) => {
+    return apiService.post<any>('/brands/batch-purchasers', brandIds)
+  }
+}
+
+export const supplierApi = {
+  list: (params: { page?: number; page_size?: number; keyword?: string; is_active?: boolean }) => {
+    return apiService.get<any>('/suppliers/', params)
+  },
+
+  getAll: (params?: { is_active?: boolean }) => {
+    return apiService.get<any>('/suppliers/all', params)
+  },
+
+  getById: (id: string) => {
+    return apiService.get<any>(`/suppliers/${id}`)
+  },
+
+  create: (data: any) => {
+    return apiService.post<any>('/suppliers/', data)
+  },
+
+  update: (id: string, data: any) => {
+    return apiService.put<any>(`/suppliers/${id}`, data)
+  },
+
+  delete: (id: string) => {
+    return apiService.delete<any>(`/suppliers/${id}`)
+  },
+
+  toggleActive: (id: string, isActive: boolean) => {
+    return apiService.patch<any>(`/suppliers/${id}/toggle-active?is_active=${isActive}`)
+  },
+
+  getByBrandId: (brandId: string) => {
+    return apiService.get<any>(`/suppliers/by-brand/${brandId}`)
   }
 }
 

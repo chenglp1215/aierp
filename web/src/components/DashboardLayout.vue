@@ -9,8 +9,8 @@ import Toast from './common/Toast.vue'
 import DashboardWorkspace from './workspace/DashboardWorkspace.vue'
 import ChatWorkspace from './workspace/ChatWorkspace.vue'
 import SalesWorkspace from './workspace/SalesWorkspace.vue'
-import SalesOrderList from './workspace/SalesOrderList.vue'
-import ProcurementOrderList from './workspace/ProcurementOrderList.vue'
+
+import SalesOrderWorkspace from './workspace/SalesOrderWorkspace.vue'
 import ReceivableList from './workspace/ReceivableList.vue'
 import InventoryWorkspace from './workspace/InventoryWorkspace.vue'
 import FinanceWorkspace from './workspace/FinanceWorkspace.vue'
@@ -22,6 +22,11 @@ import AccountManagement from './workspace/AccountManagement.vue'
 import IntelligentSettings from './workspace/IntelligentSettings.vue'
 import WarehouseWorkspace from './workspace/WarehouseWorkspace.vue'
 import CustomerDiscountWorkspace from './workspace/CustomerDiscountWorkspace.vue'
+import SalesOrderCreate from './workspace/SalesOrderCreate.vue'
+import PurchaseOrderWorkspace from './workspace/PurchaseOrderWorkspace.vue'
+import PurchaseOrderDetail from './workspace/PurchaseOrderDetail.vue'
+import SalesOrderDetail from './workspace/SalesOrderDetail.vue'
+import SupplierWorkspace from './workspace/SupplierWorkspace.vue'
 import { authApi } from '../services/api'
 import { usePermission, MENU_PERMISSION_MAP } from '../hooks'
 
@@ -39,6 +44,8 @@ const isMobileMenuOpen = ref(false)
 const activeTabId = ref('dashboard')
 const inventoryDrillDownData = ref<{ warehouseId?: string; warehouseName?: string } | null>(null)
 const customerDiscountDrillDownData = ref<{ customerId?: string; customerName?: string } | null>(null)
+const salesOrderCreateDrillDownData = ref<{} | null>(null)
+const salesOrderDetailDrillDownData = ref<{ orderNo?: string } | null>(null)
 const openTabs = ref<Tab[]>([
   { id: 'dashboard', label: '工作台', closable: false },
   { id: 'chat', label: '智能助手', closable: false }
@@ -83,6 +90,40 @@ const handleNavigate = (id: string, extraData?: Record<string, any>) => {
     return
   }
 
+  if (extraData?.salesOrderCreate) {
+    salesOrderCreateDrillDownData.value = {}
+    const label = '新建销售订单'
+    const tabExists = openTabs.value.find(t => t.id === 'sales-order-create-drilldown')
+    if (!tabExists) {
+      openTabs.value.push({ id: 'sales-order-create-drilldown', label, closable: true })
+    }
+    activeTabId.value = 'sales-order-create-drilldown'
+    return
+  }
+
+  if (extraData?.orderNo && id === 'sales-order-detail') {
+    salesOrderDetailDrillDownData.value = { orderNo: extraData.orderNo }
+    const label = `${extraData.orderNo} - 订单详情`
+    const tabId = `sales-order-detail-${extraData.orderNo}`
+    const tabExists = openTabs.value.find(t => t.id === tabId)
+    if (!tabExists) {
+      openTabs.value.push({ id: tabId, label, closable: true })
+    }
+    activeTabId.value = tabId
+    return
+  }
+
+  if (extraData?.purchaseNo && id === 'purchase-order-detail') {
+    const label = `${extraData.purchaseNo} - 采购单详情`
+    const tabId = `purchase-order-detail-${extraData.purchaseNo}`
+    const tabExists = openTabs.value.find(t => t.id === tabId)
+    if (!tabExists) {
+      openTabs.value.push({ id: tabId, label, closable: true })
+    }
+    activeTabId.value = tabId
+    return
+  }
+
   const tabExists = openTabs.value.find(t => t.id === id)
   if (!tabExists) {
     const labelMap: Record<string, string> = {
@@ -104,9 +145,12 @@ const handleNavigate = (id: string, extraData?: Record<string, any>) => {
       'product': '商品管理',
       'category': '分类管理',
       'brand': '品牌管理',
+      'purchase-order': '采购单',
       'product-list': '产品管理',
       'system-account': '账号管理',
-      'system-intelligent': '智能设置'
+      'system-intelligent': '智能设置',
+      'sales-order-workspace': '销售订单管理',
+      'supplier': '供应商管理'
     }
     const label = labelMap[id] || id
     openTabs.value.push({ id, label, closable: true })
@@ -156,11 +200,45 @@ const handleCustomerDiscountBack = () => {
   activeTabId.value = 'crm'
 }
 
+const handleSalesOrderCreateBack = () => {
+  const idx = openTabs.value.findIndex(t => t.id === 'sales-order-create-drilldown')
+  if (idx > -1) {
+    openTabs.value.splice(idx, 1)
+  }
+  salesOrderCreateDrillDownData.value = null
+  activeTabId.value = 'sales-order'
+}
+
+const handleSalesOrderDetailBack = () => {
+  const tabId = activeTabId.value
+  const idx = openTabs.value.findIndex(t => t.id === tabId)
+  if (idx > -1) {
+    openTabs.value.splice(idx, 1)
+  }
+  salesOrderDetailDrillDownData.value = null
+  activeTabId.value = 'sales-order'
+}
+
+const handlePurchaseOrderDetailBack = () => {
+  const tabId = activeTabId.value
+  const idx = openTabs.value.findIndex(t => t.id === tabId)
+  if (idx > -1) {
+    openTabs.value.splice(idx, 1)
+  }
+  activeTabId.value = 'purchase-order'
+}
+
 const handleBack = () => {
   if (activeTabId.value === 'customer-discount-drilldown') {
     handleCustomerDiscountBack()
   } else if (activeTabId.value === 'inventory-drilldown') {
     handleInventoryBack()
+  } else if (activeTabId.value === 'sales-order-create-drilldown') {
+    handleSalesOrderCreateBack()
+  } else if (activeTabId.value.startsWith('sales-order-detail')) {
+    handleSalesOrderDetailBack()
+  } else if (activeTabId.value.startsWith('purchase-order-detail')) {
+    handlePurchaseOrderDetailBack()
   }
 }
 
@@ -172,9 +250,11 @@ const currentWorkspace = computed(() => {
   const id = activeTabId.value
   if (id === 'dashboard') return DashboardWorkspace
   if (id === 'chat') return ChatWorkspace
-  if (id === 'sales-order') return SalesOrderList
-  if (id === 'procurement-order') return ProcurementOrderList
+  if (id === 'sales-order') return SalesOrderWorkspace
+  if (id === 'purchase-order') return PurchaseOrderWorkspace
   if (id === 'finance-receivable') return ReceivableList
+  if (id.startsWith('sales-order-detail')) return SalesOrderDetail
+  if (id.startsWith('purchase-order-detail')) return PurchaseOrderDetail
   if (id.startsWith('sales')) return SalesWorkspace
   if (id === 'warehouse-list') return WarehouseWorkspace
   if (id === 'inventory-stock') return InventoryWorkspace
@@ -189,6 +269,8 @@ const currentWorkspace = computed(() => {
   if (id === 'system-account') return AccountManagement
   if (id === 'system-intelligent') return IntelligentSettings
   if (id === 'customer-discount-drilldown') return CustomerDiscountWorkspace
+  if (id === 'sales-order-create-drilldown') return SalesOrderCreate
+  if (id === 'supplier') return SupplierWorkspace
   return DashboardWorkspace
 })
 
@@ -197,7 +279,7 @@ const currentBreadcrumb = computed(() => {
 })
 
 const keepAliveList = computed(() => {
-  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderList', 'ProcurementOrderList', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'BrandWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace', 'CustomerDiscountWorkspace']
+  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderWorkspace', 'SalesOrderList', 'PurchaseOrderWorkspace', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'BrandWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace', 'CustomerDiscountWorkspace', 'SalesOrderCreate', 'SalesOrderDetail', 'PurchaseOrderDetail', 'SupplierWorkspace']
   return names
 })
 
@@ -306,12 +388,12 @@ onMounted(async () => {
 
       <div class="content-area">
         <KeepAlive :include="keepAliveList">
-          <component 
-            :is="currentWorkspace" 
-            :key="activeTabId" 
-            v-bind="activeTabId === 'inventory-drilldown' ? inventoryDrillDownData : activeTabId === 'customer-discount-drilldown' ? customerDiscountDrillDownData : {}" 
-            @back="handleBack" 
-            @navigate="handleNavigate" 
+          <component
+            :is="currentWorkspace"
+            :key="activeTabId"
+            v-bind="activeTabId === 'inventory-drilldown' ? inventoryDrillDownData : activeTabId === 'customer-discount-drilldown' ? customerDiscountDrillDownData : activeTabId === 'sales-order-create-drilldown' ? salesOrderCreateDrillDownData : activeTabId.startsWith('sales-order-detail') ? salesOrderDetailDrillDownData : activeTabId.startsWith('purchase-order-detail') ? { purchaseNo: activeTabId.replace('purchase-order-detail-', '') } : {}"
+            @back="handleBack"
+            @navigate="handleNavigate"
           />
         </KeepAlive>
       </div>

@@ -148,6 +148,12 @@ a {
   --vxe-table-border-color: var(--border-color);
   --vxe-ui-table-border-color: var(--border-color);
   --vxe-ui-table-resizable-line-color: var(--border-color);
+  --vxe-table-row-bg-color: var(--bg-card);
+  --vxe-ui-table-row-bg-color: var(--bg-card);
+  --vxe-table-header-bg-color: var(--bg-secondary);
+  --vxe-ui-table-header-bg-color: var(--bg-secondary);
+  --vxe-table-row-hover-bg-color: var(--bg-secondary);
+  --vxe-ui-table-row-hover-bg-color: var(--bg-secondary);
 }
 
 .vxe-table::before {

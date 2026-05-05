@@ -81,9 +81,9 @@ class RoleUpdate(BaseModel):
 
 class User(BaseModel):
     id: str = Field(..., description="用户ID")
-    username: str = Field(..., description="用户名")
-    email: Optional[str] = Field(None, description="邮箱")
-    phone: Optional[str] = Field(None, description="手机号")
+    username: str = Field(..., description="用户名", json_schema_extra={"unique": True})
+    email: Optional[str] = Field(None, description="邮箱", json_schema_extra={"unique": True})
+    phone: Optional[str] = Field(None, description="手机号", json_schema_extra={"unique": True})
     full_name: Optional[str] = Field(None, description="全名")
     avatar: Optional[str] = Field(None, description="头像URL")
     status: UserStatus = Field(default=UserStatus.ACTIVE, description="用户状态")

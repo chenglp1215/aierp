@@ -602,30 +602,30 @@ const handleEscKey = (e: KeyboardEvent) => {
         :seq-config="{ seqMethod: seqMethod }"
       >
         <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
-        <vxe-column field="product_code" title="产品编号" width="130" class-name="col--center" />
-        <vxe-column field="product_name" title="产品名称" min-width="180" class-name="col--center" />
-        <vxe-column field="brand_name" title="品牌" width="100" class-name="col--center" />
-        <vxe-column field="category" title="分类" width="100" class-name="col--center" />
-        <vxe-column field="product_is_active" title="产品有效" width="80" class-name="col--center">
+        <vxe-column field="product_code" title="产品编号" min-width="100" class-name="col--center" />
+        <vxe-column field="product_name" title="产品名称" min-width="150" class-name="col--center" />
+        <vxe-column field="brand_name" title="品牌" min-width="80" class-name="col--center" />
+        <vxe-column field="category" title="分类" min-width="80" class-name="col--center" />
+        <vxe-column field="product_is_active" title="产品有效" min-width="60" class-name="col--center">
           <template #default="{ row }">
             <span :class="['active-tag', row.product_is_active ? 'active' : '']">{{ row.product_is_active ? '在售' : '停用' }}</span>
           </template>
         </vxe-column>
-        <vxe-column field="spec_code" title="规格编号" width="130" />
-        <vxe-column field="packaging" title="包装" width="100" />
-        <vxe-column field="sales_spec" title="销售规格" width="120" />
-        <vxe-column field="price" title="价格" width="100" />
-        <vxe-column field="stock_quantity" title="库存" width="80">
+        <vxe-column field="spec_code" title="规格编号" min-width="100" />
+        <vxe-column field="packaging" title="包装" min-width="80" />
+        <vxe-column field="sales_spec" title="销售规格" min-width="100" />
+        <vxe-column field="price" title="价格" min-width="80" />
+        <vxe-column field="stock_quantity" title="库存" min-width="60">
           <template #default="{ row }">
             <button class="stock-link" @click.stop="openStockDetail(row)">{{ row.stock_quantity || 0 }}</button>
           </template>
         </vxe-column>
-        <vxe-column field="spec_is_active" title="规格有效" width="80" class-name="col--center">
+        <vxe-column field="spec_is_active" title="规格有效" min-width="60" class-name="col--center">
           <template #default="{ row }">
             <span :class="['active-tag', row.spec_is_active ? 'active' : '']">{{ row.spec_is_active ? '在售' : '停用' }}</span>
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="220" fixed="right" class-name="col--center">
+        <vxe-column title="操作" width="200" fixed="right" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
               <button class="btn-link" @click="openEditProduct(row)">编辑</button>

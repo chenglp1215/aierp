@@ -252,7 +252,7 @@ const buildVerticalTableData = () => {
 }
 
 const verticalSpanMethod: SpanMethod = ({ row, columnIndex }) => {
-  const productCols = [1, 2, 3]
+  const productCols = [0, 1, 2, 3]  // 包含序号列（第0列）
   const actionCol = 10
   if (productCols.includes(columnIndex) && row.isFirst) {
     return { rowspan: row.rowspan, colspan: 1 }
@@ -835,8 +835,8 @@ onMounted(() => {
             </button>
           </template>
         </vxe-column>
-        <vxe-column field="product_code" title="商品编码" width="120" class-name="col--center" />
-        <vxe-column field="product_name" title="商品名称" min-width="180">
+        <vxe-column field="product_code" title="商品编码" min-width="100" class-name="col--center" />
+        <vxe-column field="product_name" title="商品名称" min-width="150">
           <template #default="{ row }">
             <div class="product-name-info">
               <span class="product-name">{{ row.product_name }}</span>
@@ -844,30 +844,30 @@ onMounted(() => {
             </div>
           </template>
         </vxe-column>
-        <vxe-column field="warehouse_name" title="仓库" width="100" class-name="col--center" />
-        <vxe-column field="spec_code" title="规格编码" width="120" class-name="col--center" />
-        <vxe-column field="packaging" title="包装规格" width="100" />
-        <vxe-column field="quantity" title="当前库存" width="90" class-name="col--center">
+        <vxe-column field="warehouse_name" title="仓库" min-width="80" class-name="col--center" />
+        <vxe-column field="spec_code" title="规格编码" min-width="100" class-name="col--center" />
+        <vxe-column field="packaging" title="包装规格" min-width="80" />
+        <vxe-column field="quantity" title="当前库存" min-width="70" class-name="col--center">
           <template #default="{ row }">
             <span class="number-cell">{{ row.quantity }}</span>
           </template>
         </vxe-column>
-        <vxe-column field="inbound_count" title="入库批次" width="80" class-name="col--center">
+        <vxe-column field="inbound_count" title="入库批次" min-width="60" class-name="col--center">
           <template #default="{ row }">
             <span class="batch-count" :class="{ 'has-data': row.inbound_count > 0 }">{{ row.inbound_count }}</span>
           </template>
         </vxe-column>
-        <vxe-column field="outbound_count" title="出库批次" width="80" class-name="col--center">
+        <vxe-column field="outbound_count" title="出库批次" min-width="60" class-name="col--center">
           <template #default="{ row }">
             <span class="batch-count" :class="{ 'has-data': row.outbound_count > 0 }">{{ row.outbound_count }}</span>
           </template>
         </vxe-column>
-        <vxe-column field="status" title="状态" width="80" class-name="col--center">
+        <vxe-column field="status" title="状态" min-width="60" class-name="col--center">
           <template #default="{ row }">
             <span class="status-tag" :class="row.status_class">{{ row.status }}</span>
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="220" fixed="right" class-name="col--center">
+        <vxe-column title="操作" width="200" fixed="right" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
               <button class="btn-link" @click="openInboundModal(row)">入库</button>

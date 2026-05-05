@@ -88,7 +88,8 @@ class AccountsReceivableService(BaseService):
         page_size: int = 20,
         status: Optional[str] = None,
         customer_id: Optional[str] = None,
-        keyword: Optional[str] = None
+        keyword: Optional[str] = None,
+        sales_order_no: Optional[str] = None
     ) -> Dict[str, Any]:
         """分页查询应收单列表"""
         filters = {}
@@ -97,6 +98,8 @@ class AccountsReceivableService(BaseService):
             filters["status"] = status
         if customer_id:
             filters["customer_id"] = customer_id
+        if sales_order_no:
+            filters["sales_order_no"] = sales_order_no
         if keyword:
             filters["$or"] = [
                 {"receivable_no": {"$regex": keyword, "$options": "i"}},

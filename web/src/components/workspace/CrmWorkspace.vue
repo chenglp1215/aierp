@@ -214,6 +214,7 @@ const handleSaveCustomer = async () => {
       },
       invoice_infos: invoiceInfos.value.map(info => ({
         invoice_title: info.invoice_title,
+        invoice_type: info.invoice_type,
         tax_number: info.tax_number,
         bank_name: info.bank_name,
         bank_account: info.bank_account,

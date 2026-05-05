@@ -213,24 +213,24 @@ const formatDiscount = (value: number) => {
         :column-config="{ resizable: true }"
       >
         <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center col--header-center" />
-        <vxe-column field="brand_name" title="品牌" min-width="54" class-name="col--center col--header-center">
+        <vxe-column field="brand_name" title="品牌" min-width="100" class-name="col--center col--header-center">
           <template #default="{ row }">
             {{ row.brand_name || row.brand_id }}
           </template>
         </vxe-column>
-        <vxe-column field="discount_value" title="折扣" min-width="150" class-name="col--center col--header-center">
+        <vxe-column field="discount_value" title="折扣" min-width="100" class-name="col--center col--header-center">
           <template #default="{ row }">
             <span class="discount-value">{{ formatDiscount(row.discount_value) }}</span>
           </template>
         </vxe-column>
-        <vxe-column field="is_active" title="状态" min-width="150" class-name="col--center col--header-center">
+        <vxe-column field="is_active" title="状态" min-width="80" class-name="col--center col--header-center">
           <template #default="{ row }">
             <span class="status-tag" :class="row.is_active ? 'active' : 'inactive'">
               {{ row.is_active ? '生效' : '停用' }}
             </span>
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="200" fixed="right" class-name="col--center col--header-center">
+        <vxe-column title="操作" width="180" fixed="right" class-name="col--center col--header-center">
           <template #default="{ row }">
             <span class="action-btns">
               <button class="btn-link" @click="handleToggleStatus(row)">

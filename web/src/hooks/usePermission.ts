@@ -168,6 +168,9 @@ export const MENU_PERMISSION_MAP: Record<string, string> = {
   'system': 'system.menu',
   'system-account': 'user.menu',
   'system-intelligent': 'intelligent.settings.view',
+  'purchase': 'purchase.menu',
+  'purchase-order': 'purchase.view',
+  'supplier': 'supplier.view',
   'system-user': 'user.menu',
   'system-role': 'role.menu',
   'system-permission': 'permission.menu'

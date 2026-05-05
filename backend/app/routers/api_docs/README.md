@@ -170,10 +170,24 @@ Authorization: Bearer <token>
 |------|------|
 | [province_city.md](./province_city.md) | 省份城市数据查询 |
 
-### 其他模块
+### 商品管理
 
 | 文档 | 描述 |
 |------|------|
 | [product.md](./product.md) | 商品管理（含商品规格） |
+| [category.md](./category.md) | 商品分类管理 |
+| [brand.md](./brand.md) | 品牌管理 |
+
+### 库存管理
+
+| 文档 | 描述 |
+|------|------|
+| [inventory.md](./inventory.md) | 库存管理（仓库、库存、出入库批次） |
+
+### 销售订单
+
+| 文档 | 描述 |
+|------|------|
+| [sales_order.md](./sales_order.md) | 销售订单管理 |
 
 其他模块的 API 文档待补充。

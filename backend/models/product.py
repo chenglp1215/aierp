@@ -135,6 +135,7 @@ class BrandBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="品牌名称")
     logo_url: Optional[str] = Field(None, max_length=500, description="品牌Logo")
     description: Optional[str] = Field(None, max_length=500, description="品牌描述")
+    purchaser_id: Optional[str] = Field(None, description="采购人员ID")
     is_active: bool = Field(default=True, description="是否有效")
 
 
@@ -146,6 +147,7 @@ class BrandUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     logo_url: Optional[str] = Field(None, max_length=500)
     description: Optional[str] = Field(None, max_length=500)
+    purchaser_id: Optional[str] = Field(None, description="采购人员ID")
     is_active: Optional[bool] = None
 
 

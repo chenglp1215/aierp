@@ -41,6 +41,11 @@ CUSTOMER_CREATE_CONFIG = {
                 'max_length': 200,
                 'required_msg': '开票抬头为必填'
             },
+            'invoice_type': {
+                'required': True,
+                'enum': ['增值税', '普通发票', '增值税专用发票', '不开票'],
+                'required_msg': '开票类型为必填'
+            },
             'tax_number': {
                 'required': True,
                 'min_length': 1,
@@ -140,6 +145,11 @@ INVOICE_INFO_CREATE_CONFIG = {
         'max_length': 200,
         'required_msg': '开票抬头为必填'
     },
+    'invoice_type': {
+        'required': True,
+        'enum': ['增值税', '普通发票', '增值税专用发票', '不开票'],
+        'required_msg': '开票类型为必填'
+    },
     'tax_number': {
         'required': True,
         'min_length': 1,
@@ -164,6 +174,9 @@ INVOICE_INFO_UPDATE_CONFIG = {
     'invoice_title': {
         'min_length': 1,
         'max_length': 200,
+    },
+    'invoice_type': {
+        'enum': ['增值税', '普通发票', '增值税专用发票', '不开票'],
     },
     'tax_number': {
         'min_length': 1,

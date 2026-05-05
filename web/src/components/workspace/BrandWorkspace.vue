@@ -2,6 +2,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { brandApi, uploadApi, type Brand, type BrandFormData } from '../../services/api'
 
+interface PurchaserCandidate {
+  id: string
+  full_name: string
+  username: string
+}
+
 const loading = ref(false)
 const brands = ref<Brand[]>([])
 const total = ref(0)
@@ -16,11 +22,13 @@ const deleteTarget = ref<Brand | null>(null)
 const editingBrand = ref<Brand | null>(null)
 const formLoading = ref(false)
 const imageUploading = ref(false)
+const purchaserCandidates = ref<PurchaserCandidate[]>([])
 
 const brandForm = ref<BrandFormData>({
   name: '',
   logo_url: '',
   description: '',
+  purchaser_id: '',
   is_active: true
 })
 
@@ -67,6 +75,7 @@ const resetForm = () => {
     name: '',
     logo_url: '',
     description: '',
+    purchaser_id: '',
     is_active: true
   }
   editingBrand.value = null
@@ -83,6 +92,7 @@ const openEdit = (brand: Brand) => {
     name: brand.name,
     logo_url: brand.logo_url || '',
     description: brand.description || '',
+    purchaser_id: brand.purchaser_id || '',
     is_active: brand.is_active
   }
   showFormModal.value = true
@@ -180,8 +190,18 @@ const formatDate = (dateStr?: string) => {
   })
 }
 
+const loadPurchasers = async () => {
+  try {
+    const res = await brandApi.getPurchaserCandidates()
+    purchaserCandidates.value = res.result || []
+  } catch (e) {
+    console.error('加载采购人员失败:', e)
+  }
+}
+
 onMounted(() => {
   loadBrands()
+  loadPurchasers()
 })
 </script>
 
@@ -239,6 +259,9 @@ onMounted(() => {
           <div class="brand-card-body">
             <h3 class="brand-name">{{ brand.name }}</h3>
             <p class="brand-description">{{ brand.description || '暂无描述' }}</p>
+            <div v-if="brand.purchaser_name" class="brand-purchaser">
+              采购人员: {{ brand.purchaser_name }}
+            </div>
             <div class="brand-stats">
               <div class="stat-item">
                 <span class="stat-label">商品数量</span>
@@ -302,6 +325,15 @@ onMounted(() => {
               rows="3"
               maxlength="500"
             ></textarea>
+          </div>
+          <div class="form-group">
+            <label>采购人员</label>
+            <select v-model="brandForm.purchaser_id" class="form-select">
+              <option value="">请选择采购人员</option>
+              <option v-for="p in purchaserCandidates" :key="p.id" :value="p.id">
+                {{ p.full_name || p.username }}
+              </option>
+            </select>
           </div>
           <div class="form-group checkbox-group">
             <label class="checkbox-label">
@@ -612,6 +644,12 @@ onMounted(() => {
   min-height: 39px;
 }
 
+.brand-purchaser {
+  font-size: 12px;
+  color: var(--accent-blue);
+  margin-bottom: 12px;
+}
+
 .brand-stats {
   display: flex;
   gap: 16px;
@@ -780,6 +818,22 @@ onMounted(() => {
 
 .form-group textarea {
   min-height: 80px;
+}
+
+.form-select {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.form-select:focus {
+  border-color: var(--accent-blue);
 }
 
 .checkbox-group {

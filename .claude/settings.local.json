@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vue-tsc *)",
+      "Bash(npm run *)",
+      "Bash(python -c \"from app.routers.inventory import warehouse_router; print\\('OK'\\)\")",
+      "Bash(python -m py_compile services/product_service.py)",
+      "Bash(python -m py_compile validators/sales_order_validator.py)",
+      "Bash(python -m py_compile backend/models/customer_v2.py)",
+      "Bash(python -m py_compile backend/validators/customer_validator_v2.py)",
+      "Bash(python -m py_compile backend/models/sales_order.py)",
+      "Bash(python -m py_compile backend/validators/sales_order_validator.py)",
+      "Bash(python -m py_compile \"backend/validators/sales_order_validator.py\")",
+      "Read(//d/project/aierp/**)",
+      "Bash(python -m py_compile backend/services/sales_order_service.py)",
+      "Bash(python -m py_compile backend/app/routers/sales_order.py)",
+      "Bash(python -m py_compile backend/services/order_status_flow_service.py)",
+      "Bash(python -c \"from services.purchase_order_service import purchase_order_service; print\\('OK'\\)\")",
+      "Bash(python -c \"from models.sales_order import OrderStatus; print\\([s.value for s in OrderStatus]\\)\")",
+      "Bash(python -c \"from services.sales_order_service import sales_order_service; print\\('OK'\\)\")",
+      "Bash(python -m py_compile app/routers/supplier.py models/supplier.py services/supplier_service.py validators/supplier_validator.py)",
+      "Bash(python -m py_compile app/routers/supplier.py models/supplier.py services/supplier_service.py validators/supplier_validator.py app/routers/__init__.py)",
+      "Bash(python -m py_compile models/purchase_order.py services/purchase_order_service.py)",
+      "Bash(python -m py_compile services/purchase_order_service.py app/routers/purchase_order.py)",
+      "Bash(python -c \"from models.sales_order import SalesOrderItem; print\\('SalesOrderItem fields:', [f for f in SalesOrderItem.model_fields.keys\\(\\)]\\)\")"
+    ]
+  }
+}

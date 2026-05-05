@@ -43,16 +43,34 @@ class BaseService:
             return None
 
     async def update(self, id: str, data: Dict[str, Any]) -> bool:
-        """更新文档"""
+        """更新文档
+
+        支持 MongoDB 更新操作符：data 中以 $ 开头的键（如 $push、$pull）会作为独立操作符处理，
+        其余字段自动包装到 $set 中。
+        """
         from bson import ObjectId
-        data["updated_at"] = datetime.now()
-        data.pop("id", None)
-        data.pop("_id", None)
-        data.pop("created_at", None)
+        # 分离 MongoDB 操作符和普通字段
+        operators = {}
+        set_fields = {}
+        for key, value in data.items():
+            if key.startswith("$"):
+                operators[key] = value
+            else:
+                set_fields[key] = value
+        # 普通字段自动添加 updated_at
+        set_fields["updated_at"] = datetime.now()
+        set_fields.pop("id", None)
+        set_fields.pop("_id", None)
+        set_fields.pop("created_at", None)
+        # 构建更新文档
+        update_doc = {}
+        if set_fields:
+            update_doc["$set"] = set_fields
+        update_doc.update(operators)
         try:
             result = await self.collection.update_one(
                 {"_id": ObjectId(id)},
-                {"$set": data}
+                update_doc
             )
             return result.modified_count > 0
         except Exception as e:

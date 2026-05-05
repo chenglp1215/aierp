@@ -131,6 +131,7 @@ def transfer_and_deploy(password, temp_dir, backend_tar, frontend_tar):
         tar -xf /tmp/backend.tar -C {REMOTE_PATH}/backend
         tar -xf /tmp/frontend.tar -C {REMOTE_PATH}/dist
         rm -f /tmp/backend.tar /tmp/frontend.tar
+        cd {REMOTE_PATH}/backend && /root/aierp/venv/bin/python scripts/init_db.py
         bash {REMOTE_PATH}/restart.sh
     '''
     stdin, stdout, stderr = ssh.exec_command(remote_script)

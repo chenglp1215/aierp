@@ -42,6 +42,7 @@ Content-Type: application/json
   "invoice_infos": [                    // 开票信息列表
     {
       "invoice_title": "string",        // 开票抬头（必填）
+      "invoice_type": "string",         // 开票类型（必填）：增值税、普通发票、增值税专用发票、不开票
       "tax_number": "string",           // 税号（必填）
       "bank_name": "string",            // 开户行（必填）
       "bank_account": "string",         // 银行账号（必填）
@@ -429,6 +430,7 @@ GET /api/v1/customers-v2/search?keyword=医院&limit=5
 |------|------|------|
 | invoice_infos[].id | string | 开票信息ID |
 | invoice_infos[].invoice_title | string | 开票抬头 |
+| invoice_infos[].invoice_type | string | 开票类型（增值税、普通发票、增值税专用发票、不开票） |
 | invoice_infos[].tax_number | string | 税务登记号 |
 | invoice_infos[].bank_name | string | 开户银行 |
 | invoice_infos[].bank_account | string | 银行账号 |
@@ -676,6 +678,7 @@ GET /api/v1/customers-v2/search?keyword=医院&limit=5
 ```json
 {
   "invoice_title": "string",   // 必填，开票抬头
+  "invoice_type": "string",    // 必填，开票类型：增值税、普通发票、增值税专用发票、不开票
   "tax_number": "string",      // 必填，税号
   "bank_name": "string",       // 必填，开户行
   "bank_account": "string",    // 必填，银行账号
@@ -693,6 +696,7 @@ GET /api/v1/customers-v2/search?keyword=医院&limit=5
   "result": {
     "id": "inv001",
     "invoice_title": "某医院",
+    "invoice_type": "增值税",
     "tax_number": "91110000000000000X",
     "bank_name": "中国工商银行",
     "bank_account": "6222021234567890",
@@ -734,6 +738,7 @@ GET /api/v1/customers-v2/search?keyword=医院&limit=5
 ```json
 {
   "invoice_title": "string",
+  "invoice_type": "string",
   "tax_number": "string",
   "bank_name": "string",
   "bank_account": "string",

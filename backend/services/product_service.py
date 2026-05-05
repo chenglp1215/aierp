@@ -149,8 +149,28 @@ class ProductSpecService(BaseService):
         products = await product_cursor.to_list(length=limit)
 
         if not products:
+            # 规格直接匹配但无商品匹配，需补充商品信息
+            missing_product_ids = set()
+            for spec in specs:
+                pid = spec.get("product_id")
+                if pid:
+                    missing_product_ids.add(pid)
+            product_map = {}
+            if missing_product_ids:
+                cursor = self.db["products"].find({"_id": {"$in": [ObjectId(pid) for pid in missing_product_ids]}})
+                for p in await cursor.to_list(length=len(missing_product_ids)):
+                    product_map[str(p["_id"])] = p
             for spec in specs:
                 spec["id"] = str(spec.pop("_id"))
+                pid = spec.get("product_id")
+                if pid and pid in product_map:
+                    spec["product_name"] = product_map[pid].get("name", "")
+                    spec["product_code"] = product_map[pid].get("product_code", "")
+                    spec["brand_name"] = product_map[pid].get("brand_name", "")
+                else:
+                    spec["product_name"] = ""
+                    spec["product_code"] = ""
+                    spec["brand_name"] = ""
             return specs
 
         product_ids = [str(p["_id"]) for p in products]
@@ -169,6 +189,17 @@ class ProductSpecService(BaseService):
                 all_specs.append(spec)
                 spec_ids.add(sid)
 
+        # 补充未在 product_map 中的商品信息
+        missing_product_ids = set()
+        for spec in all_specs:
+            pid = spec.get("product_id")
+            if pid and pid not in product_map:
+                missing_product_ids.add(pid)
+        if missing_product_ids:
+            cursor = self.db["products"].find({"_id": {"$in": [ObjectId(pid) for pid in missing_product_ids]}})
+            for p in await cursor.to_list(length=len(missing_product_ids)):
+                product_map[str(p["_id"])] = p
+
         for spec in all_specs:
             spec["id"] = str(spec.pop("_id"))
             product_id = spec.get("product_id")
@@ -176,6 +207,11 @@ class ProductSpecService(BaseService):
                 product = product_map[product_id]
                 spec["product_name"] = product.get("name", "")
                 spec["product_code"] = product.get("product_code", "")
+                spec["brand_name"] = product.get("brand_name", "")
+            else:
+                spec["product_name"] = ""
+                spec["product_code"] = ""
+                spec["brand_name"] = ""
 
         return all_specs[:limit]
 

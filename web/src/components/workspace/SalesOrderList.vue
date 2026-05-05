@@ -183,7 +183,7 @@ const loadOrders = async () => {
       page_size: pageSize.value,
       status: filterStatus.value || undefined,
       customer_id: filterCustomerId.value || undefined,
-      keyword: keyword.value || undefined
+      order_no: keyword.value || undefined
     })
     orders.value = res.items.map((item: any) => ({
       ...item,

@@ -2,7 +2,7 @@
 客户管理 - 数据模型
 全新设计，包含客户基础属性、联系人、财务信息、收货信息等
 """
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -25,10 +25,19 @@ class CustomerStatus(str, Enum):
 
 # ============ 财务信息模型 ============
 
+class InvoiceType(str, Enum):
+    """开票类型枚举"""
+    VAT = "增值税"
+    ORDINARY = "普通发票"
+    SPECIAL_VAT = "增值税专用发票"
+    NO_INVOICE = "不开票"
+
+
 class InvoiceInfo(BaseModel):
     """开票信息（财务信息）"""
     id: Optional[str] = Field(None, description="开票信息ID")
     invoice_title: str = Field(..., min_length=1, max_length=200, description="开票抬头")
+    invoice_type: str = Field(..., min_length=1, max_length=50, description="开票类型")
     tax_number: str = Field(..., min_length=1, max_length=50, description="税务编码")
     bank_name: str = Field(..., min_length=1, max_length=200, description="银行开户行")
     bank_account: str = Field(..., min_length=1, max_length=50, description="银行账号")
@@ -38,6 +47,7 @@ class InvoiceInfo(BaseModel):
 class InvoiceInfoCreate(BaseModel):
     """创建开票信息"""
     invoice_title: str = Field(..., min_length=1, max_length=200, description="开票抬头")
+    invoice_type: str = Field(..., min_length=1, max_length=50, description="开票类型")
     tax_number: str = Field(..., min_length=1, max_length=50, description="税务编码")
     bank_name: str = Field(..., min_length=1, max_length=200, description="银行开户行")
     bank_account: str = Field(..., min_length=1, max_length=50, description="银行账号")
@@ -47,6 +57,7 @@ class InvoiceInfoCreate(BaseModel):
 class InvoiceInfoUpdate(BaseModel):
     """更新开票信息"""
     invoice_title: Optional[str] = Field(None, min_length=1, max_length=200)
+    invoice_type: Optional[str] = Field(None, min_length=1, max_length=50)
     tax_number: Optional[str] = Field(None, min_length=1, max_length=50)
     bank_name: Optional[str] = Field(None, min_length=1, max_length=200)
     bank_account: Optional[str] = Field(None, min_length=1, max_length=50)

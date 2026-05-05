@@ -31,8 +31,14 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/procurement-order',
-    name: 'ProcurementOrder',
+    path: '/purchase-order',
+    name: 'PurchaseOrder',
+    component: () => import('../components/DashboardLayout.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/supplier',
+    name: 'Supplier',
     component: () => import('../components/DashboardLayout.vue'),
     meta: { requiresAuth: true }
   },

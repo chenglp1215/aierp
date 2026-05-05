@@ -1,20 +1,18 @@
 """
-统一响应处理装饰器
+统一响应处理工具函数
+
+提供 success_response / error_response / handle_result / validation_error，
+所有路由应使用这些函数返回统一的 {status, message, result} 格式。
 """
-import functools
 import logging
-from typing import Callable, Any, Union, Tuple
-from typing_extensions import TypeVar, ParamSpec
+from typing import Any, Union
 
 logger = logging.getLogger(__name__)
 
-P = ParamSpec('P')
-T = TypeVar('T')
 
-
-def success_response(message: str = "操作成功", result: Any = None) -> dict:
+def success_response(message: str = "操作成功", result: Any = None, status: str = "success") -> dict:
     """成功响应"""
-    return {"status": "success", "message": message, "result": result}
+    return {"status": status, "message": message, "result": result}
 
 
 def error_response(message: str, result: Any = None, validation_errors: Any = None) -> dict:
