@@ -4,9 +4,7 @@ from .sales_order import sales_order_router
 from .customer import customer_router
 from .customer_v2 import customer_router_v2
 from .customer_discount import customer_discount_router
-from .product import product_router
-from .category import category_router
-from .brand import brand_router
+from .product import product_router, category_router, brand_router
 from .auth import auth_router
 from .role import role_router
 from .permission import permission_router

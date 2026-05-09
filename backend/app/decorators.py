@@ -80,3 +80,39 @@ def validation_error(errors: list, message: str = "数据验证失败") -> dict:
         message: 错误消息
     """
     return error_response(message, validation_errors=errors)
+
+
+def _format_validation_errors(errors) -> list:
+    result = []
+    for field, messages in errors.items():
+        for msg in messages:
+            result.append({"field": field, "message": msg})
+    return result
+
+
+def wrap_response(func):
+    import functools
+    import inspect
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            result = await func(*args, **kwargs)
+        except ValueError as e:
+            error_detail = e.args[0] if e.args else str(e)
+            if isinstance(error_detail, dict):
+                return error_response(
+                    message="参数验证失败",
+                    validation_errors=_format_validation_errors(error_detail),
+                )
+            return error_response(str(e))
+        else:
+            if isinstance(result, dict) and "status" in result and "message" in result:
+                return result
+            if isinstance(result, str):
+                return success_response(result)
+            return success_response(result=result)
+
+    wrapper.__signature__ = inspect.signature(func)
+    wrapper.__annotations__ = func.__annotations__
+    return wrapper

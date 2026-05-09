@@ -224,7 +224,8 @@ class AuthService(BaseService):
         page: int = 1,
         page_size: int = 20,
         status: Optional[str] = None,
-        keyword: Optional[str] = None
+        keyword: Optional[str] = None,
+        role_ids: Optional[list[str]] = None
     ) -> dict:
         """分页查询用户列表"""
         filters = {}
@@ -236,7 +237,9 @@ class AuthService(BaseService):
                 {"full_name": {"$regex": keyword, "$options": "i"}},
                 {"email": {"$regex": keyword, "$options": "i"}}
             ]
-
+        if role_ids:
+            filters["role_ids"] = role_ids
+        
         result = await self.list(page, page_size, filters, "created_at", -1)
 
         role_ids_set = set()

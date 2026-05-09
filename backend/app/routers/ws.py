@@ -8,6 +8,7 @@ from services.ws_manager import ws_manager
 from config import settings
 from models.auth import TokenPayload
 from services.auth_service import auth_service
+from app.routers.auth import MOCK_ADMIN_USER
 from app.agent import agent_manager
 
 logger = logging.getLogger(__name__)
@@ -29,27 +30,29 @@ async def websocket_chat(
         await websocket.close(code=4001, reason="Missing user_id")
         return
 
-    if not token:
+    if settings.LOCAL_DEBUG:
+        user = MOCK_ADMIN_USER
+    elif not token:
         await websocket.close(code=4001, reason="Missing token")
         return
+    else:
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            token_data = TokenPayload(**payload)
 
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        token_data = TokenPayload(**payload)
+            user = await auth_service.get_user_by_id(token_data.sub)
+            if not user:
+                await websocket.close(code=4002, reason="User not found")
+                return
 
-        user = await auth_service.get_user_by_id(token_data.sub)
-        if not user:
-            await websocket.close(code=4002, reason="User not found")
+            if user.get("status") != "active":
+                await websocket.close(code=4003, reason="User is disabled")
+                return
+
+        except JWTError as e:
+            logger.error(f"JWT validation failed: {e}")
+            await websocket.close(code=4004, reason="Invalid token")
             return
-
-        if user.get("status") != "active":
-            await websocket.close(code=4003, reason="User is disabled")
-            return
-
-    except JWTError as e:
-        logger.error(f"JWT validation failed: {e}")
-        await websocket.close(code=4004, reason="Invalid token")
-        return
 
     connection_key = await ws_manager.connect(websocket, user_id, agent_id)
     logger.info(f"【WebSocket chat connected】: {connection_key}")

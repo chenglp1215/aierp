@@ -1,81 +1,81 @@
-from typing import Any, Dict
-from validators.base_validator import (
-    BaseValidator,
-    RequiredFieldsValidator,
-    NumericRangeValidator,
-)
+"""
+商品管理 - 验证规则
+全新设计的商品验证规则
+"""
+
+# ============ 品牌验证配置 ============
+
+BRAND_CREATE_CONFIG = {
+    'name': {'required': True, 'min_length': 1, 'max_length': 100},
+    'logo_url': {'max_length': 500},
+    'description': {'max_length': 500},
+    'purchaser_id': {'max_length': 100},
+    'is_active': {'type': bool},
+}
+
+BRAND_UPDATE_CONFIG = {
+    'name': {'min_length': 1, 'max_length': 100},
+    'logo_url': {'max_length': 500},
+    'description': {'max_length': 500},
+    'purchaser_id': {'max_length': 100},
+    'is_active': {'type': bool},
+}
 
 
-class ProductCreateValidator(BaseValidator):
-    def __init__(self, data: Dict[str, Any]):
-        super().__init__(data)
+# ============ 商品分类验证配置 ============
 
-    def validate(self) -> None:
-        self._validate_required_fields()
-        self._validate_product_code()
+CATEGORY_CREATE_CONFIG = {
+    'name': {'required': True, 'min_length': 1, 'max_length': 100},
+    'tax_code': {'max_length': 50},
+    'sort_order': {'min': 0},
+    'parent_id': {'max_length': 100},
+    'is_shop_display': {'type': bool},
+}
 
-    def _validate_required_fields(self) -> None:
-        RequiredFieldsValidator.validate_required(
-            self._data,
-            ['product_code', 'name'],
-            self
-        )
-
-    def _validate_product_code(self) -> None:
-        product_code = self._data.get('product_code')
-        if product_code:
-            import re
-            if not re.match(r'^[A-Z0-9\-_]+$', product_code.upper()):
-                self.add_error('product_code', '商品编号只能包含字母、数字、横线和下划线')
+CATEGORY_UPDATE_CONFIG = {
+    'name': {'min_length': 1, 'max_length': 100},
+    'tax_code': {'max_length': 50},
+    'sort_order': {'min': 0},
+    'parent_id': {'max_length': 100},
+    'is_shop_display': {'type': bool},
+}
 
 
-class ProductUpdateValidator(BaseValidator):
-    def __init__(self, data: Dict[str, Any]):
-        super().__init__(data)
+# ============ 商品规格验证配置 ============
+PRODUCT_SPEC_CREATE_CONFIG = {
+    'spec_code': {'required': False, 'min_length': 1, 'max_length': 50},
+    'packaging': {'max_length': 100},
+    'sales_spec': {'max_length': 100},
+    'price': {'required': True, 'min': 0},
+    'cas_number': {'max_length': 50},
+    'is_active': {'type': bool},
+}
 
-    def validate(self) -> None:
-        product_code = self._data.get('product_code')
-        if product_code is not None:
-            import re
-            if not re.match(r'^[A-Z0-9\-_]+$', product_code.upper()):
-                self.add_error('product_code', '商品编号只能包含字母、数字、横线和下划线')
+PRODUCT_SPEC_UPDATE_CONFIG = {
+    'spec_code': {'min_length': 1, 'max_length': 50},
+    'packaging': {'max_length': 100},
+    'sales_spec': {'max_length': 100},
+    'price': {'min': 0},
+    'cas_number': {'max_length': 50},
+    'is_active': {'type': bool},
+}
+# ============ 商品验证配置 ============
+PRODUCT_CREATE_CONFIG = {
+    'product_code': {'required': False, 'min_length': 1, 'max_length': 50},
+    'name': {'required': True, 'min_length': 1, 'max_length': 200},
+    'image_url': {'max_length': 500},
+    'brand_id': {'max_length': 100},
+    'category_id': {'max_length': 100},
+    'tax_code': {'max_length': 50},
+    'is_active': {'type': bool},
+}
 
-
-class ProductSpecCreateValidator(BaseValidator):
-    def __init__(self, data: Dict[str, Any]):
-        super().__init__(data)
-
-    def validate(self) -> None:
-        self._validate_required_fields()
-        self._validate_price()
-
-    def _validate_required_fields(self) -> None:
-        RequiredFieldsValidator.validate_required(
-            self._data,
-            ['spec_code', 'price'],
-            self
-        )
-
-    def _validate_price(self) -> None:
-        price = self._data.get('price')
-        NumericRangeValidator.validate_in_range(
-            price,
-            'price',
-            min_value=0,
-            validator=self
-        )
-
-
-class ProductSpecUpdateValidator(BaseValidator):
-    def __init__(self, data: Dict[str, Any]):
-        super().__init__(data)
-
-    def validate(self) -> None:
-        price = self._data.get('price')
-        if price is not None:
-            NumericRangeValidator.validate_in_range(
-                price,
-                'price',
-                min_value=0,
-                validator=self
-            )
+PRODUCT_UPDATE_CONFIG = {
+    'product_code': {'min_length': 1, 'max_length': 50},
+    'name': {'min_length': 1, 'max_length': 200},
+    'image_url': {'max_length': 500},
+    'brand_id': {'max_length': 100},
+    'category_id': {'max_length': 100},
+    'tax_code': {'max_length': 50},
+    'is_active': {'type': bool},
+}

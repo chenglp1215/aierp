@@ -174,9 +174,7 @@ Authorization: Bearer <token>
 
 | 文档 | 描述 |
 |------|------|
-| [product.md](./product.md) | 商品管理（含商品规格） |
-| [category.md](./category.md) | 商品分类管理 |
-| [brand.md](./brand.md) | 品牌管理 |
+| [product.md](./product.md) | 商品管理（含商品规格、品牌管理、分类管理） |
 
 ### 库存管理
 

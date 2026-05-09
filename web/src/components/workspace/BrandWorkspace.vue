@@ -35,14 +35,14 @@ const brandForm = ref<BrandFormData>({
 const loadBrands = async () => {
   loading.value = true
   try {
-    const res = await brandApi.list({
+    const res: any = await brandApi.list({
       page: page.value,
       page_size: pageSize.value,
       keyword: keyword.value || undefined,
       is_active: filterActive.value === '' ? undefined : filterActive.value
     })
-    brands.value = res.items || []
-    total.value = res.total || 0
+    brands.value = res.result?.items || res.items || []
+    total.value = res.result?.total || res.total || 0
   } catch (error) {
     console.error('加载品牌列表失败:', error)
   } finally {

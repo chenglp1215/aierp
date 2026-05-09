@@ -38,11 +38,8 @@ const keyword = ref('')
 const filterStatus = ref('')
 
 const showWarehouseModal = ref(false)
-const showDeleteConfirm = ref(false)
 const editingWarehouse = ref<Warehouse | null>(null)
-const deleteTargetId = ref<string | null>(null)
 const formLoading = ref(false)
-const deleteLoading = ref(false)
 
 const managerCandidates = ref<ManagerCandidate[]>([])
 const loadingCandidates = ref(false)
@@ -93,8 +90,8 @@ const loadWarehouses = async () => {
       keyword: keyword.value || undefined,
       status: filterStatus.value || undefined
     })
-    warehouses.value = res.items
-    total.value = res.total
+    warehouses.value = res.result?.items || res.items || []
+    total.value = res.result?.total || res.total || 0
     buildTableData()
   } catch (error) {
     console.error('加载仓库列表失败:', error)
@@ -175,10 +172,17 @@ const openCreateWarehouse = () => {
 }
 
 const openEditWarehouse = (row: any) => {
-  const warehouse = warehouses.value.find(w => w.id === row.id)
+  const warehouse = warehouses.value.find(w => w.id === row._id)
   if (!warehouse) return
   editingWarehouse.value = warehouse
-  warehouseForm.value = { ...warehouse }
+  warehouseForm.value = {
+    name: warehouse.name,
+    address: warehouse.address,
+    manager_id: warehouse.manager_id || '',
+    manager_name: warehouse.manager_name || '',
+    status: warehouse.status || 'active',
+    description: warehouse.description || ''
+  }
   loadManagerCandidates()
   showWarehouseModal.value = true
 }
@@ -197,23 +201,20 @@ const handleSaveWarehouse = async () => {
     window.showToast('请输入仓库地址', 'warning')
     return
   }
-  if (!warehouseForm.value.manager_id?.trim()) {
-    window.showToast('请选择仓库管理员', 'warning')
-    return
-  }
 
   formLoading.value = true
   try {
     if (editingWarehouse.value) {
-      await warehouseApi.update(editingWarehouse.value.warehouse_code, warehouseForm.value)
+      await warehouseApi.update(editingWarehouse.value.id, warehouseForm.value)
       window.showToast('仓库更新成功', 'success')
-      const index = warehouses.value.findIndex(w => w.warehouse_code === editingWarehouse.value!.warehouse_code)
+      const index = warehouses.value.findIndex(w => w.id === editingWarehouse.value!.id)
       if (index !== -1) {
         warehouses.value[index] = {
           ...warehouses.value[index],
           ...warehouseForm.value,
           display_status: formatStatus(warehouseForm.value.status || warehouses.value[index].status)
         }
+        buildTableData()
       }
     } else {
       await warehouseApi.create(warehouseForm.value)
@@ -300,12 +301,11 @@ onMounted(() => {
             <span class="status-tag" :class="row.status_class">{{ row.display_status }}</span>
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="240" fixed="right" class-name="col--center">
+        <vxe-column title="操作" width="180" fixed="right" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
               <button class="btn-link" @click="viewInventory(row)">查看库存</button>
               <button class="btn-link" @click="openEditWarehouse(row)">编辑</button>
-              <button class="btn-link danger" @click="confirmDelete(row)">删除</button>
             </span>
           </template>
         </vxe-column>
@@ -339,7 +339,7 @@ onMounted(() => {
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>仓库管理员 *</label>
+              <label>仓库管理员</label>
               <select
                 :value="warehouseForm.manager_id"
                 @change="handleManagerSelect"
@@ -376,22 +376,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="modal-overlay" v-if="showDeleteConfirm" @click.self="showDeleteConfirm = false">
-      <div class="modal confirm-modal">
-        <div class="modal-header">
-          <h3>确认删除</h3>
-        </div>
-        <div class="modal-body">
-          <p>确定要删除该仓库吗？此操作不可恢复。</p>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" @click="showDeleteConfirm = false">取消</button>
-          <button class="btn-danger" @click="handleDelete" :disabled="deleteLoading">
-            {{ deleteLoading ? '删除中...' : '确认删除' }}
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 

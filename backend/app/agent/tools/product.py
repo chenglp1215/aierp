@@ -250,24 +250,25 @@ class ProductCreateTool(BaseTool):
         try:
             logger.info(f"Product create: name={name}")
 
-            from models.product import ProductCreate
-            product_data = ProductCreate(
-                product_code=product_code or "",
+            from models.product import Product
+            product = Product(
+                product_code=product_code,
                 name=name,
                 image_url=image_url,
-                brand=brand,
-                category=category,
+                brand_id=brand,
+                category_id=category,
                 tax_code=tax_code
             )
+            product_dict = product.model_dump(exclude_none=True)
 
-            is_valid, errors = product_service.validate_product_create(product_data)
+            is_valid, errors = product_service.validate_product_create(product_dict)
             if not is_valid:
                 return ToolResult(
                     success=False,
                     content=f"商品创建参数验证失败: {format_validation_errors(errors)}"
                 ).model_dump_json()
 
-            result = await product_service.create_product(product_data)
+            result = await product_service.create_product(product_dict)
 
             return ToolResult(
                 success=True,
@@ -335,23 +336,24 @@ class ProductUpdateTool(BaseTool):
         try:
             logger.info(f"Product update: product_id={product_id}")
 
-            from models.product import ProductUpdate
-            update_data = ProductUpdate(
+            from models.product import Product
+            update = Product(
                 name=name,
                 product_code=product_code,
                 image_url=image_url,
-                brand=brand,
-                category=category
+                brand_id=brand,
+                category_id=category
             )
+            update_dict = update.model_dump(exclude_unset=True, exclude_none=True)
 
-            is_valid, errors = product_service.validate_product_update(update_data)
+            is_valid, errors = product_service.validate_product_update(update_dict)
             if not is_valid:
                 return ToolResult(
                     success=False,
                     content=f"商品更新参数验证失败: {format_validation_errors(errors)}"
                 ).model_dump_json()
 
-            success = await product_service.update_product(product_id, update_data)
+            success = await product_service.update_product(product_id, update_dict)
             content = "商品信息更新成功" if success else "商品信息更新失败，商品不存在"
 
             return ToolResult(success=success, content=content).model_dump_json()
@@ -561,24 +563,25 @@ class ProductSpecCreateTool(BaseTool):
         try:
             logger.info(f"Product spec create: product_id={product_id}, price={price}")
 
-            from models.product import ProductSpecCreate
-            spec_data = ProductSpecCreate(
-                spec_code=spec_code or "",
+            from models.product import ProductSpec
+            spec = ProductSpec(
+                spec_code=spec_code,
                 price=price,
                 packaging=packaging,
                 sales_spec=sales_spec,
                 cas_number=cas_number
             )
+            spec_dict = spec.model_dump(exclude_none=True)
+            spec_dict["product_id"] = product_id
 
-            is_valid, errors = product_spec_service.validate_spec_create(spec_data)
+            is_valid, errors = product_spec_service.validate_spec_create(spec_dict)
             if not is_valid:
                 return ToolResult(
                     success=False,
                     content=f"规格创建参数验证失败: {format_validation_errors(errors)}"
                 ).model_dump_json()
 
-            spec_data.product_id = product_id
-            result = await product_spec_service.create_spec(spec_data)
+            result = await product_spec_service.create_spec(spec_dict)
 
             return ToolResult(
                 success=True,
@@ -652,8 +655,8 @@ class ProductSpecUpdateTool(BaseTool):
         try:
             logger.info(f"Product spec update: spec_id={spec_id}")
 
-            from models.product import ProductSpecUpdate
-            update_data = ProductSpecUpdate(
+            from models.product import ProductSpec
+            update = ProductSpec(
                 spec_code=spec_code,
                 price=price,
                 packaging=packaging,
@@ -661,15 +664,16 @@ class ProductSpecUpdateTool(BaseTool):
                 cas_number=cas_number,
                 is_active=is_active
             )
+            update_dict = update.model_dump(exclude_unset=True, exclude_none=True)
 
-            is_valid, errors = product_spec_service.validate_spec_update(update_data)
+            is_valid, errors = product_spec_service.validate_spec_update(update_dict)
             if not is_valid:
                 return ToolResult(
                     success=False,
                     content=f"规格更新参数验证失败: {format_validation_errors(errors)}"
                 ).model_dump_json()
 
-            success = await product_spec_service.update_spec(spec_id, update_data)
+            success = await product_spec_service.update_spec(spec_id, update_dict)
             content = "规格信息更新成功" if success else "规格信息更新失败"
 
             return ToolResult(success=success, content=content).model_dump_json()

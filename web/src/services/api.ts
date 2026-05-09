@@ -908,8 +908,8 @@ export interface CategoryFormData {
 }
 
 export const categoryApi = {
-  list: (params?: { page?: number; page_size?: number; keyword?: string; parent_id?: string }) => {
-    return apiService.get<any>('/categories/', params)
+  list: () => {
+    return apiService.get<any>('/categories/')
   },
 
   getById: (id: string) => {
@@ -926,10 +926,6 @@ export const categoryApi = {
 
   delete: (id: string) => {
     return apiService.delete<any>(`/categories/${id}`)
-  },
-
-  getTree: () => {
-    return apiService.get<any>('/categories/tree')
   }
 }
 
@@ -1051,6 +1047,10 @@ export const brandApi = {
 
   batchGetPurchasers: (brandIds: string[]) => {
     return apiService.post<any>('/brands/batch-purchasers', brandIds)
+  },
+
+  search: (keyword: string, limit?: number) => {
+    return apiService.get<any>('/brands/search', { keyword, limit })
   }
 }
 
@@ -1329,6 +1329,112 @@ export const stockApi = {
   },
   getOutboundBatches: (stockId: string, params?: { page?: number; page_size?: number }) => {
     return apiService.get<any>(`/outbound-batches/by-stock/${stockId}`, params)
+  }
+}
+
+export interface InboundBatch {
+  id: string
+  warehouse_id: string
+  product_id: string
+  product_code: string
+  product_name: string
+  spec_id: string
+  spec_code: string
+  stock_id: string
+  quantity: number
+  user_id: string
+  user_name: string
+  created_at: string
+  updated_at: string
+}
+
+export interface OutboundBatch {
+  id: string
+  warehouse_id: string
+  product_id: string
+  product_code: string
+  product_name: string
+  spec_id: string
+  spec_code: string
+  stock_id: string
+  quantity: number
+  user_id: string
+  user_name: string
+  created_at: string
+  updated_at: string
+}
+
+export const inboundBatchApi = {
+  list: (params: { page?: number; page_size?: number; stock_id?: string }) => {
+    return apiService.get<any>('/inbound-batches/', params)
+  },
+  getById: (id: string) => {
+    return apiService.get<any>(`/inbound-batches/${id}`)
+  },
+  create: (data: {
+    warehouse_id: string
+    product_id: string
+    product_code: string
+    product_name: string
+    spec_id: string
+    spec_code: string
+    stock_id?: string
+    quantity: number
+    user_id: string
+    user_name: string
+  }) => {
+    return apiService.post<any>('/inbound-batches/', data)
+  },
+  update: (id: string, data: Partial<{
+    warehouse_id: string
+    product_id: string
+    product_code: string
+    product_name: string
+    spec_id: string
+    spec_code: string
+    stock_id: string
+    quantity: number
+    user_id: string
+    user_name: string
+  }>) => {
+    return apiService.put<any>(`/inbound-batches/${id}`, data)
+  }
+}
+
+export const outboundBatchApi = {
+  list: (params: { page?: number; page_size?: number; stock_id?: string }) => {
+    return apiService.get<any>('/outbound-batches/', params)
+  },
+  getById: (id: string) => {
+    return apiService.get<any>(`/outbound-batches/${id}`)
+  },
+  create: (data: {
+    warehouse_id: string
+    product_id: string
+    product_code: string
+    product_name: string
+    spec_id: string
+    spec_code: string
+    stock_id: string
+    quantity: number
+    user_id: string
+    user_name: string
+  }) => {
+    return apiService.post<any>('/outbound-batches/', data)
+  },
+  update: (id: string, data: Partial<{
+    warehouse_id: string
+    product_id: string
+    product_code: string
+    product_name: string
+    spec_id: string
+    spec_code: string
+    stock_id: string
+    quantity: number
+    user_id: string
+    user_name: string
+  }>) => {
+    return apiService.put<any>(`/outbound-batches/${id}`, data)
   }
 }
 

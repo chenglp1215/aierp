@@ -43,7 +43,7 @@ const flatTreeData = computed(() => {
 const loadCategoryTree = async () => {
   loading.value = true
   try {
-    const res = await categoryApi.getTree()
+    const res = await categoryApi.list()
     categoryTree.value = res.result || []
     expandAll()
   } catch (error: any) {

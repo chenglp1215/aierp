@@ -152,7 +152,9 @@ class SalesOrderItem(BaseModel):
     """销售订单明细"""
     row_no: int = Field(..., description="行号")
     product_id: str = Field(..., description="商品ID")
+    product_name: Optional[str] = Field(None, description="商品名称")
     spec_id: Optional[str] = Field(None, description="规格ID")
+    
     brand_id: Optional[str] = Field(None, description="品牌ID")
     brand_name: Optional[str] = Field(None, description="品牌名称")
     qty: int = Field(..., gt=0, description="订购数量")

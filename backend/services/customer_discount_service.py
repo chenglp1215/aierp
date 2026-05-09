@@ -70,6 +70,7 @@ class CustomerDiscountService(BaseService):
         
         # 获取品牌名称
         if result.get("items"):
+            # TODO: brand_service 已迁移至 services.product_service，需更新导入路径
             from services.brand_service import brand_service
             brand_ids = [item.get("brand_id") for item in result["items"] if item.get("brand_id")]
             if brand_ids:

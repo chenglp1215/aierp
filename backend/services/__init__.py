@@ -4,7 +4,7 @@ from .purchase_order_service import PurchaseOrderService, purchase_order_service
 from .customer_service import CustomerService, customer_service
 from .auth_service import AuthService, RoleService, PermissionService, auth_service, role_service, permission_service
 from .inventory_service import warehouse_service, stock_service
-from .product_service import product_service
+from .product_service import product_service, category_service, brand_service
 from .accounts_receivable_service import accounts_receivable_service
 from .ws_manager import ws_manager
 from .ai_service import (
@@ -29,6 +29,8 @@ __all__ = [
     "warehouse_service",
     "stock_service",
     "product_service",
+    "category_service",
+    "brand_service",
     "accounts_receivable_service",
     "ws_manager",
     "llm_service",

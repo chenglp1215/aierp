@@ -34,7 +34,7 @@ const selectedRowNos = ref<Set<number>>(new Set())
 
 watch(() => props.visible, (val) => {
   if (val) {
-    // 默认勾选所有可下推的商品（直运 + 非直运库存不足）
+    loading.value = false
     const newSet = new Set<number>()
     props.items.forEach(item => {
       if (item.pushed) return

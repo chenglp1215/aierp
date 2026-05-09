@@ -13,13 +13,31 @@ from services.auth_service import auth_service
 import logging
 logger = logging.getLogger('')
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 auth_router = APIRouter(prefix="/auth", tags=["认证"])
 
+MOCK_ADMIN_USER = {
+    "id": "000000000000000000000001",
+    "username": "admin",
+    "full_name": "管理员",
+    "status": "active",
+    "roles": [{"code": "super_admin", "name": "超级管理员", "permissions": []}],
+    "permissions": [],
+    "created_at": None,
+    "updated_at": None,
+}
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
-    """获取当前用户"""
+async def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> dict:
+    """获取当前用户，LOCAL_DEBUG 模式下跳过认证"""
+    if settings.LOCAL_DEBUG:
+        return MOCK_ADMIN_USER
+
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="未提供认证令牌")
+
     token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -117,8 +135,8 @@ async def register(user_data: UserCreate):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@auth_router.get("/me", response_model=User)
-async def get_me(current_user: User = Depends(get_current_active_user)):
+@auth_router.get("/me", response_model=dict)
+async def get_me(current_user: dict = Depends(get_current_active_user)):
     """获取当前用户信息"""
     return current_user
 
@@ -148,10 +166,11 @@ async def list_users(
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     status: Optional[str] = Query(None, description="用户状态"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
+    role: Optional[str] = Query(None, description="角色"),
     current_user: User = Depends(require_permission("user.view"))
 ):
     """获取用户列表"""
-    return await auth_service.list_users(page, page_size, status, keyword)
+    return await auth_service.list_users(page, page_size, status, keyword, role)
 
 
 @auth_router.get("/users/{user_id}/", response_model=User)

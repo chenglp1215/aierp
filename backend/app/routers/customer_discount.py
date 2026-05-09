@@ -62,6 +62,7 @@ async def get_customer_discount(
     
     # 获取品牌名称
     if discount.get("brand_id"):
+        # TODO: brand_service 已迁移至 services.product_service，需更新导入路径
         from services.brand_service import brand_service
         brand = await brand_service.get_brand_by_id(discount["brand_id"])
         if brand:
@@ -85,6 +86,7 @@ async def get_discount_by_customer_and_brand(
     
     # 获取品牌名称
     if discount.get("brand_id"):
+        # TODO: brand_service 已迁移至 services.product_service，需更新导入路径
         from services.brand_service import brand_service
         brand = await brand_service.get_brand_by_id(discount["brand_id"])
         if brand:

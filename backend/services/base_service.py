@@ -28,7 +28,7 @@ class BaseService:
         data["created_at"] = datetime.now()
         data["updated_at"] = datetime.now()
         result = await self.collection.insert_one(data)
-        return  str(result.inserted_id)
+        return str(result.inserted_id)
 
     async def get_by_id(self, id: str) -> Optional[Dict[str, Any]]:
         """根据ID获取文档"""
@@ -52,16 +52,16 @@ class BaseService:
         # 分离 MongoDB 操作符和普通字段
         operators = {}
         set_fields = {}
+
         for key, value in data.items():
             if key.startswith("$"):
                 operators[key] = value
             else:
                 set_fields[key] = value
         # 普通字段自动添加 updated_at
-        set_fields["updated_at"] = datetime.now()
         set_fields.pop("id", None)
         set_fields.pop("_id", None)
-        set_fields.pop("created_at", None)
+        set_fields["updated_at"] = datetime.now()
         # 构建更新文档
         update_doc = {}
         if set_fields:
@@ -129,10 +129,12 @@ class BaseService:
             doc["id"] = str(doc.pop("_id"))
         return doc
 
-    async def find_many(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def find_many(self, filters: Dict[str, Any], limit: int = 200, skip: int = 0, sort: Optional[Dict[str, int]] = None) -> List[Dict[str, Any]]:
         """查找多个文档"""
-        cursor = self.collection.find(filters)
-        items = await cursor.to_list(length=None)
+        cursor = self.collection.find(filters).limit(limit).skip(skip)
+        if sort:
+            cursor.sort(sort)
+        items = await cursor.to_list(length=limit)
         for item in items:
             item["id"] = str(item.pop("_id"))
         return items

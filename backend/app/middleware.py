@@ -56,6 +56,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if "/ws/" in path:
             return await call_next(request)
 
+        if settings.LOCAL_DEBUG:
+            from app.routers.auth import MOCK_ADMIN_USER
+            request.state.user = MOCK_ADMIN_USER
+            return await call_next(request)
+
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             from fastapi.responses import JSONResponse

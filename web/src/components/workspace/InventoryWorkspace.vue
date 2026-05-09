@@ -2,7 +2,7 @@
 defineOptions({ name: 'InventoryWorkspace' })
 
 import { ref, computed, onMounted, watch } from 'vue'
-import { stockApi, warehouseApi, productApi } from '../../services/api'
+import { stockApi, warehouseApi, productApi, inboundBatchApi, outboundBatchApi } from '../../services/api'
 
 interface InboundBatch {
   id: string
@@ -24,15 +24,8 @@ interface OutboundBatch {
   created_at: string
 }
 
-interface InboundOutboundSummary {
-  total_inbound: number
-  total_outbound: number
-  inbound_count: number
-  outbound_count: number
-}
-
 interface StockSpecInfo {
-  spec_id: string
+  id: string
   spec_code: string
   packaging?: string
   sales_spec?: string
@@ -40,44 +33,43 @@ interface StockSpecInfo {
 }
 
 interface StockProductInfo {
-  product_id: string
+  id: string
   product_code: string
-  product_name: string
-  category?: string
+  name: string
+  brand_id?: string
+  category_id?: string
+  category_name?: string
 }
 
 interface StockWarehouseInfo {
-  warehouse_id: string
+  id: string
   warehouse_code: string
-  warehouse_name: string
+  name: string
 }
 
 interface Stock {
   id: string
-  spec_id: string
   warehouse_id: string
   product_id: string
-  spec?: StockSpecInfo
-  product?: StockProductInfo
-  warehouse?: StockWarehouseInfo
+  product_code: string
+  product_name: string
+  spec_id: string
+  spec_code: string
   quantity: number
   min_stock: number
   max_stock: number
   status: string
-  inbound_outbound_summary?: InboundOutboundSummary
+  product_info?: StockProductInfo
+  spec_info?: StockSpecInfo
+  warehouse_info?: StockWarehouseInfo
   created_at: string
   updated_at: string
 }
 
 interface ProductGroup {
   product_id: string
-  product_code: string
-  product_name: string
-  category?: string
   warehouse_id: string
-  warehouse_name: string
   specs: Stock[]
-  rowspan: number
 }
 
 interface Warehouse {
@@ -121,18 +113,15 @@ const filterSpecId = ref('')
 const filterSpecName = ref('')
 const warehouses = ref<Warehouse[]>([])
 const expandedStockId = ref<string | null>(null)
-const stockDetail = ref<{
-  stock: Stock
-  inbound_batches: InboundBatch[]
-  outbound_batches: OutboundBatch[]
-} | null>(null)
+const stockDetail = ref<(Stock & {
+  inbound_batches?: InboundBatch[]
+  outbound_batches?: OutboundBatch[]
+}) | null>(null)
 const detailLoading = ref(false)
 
-const showStockModal = ref(false)
 const showInboundModal = ref(false)
 const showOutboundModal = ref(false)
 const showDetailModal = ref(false)
-const editingStock = ref<Stock | null>(null)
 const inboundTargetStock = ref<Stock | null>(null)
 const outboundTargetStock = ref<Stock | null>(null)
 const formLoading = ref(false)
@@ -153,20 +142,24 @@ const specSearchResults = ref<ProductSpec[]>([])
 const showSpecDropdown = ref(false)
 const selectedSpec = ref<ProductSpec | null>(null)
 
-const stockForm = ref<Partial<Stock & { spec_id: string; warehouse_id: string }>>({
-  spec_id: '',
-  warehouse_id: '',
-  quantity: 0,
-  min_stock: 0,
-  max_stock: 0
-})
-
 const inboundForm = ref({
+  warehouse_id: '',
+  product_id: '',
+  product_code: '',
+  product_name: '',
+  spec_id: '',
+  spec_code: '',
   quantity: 0,
   remarks: ''
 })
 
 const outboundForm = ref({
+  warehouse_id: '',
+  product_id: '',
+  product_code: '',
+  product_name: '',
+  spec_id: '',
+  spec_code: '',
   quantity: 0,
   remarks: ''
 })
@@ -202,20 +195,13 @@ const groupStocksByProduct = (stockList: Stock[]): ProductGroup[] => {
     if (!groupMap.has(key)) {
       groupMap.set(key, {
         product_id: stock.product_id,
-        product_code: stock.product?.product_code || '',
-        product_name: stock.product?.product_name || '',
-        category: stock.product?.category,
         warehouse_id: stock.warehouse_id,
-        warehouse_name: stock.warehouse?.warehouse_name || '',
-        specs: [],
-        rowspan: 0
+        specs: []
       })
     }
     groupMap.get(key)!.specs.push(stock)
   }
-  const groups = Array.from(groupMap.values())
-  groups.forEach(g => { g.rowspan = g.specs.length })
-  return groups
+  return Array.from(groupMap.values())
 }
 
 const buildVerticalTableData = () => {
@@ -227,17 +213,17 @@ const buildVerticalTableData = () => {
       data.push({
         _id: `${group.product_id}_${group.warehouse_id}_${stock.spec_id}`,
         product_id: group.product_id,
-        product_code: group.product_code,
-        product_name: group.product_name,
-        category: group.category,
+        product_code: stock.product_code || stock.product_info?.product_code || '',
+        product_name: stock.product_name || stock.product_info?.name || '',
+        category: stock.product_info?.category_name || '',
         warehouse_id: group.warehouse_id,
-        warehouse_name: group.warehouse_name,
+        warehouse_name: stock.warehouse_info?.name || '',
         spec_id: stock.spec_id,
-        spec_code: stock.spec?.spec_code || '',
-        packaging: stock.spec?.packaging || '-',
+        spec_code: stock.spec_code || stock.spec_info?.spec_code || '',
+        packaging: stock.spec_info?.packaging || '-',
         quantity: stock.quantity,
-        inbound_count: stock.inbound_outbound_summary?.inbound_count || 0,
-        outbound_count: stock.inbound_outbound_summary?.outbound_count || 0,
+        min_stock: stock.min_stock,
+        max_stock: stock.max_stock,
         status: stock.status,
         status_class: getStatusClass(stock.status),
         stockId: stock.id,
@@ -252,8 +238,8 @@ const buildVerticalTableData = () => {
 }
 
 const verticalSpanMethod: SpanMethod = ({ row, columnIndex }) => {
-  const productCols = [0, 1, 2, 3]  // 包含序号列（第0列）
-  const actionCol = 10
+  const productCols = [0, 1, 2, 3, 4]  // 序号、展开、商品编码、商品名称、仓库
+  const actionCol = 11
   if (productCols.includes(columnIndex) && row.isFirst) {
     return { rowspan: row.rowspan, colspan: 1 }
   }
@@ -294,12 +280,13 @@ const loadStocks = async () => {
       spec_id: filterSpecId.value || undefined,
       status: filterStatus.value || undefined
     })
-    stocks.value = res.items.map((item: Stock) => ({
+    const items = res.result?.items ?? []
+    stocks.value = items.map((item: Stock) => ({
       ...item,
       status: formatStatus(item.status)
     }))
     productGroups.value = groupStocksByProduct(stocks.value)
-    total.value = res.total
+    total.value = res.result?.total || 0
     buildVerticalTableData()
   } catch (error) {
     console.error('加载库存列表失败:', error)
@@ -311,7 +298,7 @@ const loadStocks = async () => {
 const loadWarehouses = async () => {
   try {
     const res = await warehouseApi.list({ page: 1, page_size: 100 })
-    warehouses.value = res.items
+    warehouses.value = res.result?.items ?? []
   } catch (error) {
     console.error('加载仓库列表失败:', error)
   }
@@ -321,7 +308,7 @@ const loadStockDetail = async (stockId: string) => {
   detailLoading.value = true
   try {
     const res = await stockApi.getDetail(stockId)
-    stockDetail.value = res
+    stockDetail.value = res.result || res
   } catch (error) {
     console.error('加载库存详情失败:', error)
   } finally {
@@ -331,7 +318,8 @@ const loadStockDetail = async (stockId: string) => {
 
 const updateStockInList = async (stockId: string) => {
   try {
-    const updatedStock = await stockApi.getById(stockId)
+    const res = await stockApi.getById(stockId)
+    const updatedStock = res.result || res
     const index = stocks.value.findIndex(s => s.id === stockId)
     if (index !== -1) {
       stocks.value[index] = updatedStock
@@ -361,7 +349,7 @@ const searchFilterSpecs = async () => {
   }
   try {
     const res = await productApi.searchSpecs(filterKeyword.value, 20)
-    filterSearchResults.value = res.result || []
+    filterSearchResults.value = res.items || res.result?.items || []
     showFilterDropdown.value = true
   } catch (error) {
     console.error('搜索规格失败:', error)
@@ -424,8 +412,8 @@ const searchProducts = async () => {
     return
   }
   try {
-    const res = await productApi.search(productKeyword.value, 20)
-    productSearchResults.value = res.result || []
+    const res = await productApi.searchSpecs(productKeyword.value, 20)
+    productSearchResults.value = res.items || res.result?.items || []
     showProductDropdown.value = true
   } catch (error) {
     console.error('搜索商品失败:', error)
@@ -482,7 +470,7 @@ const searchSpecs = async () => {
   }
   try {
     const res = await productApi.searchSpecs(specKeyword.value, 20)
-    specSearchResults.value = res.result || []
+    specSearchResults.value = res.items || res.result?.items || []
     showSpecDropdown.value = true
   } catch (error) {
     console.error('搜索规格失败:', error)
@@ -490,79 +478,46 @@ const searchSpecs = async () => {
   }
 }
 
-const selectSpec = (spec: ProductSpec) => {
-  selectedSpec.value = spec
-  stockForm.value.spec_id = spec.id
-  specKeyword.value = `${spec.product_name} - ${spec.spec_code} (${spec.packaging || '-'})`
-  showSpecDropdown.value = false
-}
-
-const clearSpecSelection = () => {
-  selectedSpec.value = null
-  stockForm.value.spec_id = ''
-  specKeyword.value = ''
-  specSearchResults.value = []
-}
-
 const hideSpecDropdown = () => {
   setTimeout(() => { showSpecDropdown.value = false }, 200)
 }
 
-const handleSpecInput = () => {
-  stockForm.value.spec_id = ''
-  selectedSpec.value = null
-  searchSpecs()
-}
-
-const resetStockForm = () => {
-  stockForm.value = {
-    spec_id: '',
+const openCreateInbound = () => {
+  inboundTargetStock.value = null
+  inboundForm.value = {
     warehouse_id: filterWarehouse.value || '',
+    product_id: '',
+    product_code: '',
+    product_name: '',
+    spec_id: '',
+    spec_code: '',
     quantity: 0,
-    min_stock: 0,
-    max_stock: 0
+    remarks: ''
   }
-  editingStock.value = null
   selectedSpec.value = null
   specKeyword.value = ''
   specSearchResults.value = []
+  showInboundModal.value = true
 }
 
-const openCreateStock = () => {
-  resetStockForm()
-  showStockModal.value = true
-}
-
-const openEditStock = (row: any) => {
-  const stock = stocks.value.find(s => s.id === row.stockId)
-  if (!stock) return
-  editingStock.value = stock
-  selectedSpec.value = {
-    id: stock.spec_id,
-    spec_code: stock.spec?.spec_code || '',
-    packaging: stock.spec?.packaging,
-    sales_spec: stock.spec?.sales_spec,
-    price: stock.spec?.price,
-    product_id: stock.product?.product_id || stock.product_id,
-    product_name: stock.product?.product_name,
-    product_code: stock.product?.product_code
-  }
-  specKeyword.value = `${stock.product?.product_name} - ${stock.spec?.spec_code} (${stock.spec?.packaging || '-'})`
-  stockForm.value = {
-    spec_id: stock.spec_id,
-    warehouse_id: stock.warehouse_id,
-    quantity: stock.quantity,
-    min_stock: stock.min_stock,
-    max_stock: stock.max_stock
-  }
-  showStockModal.value = true
+const openCreateOutbound = () => {
+  window.showToast('请先选择一条库存记录进行出库操作', 'info')
 }
 
 const openInboundModal = (row: any) => {
   const stock = stocks.value.find(s => s.id === row.stockId)
   if (!stock) return
   inboundTargetStock.value = stock
-  inboundForm.value = { quantity: 0, remarks: '' }
+  inboundForm.value = {
+    warehouse_id: stock.warehouse_id,
+    product_id: stock.product_id,
+    product_code: stock.product_code || stock.product_info?.product_code || '',
+    product_name: stock.product_name || stock.product_info?.name || '',
+    spec_id: stock.spec_id,
+    spec_code: stock.spec_code || stock.spec_info?.spec_code || '',
+    quantity: 0,
+    remarks: ''
+  }
   showInboundModal.value = true
 }
 
@@ -570,7 +525,16 @@ const openOutboundModal = (row: any) => {
   const stock = stocks.value.find(s => s.id === row.stockId)
   if (!stock) return
   outboundTargetStock.value = stock
-  outboundForm.value = { quantity: 0, remarks: '' }
+  outboundForm.value = {
+    warehouse_id: stock.warehouse_id,
+    product_id: stock.product_id,
+    product_code: stock.product_code || stock.product_info?.product_code || '',
+    product_name: stock.product_name || stock.product_info?.name || '',
+    spec_id: stock.spec_id,
+    spec_code: stock.spec_code || stock.spec_info?.spec_code || '',
+    quantity: 0,
+    remarks: ''
+  }
   showOutboundModal.value = true
 }
 
@@ -581,73 +545,44 @@ const openDetailModal = async (row: any) => {
   showDetailModal.value = true
 }
 
-const handleSaveStock = async () => {
-  if (!stockForm.value.spec_id) {
-    window.showToast('请选择规格', 'warning')
-    return
-  }
-  if (!stockForm.value.warehouse_id) {
+const handleInbound = async () => {
+  if (!inboundForm.value.warehouse_id) {
     window.showToast('请选择仓库', 'warning')
     return
   }
-
-  formLoading.value = true
-  try {
-    if (editingStock.value) {
-      await stockApi.update(editingStock.value.id, stockForm.value)
-      window.showToast('库存更新成功', 'success')
-      showStockModal.value = false
-      await updateStockInList(editingStock.value.id)
-      if (expandedStockId.value === editingStock.value.id) {
-        await loadStockDetail(editingStock.value.id)
-      }
-      loadStocks()
-    } else {
-      const res = await stockApi.create(stockForm.value)
-      if (res.status === 'duplicate') {
-        const existingId = res.result.existing_id
-        const confirmInbound = confirm('该仓库中已存在此规格的库存记录，是否跳转到入库操作？')
-        if (confirmInbound) {
-          showStockModal.value = false
-          const existingStock = stocks.value.find(s => s.id === existingId)
-          if (existingStock) {
-            await loadStockDetail(existingId)
-            inboundTargetStock.value = stockDetail.value?.stock || existingStock
-            showInboundModal.value = true
-          }
-        }
-      } else {
-        window.showToast('库存创建成功', 'success')
-        showStockModal.value = false
-        loadStocks()
-      }
-    }
-  } catch (error: any) {
-    window.showToast(error.message || '操作失败', 'error')
-  } finally {
-    formLoading.value = false
+  if (!inboundForm.value.spec_id) {
+    window.showToast('请选择规格', 'warning')
+    return
   }
-}
-
-const handleInbound = async () => {
-  if (!inboundTargetStock.value) return
   if (inboundForm.value.quantity <= 0) {
     window.showToast('请输入有效的入库数量', 'warning')
     return
   }
 
+  const userInfo = localStorage.getItem('user')
+  const user = userInfo ? JSON.parse(userInfo) : { id: '', name: '未知用户' }
+
   formLoading.value = true
   try {
-    await stockApi.inbound(
-      inboundTargetStock.value.id,
-      inboundForm.value.quantity,
-      inboundForm.value.remarks || undefined
-    )
+    await inboundBatchApi.create({
+      warehouse_id: inboundForm.value.warehouse_id,
+      product_id: inboundForm.value.product_id,
+      product_code: inboundForm.value.product_code,
+      product_name: inboundForm.value.product_name,
+      spec_id: inboundForm.value.spec_id,
+      spec_code: inboundForm.value.spec_code,
+      stock_id: inboundTargetStock.value?.id || '',
+      quantity: inboundForm.value.quantity,
+      user_id: user.id,
+      user_name: user.name || user.username || '未知用户'
+    })
     window.showToast('入库成功', 'success')
     showInboundModal.value = false
-    await updateStockInList(inboundTargetStock.value.id)
-    if (expandedStockId.value === inboundTargetStock.value.id) {
-      await loadStockDetail(inboundTargetStock.value.id)
+    if (inboundTargetStock.value) {
+      await updateStockInList(inboundTargetStock.value.id)
+      if (expandedStockId.value === inboundTargetStock.value.id) {
+        await loadStockDetail(inboundTargetStock.value.id)
+      }
     }
     loadStocks()
   } catch (error: any) {
@@ -658,7 +593,10 @@ const handleInbound = async () => {
 }
 
 const handleOutbound = async () => {
-  if (!outboundTargetStock.value) return
+  if (!outboundTargetStock.value) {
+    window.showToast('请先从列表选择库存记录进行出库', 'warning')
+    return
+  }
   if (outboundForm.value.quantity <= 0) {
     window.showToast('请输入有效的出库数量', 'warning')
     return
@@ -668,13 +606,23 @@ const handleOutbound = async () => {
     return
   }
 
+  const userInfo = localStorage.getItem('user')
+  const user = userInfo ? JSON.parse(userInfo) : { id: '', name: '未知用户' }
+
   formLoading.value = true
   try {
-    await stockApi.outbound(
-      outboundTargetStock.value.id,
-      outboundForm.value.quantity,
-      outboundForm.value.remarks || undefined
-    )
+    await outboundBatchApi.create({
+      warehouse_id: outboundForm.value.warehouse_id,
+      product_id: outboundForm.value.product_id,
+      product_code: outboundForm.value.product_code,
+      product_name: outboundForm.value.product_name,
+      spec_id: outboundForm.value.spec_id,
+      spec_code: outboundForm.value.spec_code,
+      stock_id: outboundTargetStock.value.id,
+      quantity: outboundForm.value.quantity,
+      user_id: user.id,
+      user_name: user.name || user.username || '未知用户'
+    })
     window.showToast('出库成功', 'success')
     showOutboundModal.value = false
     await updateStockInList(outboundTargetStock.value.id)
@@ -686,26 +634,6 @@ const handleOutbound = async () => {
     window.showToast(error.message || '出库失败', 'error')
   } finally {
     formLoading.value = false
-  }
-}
-
-const handleDelete = async (row: any) => {
-  if (!confirm('确定要删除该库存记录吗？此操作不可恢复。')) return
-
-  try {
-    await stockApi.delete(row.stockId)
-    window.showToast('库存删除成功', 'success')
-    const index = stocks.value.findIndex(s => s.id === row.stockId)
-    if (index !== -1) {
-      stocks.value.splice(index, 1)
-    }
-    if (expandedStockId.value === row.stockId) {
-      expandedStockId.value = null
-      stockDetail.value = null
-    }
-    loadStocks()
-  } catch (error: any) {
-    window.showToast(error.message || '删除失败', 'error')
   }
 }
 
@@ -738,7 +666,10 @@ onMounted(() => {
           {{ warehouseName ? `${warehouseName} - 库存管理` : '库存管理' }}
         </h2>
       </div>
-      <button class="primary-btn" @click="openCreateStock">新增库存</button>
+      <div class="header-actions">
+        <button class="primary-btn" @click="openCreateInbound">新增入库</button>
+        <button class="primary-btn" @click="openCreateOutbound">新增出库</button>
+      </div>
     </div>
 
     <div class="filter-section">
@@ -852,29 +783,19 @@ onMounted(() => {
             <span class="number-cell">{{ row.quantity }}</span>
           </template>
         </vxe-column>
-        <vxe-column field="inbound_count" title="入库批次" min-width="60" class-name="col--center">
-          <template #default="{ row }">
-            <span class="batch-count" :class="{ 'has-data': row.inbound_count > 0 }">{{ row.inbound_count }}</span>
-          </template>
-        </vxe-column>
-        <vxe-column field="outbound_count" title="出库批次" min-width="60" class-name="col--center">
-          <template #default="{ row }">
-            <span class="batch-count" :class="{ 'has-data': row.outbound_count > 0 }">{{ row.outbound_count }}</span>
-          </template>
-        </vxe-column>
+        <vxe-column field="min_stock" title="最低库存" min-width="60" class-name="col--center" />
+        <vxe-column field="max_stock" title="最高库存" min-width="60" class-name="col--center" />
         <vxe-column field="status" title="状态" min-width="60" class-name="col--center">
           <template #default="{ row }">
             <span class="status-tag" :class="row.status_class">{{ row.status }}</span>
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="200" fixed="right" class-name="col--center">
+        <vxe-column title="操作" width="160" fixed="right" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
               <button class="btn-link" @click="openInboundModal(row)">入库</button>
               <button class="btn-link" @click="openOutboundModal(row)">出库</button>
               <button class="btn-link" @click="openDetailModal(row)">详情</button>
-              <button class="btn-link" @click="openEditStock(row)">编辑</button>
-              <button class="btn-link danger" @click="handleDelete(row)">删除</button>
             </span>
           </template>
         </vxe-column>
@@ -889,86 +810,65 @@ onMounted(() => {
       />
     </div>
 
-    <div class="modal-overlay" v-if="showStockModal">
-      <div class="modal">
-        <div class="modal-header">
-          <h3>{{ editingStock ? '编辑库存' : '新增库存' }}</h3>
-          <button class="modal-close" @click="showStockModal = false">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>商品规格 *</label>
-            <div class="spec-search-container">
-              <input
-                type="text"
-                v-model="specKeyword"
-                placeholder="搜索商品规格..."
-                @input="handleSpecInput"
-                @focus="showSpecDropdown = specSearchResults.length > 0"
-                @blur="hideSpecDropdown"
-              />
-              <button v-if="selectedSpec" class="clear-btn" @click="clearSpecSelection" type="button">×</button>
-              <div class="spec-dropdown" v-if="showSpecDropdown">
-                <div
-                  v-for="spec in specSearchResults"
-                  :key="spec.id"
-                  class="spec-option"
-                  @mousedown="selectSpec(spec)"
-                >
-                  <span class="spec-product">{{ spec.product_name }}</span>
-                  <span class="spec-code">{{ spec.spec_code }}</span>
-                  <span class="spec-packaging">{{ spec.packaging || '-' }}</span>
-                </div>
-                <div v-if="specSearchResults.length === 0" class="no-results">
-                  未找到规格
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="form-group" v-if="!warehouseId">
-            <label>仓库 *</label>
-            <select v-model="stockForm.warehouse_id">
-              <option value="">请选择仓库</option>
-              <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>初始库存数量</label>
-              <input type="number" v-model="stockForm.quantity" min="0" placeholder="数量" />
-            </div>
-            <div class="form-group">
-              <label>最低库存预警</label>
-              <input type="number" v-model="stockForm.min_stock" min="0" placeholder="预警阈值" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>最高库存预警</label>
-            <input type="number" v-model="stockForm.max_stock" min="0" placeholder="预警阈值" />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" @click="showStockModal = false">取消</button>
-          <button class="btn-primary" @click="handleSaveStock" :disabled="formLoading">
-            {{ formLoading ? '保存中...' : '保存' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
     <div class="modal-overlay" v-if="showInboundModal">
       <div class="modal">
         <div class="modal-header">
-          <h3>入库操作</h3>
+          <h3>{{ inboundTargetStock ? '入库操作' : '新增入库' }}</h3>
           <button class="modal-close" @click="showInboundModal = false">&times;</button>
         </div>
         <div class="modal-body">
           <div class="operate-info" v-if="inboundTargetStock">
-            <p>商品: {{ inboundTargetStock.product?.product_name }}</p>
-            <p>规格: {{ inboundTargetStock.spec?.spec_code }} ({{ inboundTargetStock.spec?.packaging || '-' }})</p>
-            <p>仓库: {{ inboundTargetStock.warehouse?.warehouse_name }}</p>
+            <p>商品: {{ inboundTargetStock.product_name || inboundTargetStock.product_info?.name }}</p>
+            <p>规格: {{ inboundTargetStock.spec_code || inboundTargetStock.spec_info?.spec_code }} ({{ inboundTargetStock.spec_info?.packaging || '-' }})</p>
+            <p>仓库: {{ inboundTargetStock.warehouse_info?.name }}</p>
             <p>当前库存: <strong>{{ inboundTargetStock.quantity }}</strong></p>
           </div>
+          <template v-else>
+            <div class="form-group">
+              <label>仓库 *</label>
+              <select v-model="inboundForm.warehouse_id">
+                <option value="">请选择仓库</option>
+                <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>商品规格 *</label>
+              <div class="spec-search-container">
+                <input
+                  type="text"
+                  v-model="specKeyword"
+                  placeholder="搜索商品规格..."
+                  @input="() => { if (specKeyword.length >= 2) searchSpecs() }"
+                  @focus="() => { if (specKeyword.length >= 2) showSpecDropdown = true }"
+                  @blur="hideSpecDropdown"
+                />
+                <div class="spec-dropdown" v-if="showSpecDropdown">
+                  <div
+                    v-for="spec in specSearchResults"
+                    :key="spec.id"
+                    class="spec-option"
+                    @mousedown="() => {
+                      selectedSpec = spec
+                      inboundForm.spec_id = spec.id
+                      inboundForm.spec_code = spec.spec_code
+                      inboundForm.product_id = spec.product_id
+                      inboundForm.product_name = spec.product_name || ''
+                      inboundForm.product_code = spec.product_code || ''
+                      specKeyword = `${spec.product_name || ''} - ${spec.spec_code} (${spec.packaging || '-'})`
+                      showSpecDropdown = false
+                    }"
+                  >
+                    <span class="spec-product">{{ spec.product_name }}</span>
+                    <span class="spec-code">{{ spec.spec_code }}</span>
+                    <span class="spec-packaging">{{ spec.packaging || '-' }}</span>
+                  </div>
+                  <div v-if="specSearchResults.length === 0" class="no-results">
+                    未找到规格
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
           <div class="form-group">
             <label>入库数量 *</label>
             <input type="number" v-model="inboundForm.quantity" min="1" placeholder="请输入入库数量" />
@@ -995,9 +895,9 @@ onMounted(() => {
         </div>
         <div class="modal-body">
           <div class="operate-info" v-if="outboundTargetStock">
-            <p>商品: {{ outboundTargetStock.product?.product_name }}</p>
-            <p>规格: {{ outboundTargetStock.spec?.spec_code }} ({{ outboundTargetStock.spec?.packaging || '-' }})</p>
-            <p>仓库: {{ outboundTargetStock.warehouse?.warehouse_name }}</p>
+            <p>商品: {{ outboundTargetStock.product_name || outboundTargetStock.product_info?.name }}</p>
+            <p>规格: {{ outboundTargetStock.spec_code || outboundTargetStock.spec_info?.spec_code }} ({{ outboundTargetStock.spec_info?.packaging || '-' }})</p>
+            <p>仓库: {{ outboundTargetStock.warehouse_info?.name }}</p>
             <p>当前库存: <strong>{{ outboundTargetStock.quantity }}</strong></p>
           </div>
           <div class="form-group">
@@ -1028,48 +928,48 @@ onMounted(() => {
           <div class="detail-header-info">
             <div class="info-row">
               <span class="info-label">商品:</span>
-              <span class="info-value">{{ stockDetail.stock.product?.product_name }}</span>
+              <span class="info-value">{{ stockDetail.product_name }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">规格:</span>
-              <span class="info-value">{{ stockDetail.stock.spec?.spec_code }} ({{ stockDetail.stock.spec?.packaging || '-' }})</span>
+              <span class="info-value">{{ stockDetail.spec_code }} ({{ stockDetail.spec_info?.packaging || '-' }})</span>
             </div>
             <div class="info-row">
               <span class="info-label">仓库:</span>
-              <span class="info-value">{{ stockDetail.stock.warehouse?.warehouse_name }}</span>
+              <span class="info-value">{{ stockDetail.warehouse_info?.name }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">当前库存:</span>
-              <span class="info-value highlight">{{ stockDetail.stock.quantity }}</span>
+              <span class="info-value highlight">{{ stockDetail.quantity }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">状态:</span>
-              <span class="status-tag" :class="getStatusClass(stockDetail.stock.status)">
-                {{ formatStatus(stockDetail.stock.status) }}
+              <span class="status-tag" :class="getStatusClass(stockDetail.status)">
+                {{ formatStatus(stockDetail.status) }}
               </span>
             </div>
           </div>
           <div class="detail-batches">
             <div class="detail-batch-section">
-              <h4>入库记录 ({{ stockDetail.stock.inbound_outbound_summary?.total_inbound || 0 }})</h4>
+              <h4>入库记录 ({{ stockDetail.inbound_batches?.length || 0 }})</h4>
               <div class="batch-scroll-list">
                 <div class="batch-scroll-item" v-for="batch in stockDetail.inbound_batches" :key="batch.id">
                   <span class="batch-code">{{ batch.batch_code }}</span>
                   <span class="batch-qty success">+{{ batch.quantity }}</span>
                   <span class="batch-time">{{ formatDate(batch.created_at) }}</span>
                 </div>
-                <div v-if="stockDetail.inbound_batches.length === 0" class="batches-empty">暂无入库记录</div>
+                <div v-if="!stockDetail.inbound_batches?.length" class="batches-empty">暂无入库记录</div>
               </div>
             </div>
             <div class="detail-batch-section">
-              <h4>出库记录 ({{ stockDetail.stock.inbound_outbound_summary?.total_outbound || 0 }})</h4>
+              <h4>出库记录 ({{ stockDetail.outbound_batches?.length || 0 }})</h4>
               <div class="batch-scroll-list">
                 <div class="batch-scroll-item" v-for="batch in stockDetail.outbound_batches" :key="batch.id">
                   <span class="batch-code">{{ batch.batch_code }}</span>
                   <span class="batch-qty danger">-{{ batch.quantity }}</span>
                   <span class="batch-time">{{ formatDate(batch.created_at) }}</span>
                 </div>
-                <div v-if="stockDetail.outbound_batches.length === 0" class="batches-empty">暂无出库记录</div>
+                <div v-if="!stockDetail.outbound_batches?.length" class="batches-empty">暂无出库记录</div>
               </div>
             </div>
           </div>
@@ -1145,6 +1045,11 @@ onMounted(() => {
 
 .primary-btn:hover {
   background-color: var(--accent-blue-hover);
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .filter-section {
