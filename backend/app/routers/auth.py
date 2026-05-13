@@ -6,7 +6,7 @@ from jose import JWTError, jwt
 
 from config import settings
 from models.auth import TokenPayload
-from services.auth_service import auth_service, role_service, permission_service
+from services.auth_service import mysql_user_service, mysql_role_service, mysql_permission_service
 from app.decorators import wrap_response
 import logging
 
@@ -16,11 +16,11 @@ security = HTTPBearer(auto_error=False)
 auth_router = APIRouter(prefix="/auth", tags=["认证"])
 
 MOCK_ADMIN_USER = {
-    "id": "000000000000000000000001",
+    "id": 1,
     "username": "admin",
     "full_name": "管理员",
     "status": "active",
-    "roles": [{"code": "super_admin", "name": "超级管理员", "permissions": []}],
+    "roles": [{"id": 1, "code": "super_admin", "name": "超级管理员", "permissions": []}],
     "permissions": [],
     "created_at": None,
     "updated_at": None,
@@ -31,7 +31,7 @@ async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> dict:
     if settings.LOCAL_DEBUG:
-        user = await auth_service.get_user_by_username("admin")
+        user = await mysql_user_service.get_by_username("admin")
         if user:
             return user
         return MOCK_ADMIN_USER
@@ -43,7 +43,7 @@ async def get_current_user(
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         token_data = TokenPayload(**payload)
-        user = await auth_service.get_user_by_id(token_data.sub)
+        user = await mysql_user_service.get_by_id(int(token_data.sub))
         if user is None:
             raise HTTPException(status_code=401, detail="无效的令牌")
         return user
@@ -93,35 +93,17 @@ async def login(login_data: Dict[str, Any]):
     if not username or not password:
         raise HTTPException(status_code=400, detail="用户名和密码不能为空")
 
-    user = await auth_service.authenticate_user(username, password)
-    if not user:
+    result = await mysql_user_service.authenticate_user(username, password)
+    if not result:
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
-    user = await auth_service.get_user_by_username(username)
-
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = auth_service.create_access_token(
-        data={
-            "sub": user["id"],
-            "username": user["username"],
-            "roles": [role["code"] for role in user.get("roles", [])],
-            "permissions": user.get("permissions", [])
-        },
-        expires_delta=access_token_expires
-    )
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "expires_in": int(access_token_expires.total_seconds()),
-        "user": user
-    }
+    return result
 
 
 @auth_router.post("/register")
 @wrap_response
 async def register(user_data: Dict[str, Any]):
-    user_id = await auth_service.create_user(user_data)
+    user_id = await mysql_user_service.create_user(user_data)
     return {"id": user_id}
 
 
@@ -141,7 +123,7 @@ async def change_password(
     new_password = password_data.get("new_password")
     if not old_password or not new_password:
         raise ValueError("旧密码和新密码都不能为空")
-    await auth_service.change_password(
+    await mysql_user_service.change_password(
         current_user["id"],
         old_password,
         new_password
@@ -159,16 +141,16 @@ async def list_users(
     role: Optional[str] = Query(None, description="角色"),
     current_user: dict = Depends(require_permission("user.view"))
 ):
-    return await auth_service.list_users(page, page_size, status, keyword, role)
+    return await mysql_user_service.list_users(page, page_size, status, keyword, role)
 
 
 @auth_router.get("/users/{user_id}/")
 @wrap_response
 async def get_user(
-    user_id: str,
+    user_id: int,
     current_user: dict = Depends(require_permission("user.view"))
 ):
-    user = await auth_service.get_user_by_id(user_id)
+    user = await mysql_user_service.get_by_id(user_id)
     if not user:
         raise ValueError("用户不存在")
     return user
@@ -180,18 +162,18 @@ async def create_user(
     user_data: Dict[str, Any],
     current_user: dict = Depends(require_permission("user.create"))
 ):
-    user_id = await auth_service.create_user(user_data)
+    user_id = await mysql_user_service.create_user(user_data)
     return {"id": user_id}
 
 
 @auth_router.put("/users/{user_id}/")
 @wrap_response
 async def update_user(
-    user_id: str,
+    user_id: int,
     user_data: Dict[str, Any],
     current_user: dict = Depends(require_permission("user.edit"))
 ):
-    success = await auth_service.update_user(user_id, user_data)
+    success = await mysql_user_service.update_user(user_id, user_data)
     if not success:
         raise ValueError("用户不存在或更新失败")
     return "用户更新成功"
@@ -200,10 +182,10 @@ async def update_user(
 @auth_router.delete("/users/{user_id}/")
 @wrap_response
 async def delete_user(
-    user_id: str,
+    user_id: int,
     current_user: dict = Depends(require_permission("user.delete"))
 ):
-    success = await auth_service.delete(user_id)
+    success = await mysql_user_service.delete(user_id)
     if not success:
         raise ValueError("用户不存在或删除失败")
     return "用户删除成功"
@@ -212,14 +194,14 @@ async def delete_user(
 @auth_router.patch("/users/{user_id}/password")
 @wrap_response
 async def reset_password(
-    user_id: str,
+    user_id: int,
     password_data: Dict[str, Any],
     current_user: dict = Depends(require_permission("user.reset-password"))
 ):
     new_password = password_data.get("new_password")
     if not new_password:
         raise ValueError("新密码不能为空")
-    success = await auth_service.reset_password(user_id, new_password)
+    success = await mysql_user_service.reset_password(user_id, new_password)
     if not success:
         raise ValueError("用户不存在")
     return "密码重置成功"
@@ -228,11 +210,11 @@ async def reset_password(
 @auth_router.patch("/users/{user_id}/status")
 @wrap_response
 async def update_user_status(
-    user_id: str,
+    user_id: int,
     status: str = Query(..., description="用户状态"),
     current_user: dict = Depends(require_permission("user.edit"))
 ):
-    success = await auth_service.update(user_id, {"status": status})
+    success = await mysql_user_service.update_user(user_id, {"status": status})
     if not success:
         raise ValueError("用户不存在")
     return "用户状态更新成功"
@@ -247,16 +229,16 @@ async def list_roles(
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     current_user: dict = Depends(require_permission("role.view"))
 ):
-    return await role_service.list_roles(page, page_size, status, keyword)
+    return await mysql_role_service.list_roles(page, page_size, status, keyword)
 
 
 @auth_router.get("/roles/{role_id}/")
 @wrap_response
 async def get_role(
-    role_id: str,
+    role_id: int,
     current_user: dict = Depends(require_permission("role.view"))
 ):
-    role = await role_service.get_by_id(role_id)
+    role = await mysql_role_service.get_by_id(role_id)
     if not role:
         raise ValueError("角色不存在")
     return role
@@ -268,25 +250,25 @@ async def create_role(
     role_data: Dict[str, Any],
     current_user: dict = Depends(require_permission("role.create"))
 ):
-    role_data = await role_service.create_role(role_data)
-    return {"id": role_data["id"]}
+    role = await mysql_role_service.create_role(role_data)
+    return {"id": role["id"]}
 
 
 @auth_router.put("/roles/{role_id}/")
 @wrap_response
 async def update_role(
-    role_id: str,
+    role_id: int,
     role_data: Dict[str, Any],
     current_user: dict = Depends(require_permission("role.edit"))
 ):
-    role = await role_service.get_by_id(role_id)
+    role = await mysql_role_service.get_by_id(role_id)
     if not role:
         raise ValueError("角色不存在")
 
     if role.get("is_fixed"):
         raise ValueError("固化角色不允许修改")
 
-    success = await role_service.update_role(role_id, role_data)
+    success = await mysql_role_service.update_role(role_id, role_data)
     if not success:
         raise ValueError("角色不存在或更新失败")
     return "角色更新成功"
@@ -295,17 +277,17 @@ async def update_role(
 @auth_router.delete("/roles/{role_id}/")
 @wrap_response
 async def delete_role(
-    role_id: str,
+    role_id: int,
     current_user: dict = Depends(require_permission("role.delete"))
 ):
-    role = await role_service.get_by_id(role_id)
+    role = await mysql_role_service.get_by_id(role_id)
     if not role:
         raise ValueError("角色不存在")
 
     if role.get("is_fixed"):
         raise ValueError("固化角色不允许删除")
 
-    success = await role_service.delete(role_id)
+    success = await mysql_role_service.delete(role_id)
     if not success:
         raise ValueError("角色不存在或删除失败")
     return "角色删除成功"
@@ -314,11 +296,11 @@ async def delete_role(
 @auth_router.patch("/roles/{role_id}/status")
 @wrap_response
 async def update_role_status(
-    role_id: str,
+    role_id: int,
     status: str = Query(..., description="角色状态"),
     current_user: dict = Depends(require_permission("role.edit"))
 ):
-    success = await role_service.update(role_id, {"status": status})
+    success = await mysql_role_service.update_role(role_id, {"status": status})
     if not success:
         raise ValueError("角色不存在")
     return "角色状态更新成功"
@@ -332,7 +314,7 @@ async def list_permissions(
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     current_user: dict = Depends(require_permission("permission.view"))
 ):
-    return await permission_service.list_permissions(page, page_size, keyword)
+    return await mysql_permission_service.list_permissions(page, page_size, keyword)
 
 
 @auth_router.get("/permissions/tree")
@@ -340,16 +322,16 @@ async def list_permissions(
 async def get_permission_tree(
     current_user: dict = Depends(require_permission("permission.view"))
 ):
-    return await permission_service.get_permission_tree()
+    return await mysql_permission_service.get_permission_tree()
 
 
 @auth_router.get("/permissions/{permission_id}/")
 @wrap_response
 async def get_permission(
-    permission_id: str,
+    permission_id: int,
     current_user: dict = Depends(require_permission("permission.view"))
 ):
-    permission = await permission_service.get_by_id(permission_id)
+    permission = await mysql_permission_service.get_by_id(permission_id)
     if not permission:
         raise ValueError("权限不存在")
     return permission
