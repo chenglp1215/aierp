@@ -153,6 +153,111 @@ def init_super_admin_role(conn):
     logger.info(f"创建超级管理员角色成功，关联 {len(perm_ids)} 条权限")
 
 
+def init_warehouse_admin_role(conn):
+    """初始化仓库管理员角色"""
+    cursor = conn.cursor()
+
+    # 检查是否已有角色
+    cursor.execute("SELECT id FROM roles WHERE code = 'warehouse_admin'")
+    result = cursor.fetchone()
+
+    if result:
+        logger.info("仓库管理员角色已存在，跳过初始化")
+        return
+
+    # 获取仓库和库存相关权限
+    warehouse_perm_codes = [
+        "warehouse.view", "warehouse.create", "warehouse.edit", "warehouse.delete",
+        "inventory.stock.view", "inventory.stock.edit",
+        "inventory.check.view", "inventory.check.edit",
+    ]
+    cursor.execute("SELECT id FROM permissions WHERE code IN (%s)" % ",".join(["%s"] * len(warehouse_perm_codes)), warehouse_perm_codes)
+    perm_ids = [r[0] for r in cursor.fetchall()]
+
+    cursor.execute(
+        "INSERT INTO roles (code, name, description, is_fixed, status, created_at, updated_at) VALUES ('warehouse_admin', '仓库管理员', '仓库管理员，负责仓库日常管理', 1, 'active', NOW(), NOW())"
+    )
+    role_id = cursor.lastrowid
+
+    for perm_id in perm_ids:
+        cursor.execute("INSERT INTO role_permissions (roles_id, permission_id) VALUES (%s, %s)", (role_id, perm_id))
+
+    conn.commit()
+    logger.info(f"创建仓库管理员角色成功，关联 {len(perm_ids)} 条权限")
+
+
+def init_purchaser_group_role(conn):
+    """初始化采购组角色"""
+    cursor = conn.cursor()
+
+    # 检查是否已有角色
+    cursor.execute("SELECT id FROM roles WHERE code = 'purchaser_group'")
+    result = cursor.fetchone()
+
+    if result:
+        logger.info("采购组角色已存在，跳过初始化")
+        return
+
+    # 获取采购和订单查看相关权限
+    purchaser_perm_codes = [
+        "procurement.view", "procurement.create", "procurement.edit",
+        "order.view",
+    ]
+    cursor.execute("SELECT id FROM permissions WHERE code IN (%s)" % ",".join(["%s"] * len(purchaser_perm_codes)), purchaser_perm_codes)
+    perm_ids = [r[0] for r in cursor.fetchall()]
+
+    cursor.execute(
+        "INSERT INTO roles (code, name, description, is_fixed, status, created_at, updated_at) VALUES ('purchaser_group', '采购组', '采购组成员，负责品牌商品采购', 1, 'active', NOW(), NOW())"
+    )
+    role_id = cursor.lastrowid
+
+    for perm_id in perm_ids:
+        cursor.execute("INSERT INTO role_permissions (roles_id, permission_id) VALUES (%s, %s)", (role_id, perm_id))
+
+    conn.commit()
+    logger.info(f"创建采购组角色成功，关联 {len(perm_ids)} 条权限")
+
+
+def init_default_user_role(conn):
+    """初始化普通用户角色"""
+    cursor = conn.cursor()
+
+    # 检查是否已有角色
+    cursor.execute("SELECT id FROM roles WHERE code = 'user'")
+    result = cursor.fetchone()
+
+    if result:
+        logger.info("普通用户角色已存在，跳过初始化")
+        return
+
+    # 获取基础权限
+    basic_perm_codes = [
+        "dashboard.view", "chat.view",
+        "customer.view", "customer.create", "customer.edit",
+        "product.view", "product.create", "product.edit",
+        "order.view", "order.create", "order.edit", "order.confirm",
+        "procurement.view", "procurement.create", "procurement.edit",
+        "receivable.view", "receivable.create", "receivable.edit", "receivable.record",
+        "warehouse.view", "warehouse.create", "warehouse.edit",
+        "inventory.stock.view", "inventory.stock.edit",
+        "finance.invoice.view", "finance.payment.view",
+        "intelligent.settings.view"
+    ]
+    cursor.execute("SELECT id FROM permissions WHERE code IN (%s)" % ",".join(["%s"] * len(basic_perm_codes)), basic_perm_codes)
+    perm_ids = [r[0] for r in cursor.fetchall()]
+
+    cursor.execute(
+        "INSERT INTO roles (code, name, description, is_fixed, status, created_at, updated_at) VALUES ('user', '普通用户', '普通用户角色，拥有基础权限', 0, 'active', NOW(), NOW())"
+    )
+    role_id = cursor.lastrowid
+
+    for perm_id in perm_ids:
+        cursor.execute("INSERT INTO role_permissions (roles_id, permission_id) VALUES (%s, %s)", (role_id, perm_id))
+
+    conn.commit()
+    logger.info(f"创建普通用户角色成功，关联 {len(perm_ids)} 条权限")
+
+
 def init_admin_user(conn):
     cursor = conn.cursor()
 
@@ -196,6 +301,9 @@ def main():
 
         init_default_permissions(conn)
         init_super_admin_role(conn)
+        init_warehouse_admin_role(conn)
+        init_purchaser_group_role(conn)
+        init_default_user_role(conn)
         init_admin_user(conn)
 
         conn.close()
