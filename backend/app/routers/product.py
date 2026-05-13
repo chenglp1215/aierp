@@ -3,13 +3,21 @@
 """
 from fastapi import APIRouter, Query, Depends
 from typing import Optional, Dict, Any
-from services.product_service import product_service, product_spec_service, brand_service, category_service
+from services.product_service_mysql import product_service, product_spec_service, brand_service, category_service
 from .auth import require_permission
 from app.decorators import wrap_response
 
 brand_router = APIRouter(prefix="/brands", tags=["品牌管理"])
 category_router = APIRouter(prefix="/categories", tags=["分类管理"])
 product_router = APIRouter(prefix="/products", tags=["商品管理"])
+
+
+def to_int_id(id_str: str) -> int:
+    """将字符串 ID 转换为整数 ID"""
+    try:
+        return int(id_str)
+    except (ValueError, TypeError):
+        raise ValueError("无效的ID格式")
 
 
 
@@ -46,9 +54,7 @@ async def get_spec(
     _: dict = Depends(require_permission("product.view"))
 ):
     """获取规格详情"""
-    spec = await product_spec_service.get_by_id(spec_id)
-    if not spec:
-        raise ValueError("规格不存在")
+    spec = await product_spec_service.get_spec_by_id(to_int_id(spec_id))
     return spec
 
 
@@ -60,7 +66,7 @@ async def update_spec(
     _: dict = Depends(require_permission("product.edit"))
 ):
     """更新规格信息"""
-    await product_spec_service.update_spec(spec_id, spec)
+    await product_spec_service.update_spec(to_int_id(spec_id), spec)
     return "规格更新成功"
 
 
@@ -71,7 +77,7 @@ async def delete_spec(
     _: dict = Depends(require_permission("product.delete"))
 ):
     """删除规格"""
-    await product_spec_service.delete_spec(spec_id)
+    await product_spec_service.delete_spec(to_int_id(spec_id))
     return "规格删除成功"
 
 
@@ -120,7 +126,7 @@ async def get_product(
     _: dict = Depends(require_permission("product.view"))
 ):
     """获取商品详情（包含规格列表）"""
-    product = await product_service.get_product_by_id(product_id, is_formatted=True)
+    product = await product_service.get_product_by_id(to_int_id(product_id), is_formatted=True)
     return product
 
 
@@ -132,7 +138,7 @@ async def update_product(
     _: dict = Depends(require_permission("product.edit"))
 ):
     """更新商品信息"""
-    await product_service.update_product(product_id, product)
+    await product_service.update_product(to_int_id(product_id), product)
     return "商品更新成功"
 
 
@@ -143,7 +149,7 @@ async def delete_product(
     _: dict = Depends(require_permission("product.delete"))
 ):
     """删除商品（同时删除关联规格）"""
-    await product_service.delete_product(product_id)
+    await product_service.delete_product(to_int_id(product_id))
     return "商品删除成功"
 
 
@@ -154,7 +160,7 @@ async def list_product_specs(
     _: dict = Depends(require_permission("product.view"))
 ):
     """获取商品的所有规格"""
-    specs = await product_spec_service.get_spec_by_product_id(product_id=product_id, is_formatted=True)
+    specs = await product_spec_service.get_spec_by_product_id(product_id=to_int_id(product_id), is_formatted=True)
     return {
         "total": len(specs),
         "items": specs
@@ -169,8 +175,8 @@ async def create_product_spec(
     _: dict = Depends(require_permission("product.create"))
 ):
     """为商品创建规格"""
-    await product_service.get_product_by_id(product_id)
-    spec["product_id"] = product_id
+    await product_service.get_product_by_id(to_int_id(product_id))
+    spec["product_id"] = to_int_id(product_id)
     spec_data = await product_spec_service.create_spec(spec)
     return spec_data
 
@@ -230,7 +236,7 @@ async def update_brand(
     _: dict = Depends(require_permission("brand.edit"))
 ):
     """更新品牌"""
-    await brand_service.update_brand(brand_id, brand)
+    await brand_service.update_brand(to_int_id(brand_id), brand)
     return "品牌更新成功"
 
 @brand_router.get("/{brand_id}", response_model=dict)
@@ -240,7 +246,7 @@ async def get_brand(
     _: dict = Depends(require_permission("brand.view"))
 ):
     """获取品牌详情"""
-    brand = await brand_service.get_brand_by_id(brand_id)
+    brand = await brand_service.get_brand_by_id(to_int_id(brand_id))
     return brand
 
 
@@ -251,7 +257,7 @@ async def delete_brand(
     _: dict = Depends(require_permission("brand.delete"))
 ):
     """删除品牌"""
-    await brand_service.delete_brand(brand_id)
+    await brand_service.delete_brand(to_int_id(brand_id))
     return "品牌删除成功"
 
 """
@@ -285,7 +291,7 @@ async def update_category(
     _: dict = Depends(require_permission("category.edit"))
 ):
     """更新分类"""
-    await category_service.update_category(category_id, category)
+    await category_service.update_category(to_int_id(category_id), category)
     return "分类更新成功"
 
 @category_router.get("/{category_id}", response_model=dict)
@@ -295,7 +301,7 @@ async def get_category(
     _: dict = Depends(require_permission("category.view"))
 ):
     """获取分类详情"""
-    category = await category_service.get_category_by_id(category_id, is_formatted=True)
+    category = await category_service.get_category_by_id(to_int_id(category_id), is_formatted=True)
     return category
 
 @category_router.delete("/{category_id}", response_model=dict)
@@ -305,6 +311,6 @@ async def delete_category(
     _: dict = Depends(require_permission("category.delete"))
 ):
     """删除分类"""
-    await category_service.delete_category(category_id)
+    await category_service.delete_category(to_int_id(category_id))
     return "分类删除成功"
     
