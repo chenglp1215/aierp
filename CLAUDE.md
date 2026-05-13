@@ -1,5 +1,11 @@
 # AIERP 项目文档
 
+## 语言规范
+
+- **全程使用简体中文交流**
+- 所有回答、注释、文档均使用中文
+- 代码语法保留英文，其他内容一律使用中文
+
 ## 项目概述
 
 AIERP 是一个企业资源计划（ERP）系统，包含后端（Python/FastAPI）和前端（Vue 3）。
@@ -119,3 +125,44 @@ aierp/
 - 组件按功能拆分，避免"超级组件"
 - Props down, Events up
 - 状态最小化，衍生数据用 computed
+
+## 本地开发环境
+
+### Python 虚拟环境
+
+项目使用 Python venv 虚拟环境进行本地开发：
+
+- **venv 目录**: `backend/venv/`
+- **创建命令**: `cd backend && python -m venv venv`
+- **激活命令**: `backend/venv/Scripts/activate` (Windows)
+- **安装依赖**: `backend/venv/Scripts/pip install -r requirements.txt`
+
+**重要**: 后续本地执行 Python 命令时，应使用 venv 环境中的 Python：
+- Windows: `backend/venv/Scripts/python`
+- 例如: `backend/venv/Scripts/python scripts/init_db_sync.py`
+
+### MySQL 数据库配置
+
+本地开发 MySQL 配置通过 `backend/.env` 文件管理：
+
+```env
+MYSQL_HOST=132.232.212.151
+MYSQL_PORT=58901
+MYSQL_USER=admin
+MYSQL_PASSWORD=Chenglp1215!@#
+MYSQL_DATABASE=erp_test
+```
+
+**注意**: `.env` 文件已在 `.gitignore` 中，不会提交到版本库。
+
+### 数据库初始化
+
+首次运行或数据库变更后，需要初始化数据库：
+
+1. **创建表结构**: 服务启动时自动创建（Tortoise ORM `generate_schemas=True`）
+2. **初始化数据**: 运行 `backend/venv/Scripts/python scripts/init_db_sync.py`
+
+初始化脚本会创建：
+- 默认权限（36 条）
+- 超级管理员角色
+- 管理员账号（admin/admin123）
