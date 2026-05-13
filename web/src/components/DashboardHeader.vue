@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useTheme } from '../hooks'
+import UserSettingsDialog from './UserSettingsDialog.vue'
 
 const emit = defineEmits<{
   logout: []
-  settings: []
 }>()
 
 const { isDark, toggleTheme } = useTheme()
 const showUserMenu = ref(false)
+const showSettingsDialog = ref(false)
 const userName = ref('')
 const userRole = ref('')
 
@@ -44,7 +45,15 @@ const handleLogout = () => {
 
 const handleSettings = () => {
   showUserMenu.value = false
-  emit('settings')
+  showSettingsDialog.value = true
+}
+
+const handleSettingsClose = () => {
+  showSettingsDialog.value = false
+}
+
+const handleSettingsSaved = () => {
+  window.dispatchEvent(new CustomEvent('user-updated'))
 }
 
 onMounted(() => {
@@ -133,6 +142,12 @@ const handleStorageChange = (event: StorageEvent) => {
         </div>
       </div>
     </div>
+
+    <UserSettingsDialog
+      :visible="showSettingsDialog"
+      @close="handleSettingsClose"
+      @saved="handleSettingsSaved"
+    />
   </header>
 </template>
 

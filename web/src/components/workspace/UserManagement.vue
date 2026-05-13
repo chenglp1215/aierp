@@ -169,7 +169,7 @@ const handleSave = async () => {
       if (userForm.value.password) {
         data.new_password = userForm.value.password
       }
-      await authApi.updateUser(editingUser.value.id, data)
+      await authApi.updateUser(String(editingUser.value.id), data)
       window.showToast('用户更新成功', 'success')
 
       // 直接更新列表中对应项
@@ -217,7 +217,7 @@ const handleDelete = async () => {
 
   deleteLoading.value = true
   try {
-    await authApi.deleteUser(deleteTargetId.value)
+    await authApi.deleteUser(String(deleteTargetId.value))
     window.showToast('用户删除成功', 'success')
     showDeleteConfirm.value = false
     // 直接从列表移除该项
@@ -249,7 +249,7 @@ const handleResetPwd = async () => {
 
   resetPwdLoading.value = true
   try {
-    await authApi.resetPassword(resetPwdTarget.value.id, newPassword.value)
+    await authApi.resetPassword(String(resetPwdTarget.value.id), newPassword.value)
     window.showToast('密码重置成功', 'success')
     showResetPwdModal.value = false
     resetPwdTarget.value = null

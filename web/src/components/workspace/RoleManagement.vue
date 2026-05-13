@@ -233,7 +233,7 @@ const handleSave = async () => {
     }
 
     if (editingRole.value) {
-      await roleApi.update(editingRole.value.id, data)
+      await roleApi.update(String(editingRole.value.id), data)
       window.showToast('角色更新成功', 'success')
     } else {
       await roleApi.create(data)
@@ -253,7 +253,7 @@ const handleDelete = async () => {
 
   deleteLoading.value = true
   try {
-    await roleApi.delete(deleteTargetId.value)
+    await roleApi.delete(String(deleteTargetId.value))
     window.showToast('角色删除成功', 'success')
     roles.value = roles.value.filter(r => r.id !== deleteTargetId.value)
     total.value--
