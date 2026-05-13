@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -17,6 +17,8 @@ class LlmModelStatus(str, Enum):
 
 
 class LlmModel(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     id: str = Field(..., description="模型ID")
     name: str = Field(..., description="模型名称")
     model_type: LlmModelType = Field(..., description="模型类型")
@@ -26,12 +28,16 @@ class LlmModel(BaseModel):
 
 
 class LlmModelCreate(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     name: str = Field(..., min_length=1, max_length=100, description="模型名称")
     model_type: LlmModelType = Field(..., description="模型类型")
     status: LlmModelStatus = Field(default=LlmModelStatus.ACTIVE, description="状态")
 
 
 class LlmModelUpdate(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     model_type: Optional[LlmModelType] = None
     status: Optional[LlmModelStatus] = None

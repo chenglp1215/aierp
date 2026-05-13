@@ -1,8 +1,10 @@
 from typing import Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class LLMConfig(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     default_model: str = "gpt-4"
     api_base_url: str = ""
     api_key: str = ""
@@ -17,6 +19,8 @@ class LLMConfig(BaseModel):
 
 
 class ModelConfig(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     model_id: str
     name: str
     model_type: str
