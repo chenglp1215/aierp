@@ -1,0 +1,460 @@
+# 后端项目模块说明
+
+<!-- 变更日期: 2026-05-11 -->
+
+> 本文档说明后端各业务模块的功能、API 接口和核心文件。随开发实时更新。
+
+---
+
+## 模块总览
+
+| 模块 | 路由前缀 | 说明 |
+|------|---------|------|
+| 认证模块 | `/api/v1/auth` | 用户登录、注册、Token 管理 |
+| 客户管理 | `/api/v1/customers`, `/api/v1/customer-discounts` | 客户信息 CRUD、客户折扣管理 |
+| 商品/品牌/分类管理 | `/api/v1/products`, `/api/v1/brands`, `/api/v1/categories` | 商品、品牌、分类、规格 CRUD（统一模块） |
+| 供应商管理 | `/api/v1/suppliers` | 供应商信息 CRUD |
+| 销售订单 | `/api/v1/sales-orders` | 销售订单全流程管理 |
+| 采购单 | `/api/v1/procurement-orders` | 采购单全流程管理 |
+| 库存管理 | `/api/v1/inventory` | 仓库/库存/出入库批次管理 |
+| 应收款 | `/api/v1/accounts-receivable` | 应收款记录管理 |
+| 省份城市 | `/api/v1/province-city` | 省份城市数据查询 |
+| 权限管理 | `/api/v1/permissions` | 权限定义管理 |
+| 角色管理 | `/api/v1/roles` | RBAC 角色管理 |
+| 文件上传 | `/api/v1/upload` | 文件上传 |
+| AI 聊天 | `/api/v1/ai` | AI 智能助手 |
+| 健康检查 | `/api/v1/health` | 服务健康状态检查 |
+| WebSocket | `/ws/` | 实时通信 |
+
+---
+
+## 各模块详情
+
+### 1. 认证模块
+
+**功能**：用户登录、JWT Token 生成与验证、用户信息获取
+
+**核心文件**：
+- `routers/auth.py` — 路由
+- `services/auth_service.py` — 认证服务
+- `models/auth.py` — 用户/Token 模型
+
+**API 接口**：
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/auth/login` | 用户登录 |
+| POST | `/api/v1/auth/register` | 用户注册 |
+| GET | `/api/v1/auth/me` | 获取当前用户信息 |
+
+---
+
+### 2. 客户管理
+
+**功能**：客户信息 CRUD、客户折扣管理、销售人关联
+
+**核心文件**：
+- `routers/customer.py` — 路由（含客户和客户折扣路由）
+- `services/customer_service.py` — 业务服务（含 CustomerService 和 CustomerDiscountService）
+- `models/customer.py` — 数据模型（含 CustomerBase、CustomerDiscount、InvoiceInfo、ShippingAddress）
+- `validators/customer_validator.py` — 校验规则（含客户、开票信息、收货地址、客户折扣的校验配置）
+
+**API 文档**：`app/routers/api_docs/customer.md`
+
+**包含子模块**：
+- 客户管理
+- 客户折扣管理
+
+---
+
+### 3. 商品/品牌/分类/规格管理（统一模块）
+
+**功能**：商品信息 CRUD、品牌管理、多级分类树管理（数据层级限制5层以下）、商品规格管理
+
+**核心文件**：
+- `routers/product.py` — 路由（含商品、品牌、分类、规格路由）
+- `services/product_service.py` — 业务服务（含 BrandService、CategoryService、ProductSpecService、ProductService）
+- `models/product.py` — 数据模型（含 Brand、Category、ProductSpec、Product）
+- `validators/product_validator.py` — 校验规则（含品牌、分类、规格、商品的校验配置）
+
+**权限代码**：
+- `product.view` / `product.create` / `product.edit` / `product.delete` — 商品操作
+- `brand.view` / `brand.create` / `brand.edit` / `brand.delete` — 品牌操作
+- `category.view` / `category.create` / `category.edit` / `category.delete` — 分类操作
+
+**路由实例**：
+```python
+from fastapi import APIRouter
+brand_router = APIRouter(prefix="/brands", tags=["品牌管理"])
+category_router = APIRouter(prefix="/categories", tags=["分类管理"])
+product_router = APIRouter(prefix="/products", tags=["商品管理"])
+```
+
+#### 4.1 品牌管理 API
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/brands/` | 品牌列表（分页+关键词搜索） | `brand.view` |
+| POST | `/api/v1/brands/` | 创建品牌 | `brand.create` |
+| GET | `/api/v1/brands/{brand_id}` | 品牌详情 | `brand.view` |
+| PUT | `/api/v1/brands/{brand_id}` | 更新品牌 | `brand.edit` |
+| DELETE | `/api/v1/brands/{brand_id}` | 删除品牌（有商品关联时禁止） | `brand.delete` |
+
+**品牌数据结构**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | str | 品牌 ID |
+| name | str | 品牌名称（唯一） |
+| logo_url | str | 品牌 Logo |
+| description | str | 品牌描述 |
+| purchaser_id | str | 采购人员 ID |
+| purchaser_name | str | 采购人员名称（关联查询时自动填充） |
+| is_active | bool | 是否有效 |
+| created_at | datetime | 创建时间 |
+| updated_at | datetime | 更新时间 |
+
+#### 4.2 分类管理 API
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/categories/` | 分类树（所有层级） | `category.view` |
+| POST | `/api/v1/categories/` | 创建分类 | `category.create` |
+| GET | `/api/v1/categories/{category_id}` | 分类详情 | `category.view` |
+| PUT | `/api/v1/categories/{category_id}` | 更新分类 | `category.edit` |
+| DELETE | `/api/v1/categories/{category_id}` | 删除分类（有子分类或商品关联时禁止） | `category.delete` |
+
+**分类数据结构**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | str | 分类 ID |
+| name | str | 分类名称 |
+| parent_id | str | 父分类 ID（顶级为空） |
+| tax_code | str | 税务编码 |
+| sort_order | int | 排序（数字越小越靠前） |
+| is_shop_display | bool | 是否商城展示 |
+| level | int | 层级（自动计算，最多5级） |
+| children | list | 子分类列表（树形查询时填充） |
+
+#### 4.3 商品管理 API
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/products/` | 商品列表（分页+关键词+品牌/分类筛选） | `product.view` |
+| POST | `/api/v1/products/` | 创建商品 | `product.create` |
+| GET | `/api/v1/products/{product_id}` | 商品详情（含规格列表） | `product.view` |
+| PUT | `/api/v1/products/{product_id}` | 更新商品 | `product.edit` |
+| DELETE | `/api/v1/products/{product_id}` | 删除商品（同时删除关联规格） | `product.delete` |
+
+**商品数据结构**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | str | 商品 ID |
+| product_code | str | 商品编号（系统自动生成，格式 `PROD{日期}{6位随机数}`） |
+| name | str | 商品名称 |
+| image_url | str | 商品图片 |
+| brand_id | str | 品牌 ID |
+| brand_name | str | 品牌名称（冗余存储，创建/更新时自动填充） |
+| category_id | str | 分类 ID |
+| category_name | str | 分类名称（冗余存储，创建/更新时自动填充） |
+| tax_code | str | 税务编码 |
+| is_active | bool | 是否有效 |
+| created_at | datetime | 创建时间 |
+| updated_at | datetime | 更新时间 |
+| specs | list | 规格列表（详情接口填充） |
+
+#### 4.4 商品规格 API
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/products/specs/search` | 搜索规格（关键词，用于下拉选择） | `product.view` |
+| GET | `/api/v1/products/specs/{spec_id}` | 规格详情 | `product.view` |
+| PUT | `/api/v1/products/specs/{spec_id}` | 更新规格 | `product.edit` |
+| DELETE | `/api/v1/products/specs/{spec_id}` | 删除规格 | `product.delete` |
+| GET | `/api/v1/products/{product_id}/specs` | 获取商品的所有规格 | `product.view` |
+| POST | `/api/v1/products/{product_id}/specs` | 为商品创建规格 | `product.create` |
+
+**规格数据结构**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | str | 规格 ID |
+| product_id | str | 关联商品 ID |
+| spec_code | str | 规格编号（系统自动生成，格式 `SPEC{日期}{6位随机数}`） |
+| packaging | str | 包装 |
+| sales_spec | str | 销售规格 |
+| price | float | 价格 |
+| cas_number | str | CAS号 |
+| is_active | bool | 是否有效 |
+
+#### 4.5 数据库集合
+
+| 集合名 | 说明 | Service |
+|--------|------|---------|
+| `product_brands` | 品牌信息 | BrandService |
+| `product_categories` | 商品分类 | CategoryService |
+| `product_specs` | 商品规格 | ProductSpecService |
+| `products` | 商品信息 | ProductService |
+
+#### 4.6 Service 实例化
+
+所有 Service 在 `product_service.py` 底部实例化为模块级单例：
+
+```python
+product_service = ProductService()
+product_spec_service = ProductSpecService()
+brand_service = BrandService()
+category_service = CategoryService()
+```
+
+路由层通过 `from services.product_service import brand_service, category_service, ...` 引用。
+
+---
+
+### 7. 供应商管理
+
+**功能**：供应商信息 CRUD、供货品牌关联管理
+
+**核心文件**：
+- `app/routers/supplier.py` — 路由
+- `services/supplier_service.py` — 业务服务
+- `models/supplier.py` — 数据模型
+- `validators/supplier_validator.py` — 校验规则（配置化模式）
+
+**API 文档**：`app/routers/api_docs/supplier.md`
+
+**权限代码**：
+- `supplier.view` — 查看供应商
+- `supplier.create` — 创建供应商
+- `supplier.edit` — 编辑供应商
+- `supplier.delete` — 删除供应商
+
+**供应商数据结构**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | str | 供应商 ID |
+| name | str | 供应商名称（唯一） |
+| contact_person | str | 联系人 |
+| contact_phone | str | 联系电话 |
+| contact_email | str | 联系邮箱 |
+| address | str | 地址 |
+| bank_account | object | 银行账户信息 |
+| supplied_brands | list | 供货品牌列表 |
+| remark | str | 备注 |
+| is_active | bool | 是否激活 |
+| created_at | datetime | 创建时间 |
+| updated_at | datetime | 更新时间 |
+
+**供应商 API**：
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/suppliers/` | 供应商列表（分页+关键词搜索+状态筛选） | `supplier.view` |
+| GET | `/api/v1/suppliers/all` | 获取所有供应商（下拉选择） | `supplier.view` |
+| POST | `/api/v1/suppliers/` | 创建供应商 | `supplier.create` |
+| GET | `/api/v1/suppliers/{supplier_id}` | 供应商详情 | `supplier.view` |
+| PUT | `/api/v1/suppliers/{supplier_id}` | 更新供应商 | `supplier.edit` |
+| DELETE | `/api/v1/suppliers/{supplier_id}` | 删除供应商（有采购单关联时禁止） | `supplier.delete` |
+| PATCH | `/api/v1/suppliers/{supplier_id}/toggle-active` | 切换激活状态 | `supplier.edit` |
+| GET | `/api/v1/suppliers/by-brand/{brand_id}` | 根据品牌获取供应商列表 | `supplier.view` |
+
+---
+
+### 8. 销售订单
+
+**功能**：销售订单创建、编辑、状态流转、订单号生成
+
+**核心文件**：
+- `routers/sales_order.py` — 路由
+- `services/sales_order_service.py` — 业务服务
+- `services/order_status_flow_service.py` — 订单状态流转服务
+- `models/sales_order.py` — 数据模型
+- `validators/sales_order_validator.py` — 校验规则
+
+**API 文档**：`app/routers/api_docs/sales_order.md`
+
+**订单状态流转**：
+```
+DRAFT → CONFIRMED → DELIVERED → SETTLED → COMPLETED
+                 ↘ CANCELLED
+```
+
+---
+
+### 9. 采购单
+
+**功能**：采购单创建、编辑、状态流转
+
+**核心文件**：
+- `routers/purchase_order.py` — 路由
+- `services/purchase_order_service.py` — 业务服务
+- `models/purchase_order.py` — 数据模型
+- `validators/purchase_order_validator.py` — 校验规则
+
+**API 文档**：`app/routers/api_docs/purchase_order.md`
+
+---
+
+### 10. 库存管理
+
+**功能**：仓库管理、库存查询、出入库操作、批次记录
+
+**核心文件**：
+- `routers/inventory.py` — 路由（含仓库、库存、入库批次、出库批次路由）
+- `services/inventory_service.py` — 业务服务（含 WarehouseService、StockService、InboundBatchService、OutboundBatchService）
+- `models/inventory.py` — 数据模型（含 Warehouse、StockDB、InboundBatch、OutboundBatch）
+- `validators/inventory_validator.py` — 校验规则
+
+**API 文档**：`app/routers/api_docs/inventory.md`
+
+**权限代码**：
+- `warehouse.view` / `warehouse.create` / `warehouse.edit` — 仓库操作
+- `stock.view` / `stock.edit` — 库存操作
+- `inbound.view` / `inbound.create` / `inbound.edit` — 入库批次操作
+- `outbound.view` / `outbound.create` / `outbound.edit` — 出库批次操作
+
+**路由实例**：
+```python
+from fastapi import APIRouter
+warehouse_router = APIRouter(prefix="/warehouses", tags=["仓库管理"])
+stock_router = APIRouter(prefix="/stocks", tags=["库存管理"])
+inbound_router = APIRouter(prefix="/inbound-batches", tags=["入库批次管理"])
+outbound_router = APIRouter(prefix="/outbound-batches", tags=["出库批次管理"])
+```
+
+#### 10.1 仓库管理 API
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/warehouses/` | 仓库列表（分页+状态筛选+关键词搜索） | `warehouse.view` |
+| POST | `/api/v1/warehouses/` | 创建仓库（warehouse_code留空则自动生成） | `warehouse.create` |
+| GET | `/api/v1/warehouses/{warehouse_id}` | 仓库详情 | `warehouse.view` |
+| PUT | `/api/v1/warehouses/{warehouse_id}` | 更新仓库（warehouse_code不可修改） | `warehouse.edit` |
+
+#### 10.2 库存管理 API
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/stocks/` | 库存列表（分页+仓库/商品/规格/状态筛选） | `stock.view` |
+| GET | `/api/v1/stocks/{stock_id}` | 库存详情（含商品、规格、仓库关联信息） | `stock.view` |
+| PUT | `/api/v1/stocks/{stock_id}` | 更新库存（手动盘库，仅支持quantity/min_stock/max_stock） | `stock.edit` |
+
+#### 10.3 入库批次 API
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/inbound-batches/` | 入库批次列表（分页+按stock_id筛选） | `inbound.view` |
+| POST | `/api/v1/inbound-batches/` | 创建入库批次（stock_id为空时自动创建或关联库存） | `inbound.create` |
+| GET | `/api/v1/inbound-batches/{batch_id}` | 入库批次详情 | `inbound.view` |
+| PUT | `/api/v1/inbound-batches/{batch_id}` | 更新入库批次 | `inbound.edit` |
+
+#### 10.4 出库批次 API
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/outbound-batches/` | 出库批次列表（分页+按stock_id筛选） | `outbound.view` |
+| POST | `/api/v1/outbound-batches/` | 创建出库批次 | `outbound.create` |
+| GET | `/api/v1/outbound-batches/{batch_id}` | 出库批次详情 | `outbound.view` |
+| PUT | `/api/v1/outbound-batches/{batch_id}` | 更新出库批次 | `outbound.edit` |
+
+#### 10.5 数据库集合
+
+| 集合名 | 说明 | Service |
+|--------|------|---------|
+| `inventory_warehouses` | 仓库信息 | WarehouseService |
+| `inventory_stocks` | 库存信息 | StockService |
+| `inventory_inbound_batches` | 入库批次 | InboundBatchService |
+| `inventory_outbound_batches` | 出库批次 | OutboundBatchService |
+
+#### 10.6 数据模型
+
+**Warehouse（仓库）**：id、warehouse_code、name、address、manager_id、manager_name、status、description、created_at、updated_at
+
+**StockDB（库存）**：id、warehouse_id、product_id、product_code、product_name、spec_id、spec_code、quantity、min_stock、max_stock、status、created_at、updated_at。格式化后附加 product_info、spec_info、warehouse_info。
+
+**InboundBatch（入库批次）**：id、warehouse_id、product_id、product_code、product_name、spec_id、spec_code、stock_id、quantity、user_id、user_name、created_at、updated_at
+
+**OutboundBatch（出库批次）**：id、warehouse_id、product_id、product_code、product_name、spec_id、spec_code、stock_id、quantity、user_id、user_name、created_at、updated_at
+
+#### 10.7 校验规则
+
+位于 `validators/inventory_validator.py`，包含：`WAREHOUSE_CREATE_CONFIG`、`WAREHOUSE_UPDATE_CONFIG`、`STOCK_CREATE_CONFIG`、`STOCK_UPDATE_CONFIG`、`INBOUND_BATCH_CREATE_CONFIG`、`INBOUND_BATCH_UPDATE_CONFIG`、`OUTBOUND_BATCH_CREATE_CONFIG`、`OUTBOUND_BATCH_UPDATE_CONFIG`
+
+---
+
+### 11. 应收款管理
+
+**功能**：应收款记录管理、收款状态跟踪
+
+**核心文件**：
+- `routers/accounts_receivable.py` — 路由
+- `services/accounts_receivable_service.py` — 业务服务
+- `models/accounts_receivable.py` — 数据模型
+
+---
+
+### 12. 省份城市数据
+
+**功能**：省份城市数据查询（基础数据）
+
+**核心文件**：
+- `routers/province_city.py` — 路由
+- `services/province_city_service.py` — 业务服务
+- `models/province_city.py` — 数据模型
+
+**API 文档**：`app/routers/api_docs/province_city.md`
+
+---
+
+### 13. 权限与角色管理
+
+**功能**：RBAC 权限控制、角色管理、权限分配
+
+**核心文件**：
+- `routers/permission.py` — 权限路由
+- `routers/role.py` — 角色路由
+
+**权限类型**：
+| 类型 | 说明 |
+|------|------|
+| menu | 菜单权限，控制侧边栏显示 |
+| button | 按钮权限，控制操作按钮显示 |
+
+**权限代码命名**：`模块.资源.操作`（如 `sales.order.create`）
+
+---
+
+### 14. AI 聊天模块
+
+**功能**：AI 智能助手对话、Agent 工具调用
+
+**核心文件**：
+- `routers/ai.py` — AI 路由
+- `routers/ws.py` — WebSocket 路由
+- `services/ai_service.py` — AI 服务
+- `services/ws_manager.py` — WebSocket 管理器
+- `app/agent/` — Agent 模块（tools/skills/llm）
+
+---
+
+### 15. 文件上传
+
+**功能**：文件上传服务
+
+**核心文件**：
+- `routers/upload.py` — 路由
+
+---
+
+## 模块间依赖关系
+
+```
+认证模块 ← 所有模块（依赖 Token 验证）
+客户管理 ← 客户折扣、销售订单、应收款
+商品/品牌/分类 ← 库存、销售订单、采购单、客户折扣
+供应商管理 ← 采购单
+销售订单 ← 库存（出入库）、应收款
+采购单 ← 库存（入库）
+```

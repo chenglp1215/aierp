@@ -4,8 +4,8 @@ import string
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import MongoClient
 
-MONGODB_URL = "mongodb://10.5.5.66:20001"
-MONGODB_DB_NAME = "oai_erp"
+MONGODB_URL = "mongodb://132.232.212.151:58902"
+MONGODB_DB_NAME = "oai_erp_test"
 
 CHINESE_BRANDS = [
     "华为", "小米", "OPPO", "vivo", "一加", "realme", "荣耀", "中兴", "联想", "TCL",

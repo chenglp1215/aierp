@@ -1,0 +1,320 @@
+# 前端项目模块说明
+
+<!-- 变更日期: 2026-05-08 -->
+
+> 本文档说明前端各业务模块的功能、路由和核心组件。随开发实时更新。
+
+---
+
+## 项目目录结构
+
+```
+web/src/
+├── assets/                 # 静态资源
+├── components/            # Vue 组件
+│   ├── common/            # 公共组件
+│   │   ├── InvoiceInfoManager.vue
+│   │   ├── ProvinceCitySelector.vue
+│   │   ├── ShippingAddressManager.vue
+│   │   └── Toast.vue
+│   ├── workspace/         # 业务工作区组件
+│   │   ├── ProductWorkspace.vue    # 商品管理
+│   │   ├── BrandWorkspace.vue      # 品牌管理
+│   │   ├── CategoryWorkspace.vue    # 分类管理
+│   │   ├── InventoryWorkspace.vue  # 库存管理
+│   │   ├── WarehouseWorkspace.vue   # 仓库管理
+│   │   ├── SalesOrder*.vue        # 销售订单相关
+│   │   ├── PurchaseOrder*.vue      # 采购单相关
+│   │   └── ...                    # 其他业务组件
+│   ├── DashboardLayout.vue  # 主布局
+│   ├── SidebarNav.vue       # 侧边栏导航
+│   └── LoginView.vue        # 登录页
+├── router/                 # 路由配置
+├── services/               # API 服务
+│   └── api.ts             # 后端接口调用封装
+├── stores/                 # 状态管理
+├── utils/                  # 工具函数
+├── App.vue                 # 根组件
+└── main.ts                 # 入口文件
+```
+
+---
+
+## 模块总览
+
+| 模块 | 路由路径 | 说明 |
+|------|---------|------|
+| 仪表盘 | `/dashboard` | 主仪表盘页面 |
+| AI 聊天 | `/chat` | AI 智能助手对话 |
+| 销售订单 | `/sales-order` | 销售订单管理 |
+| 采购单 | `/purchase-order` | 采购单管理 |
+| 供应商管理 | `/supplier` | 供应商信息管理 |
+| 商品管理 | `/product` | 商品、规格、品牌、分类管理 |
+| 库存管理 | `/inventory` | 库存、仓库、出入库批次管理 |
+| 应收款 | `/finance/receivable` | 应收款管理 |
+| 销售管理 | `/sales` | 销售模块（含客户、折扣） |
+| 财务管理 | `/finance` | 财务模块 |
+| 客户关系 | `/crm` | CRM 客户管理 |
+
+---
+
+## 各模块详情
+
+### 1. 仪表盘
+
+**路由**：`/dashboard`
+
+**核心组件**：
+- `DashboardWorkspace.vue` — 仪表盘主页
+- `StatCard.vue` — 统计卡片组件
+
+---
+
+### 2. AI 聊天
+
+**路由**：`/chat`
+
+**核心组件**：
+- `ChatWorkspace.vue` — AI 聊天界面
+
+---
+
+### 3. 销售订单
+
+**路由**：`/sales-order`
+
+**核心组件**：
+- `SalesOrderWorkspace.vue` — 销售订单主页面（页签容器）
+- `SalesOrderList.vue` — 销售订单列表
+- `SalesOrderCreate.vue` — 销售订单创建
+- `SalesOrderDetail.vue` — 销售订单详情
+
+**功能**：
+- 订单列表查询
+- 创建/编辑订单
+- 订单状态流转
+- 订单详情查看
+
+---
+
+### 4. 采购单
+
+**路由**：`/purchase-order`
+
+**核心组件**：
+- `PurchaseOrderWorkspace.vue` — 采购单主页面
+- `PurchaseOrderDetail.vue` — 采购单详情
+- `PushPurchaseItemSelectModal.vue` — 推送采购项选择弹窗
+- `PushPurchasePreviewModal.vue` — 采购单预览弹窗
+
+**功能**：
+- 采购单列表查询
+- 从销售订单推送生成采购单
+- 采购单状态管理
+
+---
+
+### 5. 供应商管理
+
+**路由**：`/supplier`
+
+**核心组件**：
+- `SupplierWorkspace.vue` — 供应商管理页面
+
+**功能**：
+- 供应商信息 CRUD
+
+---
+
+### 6. 商品管理
+
+**路由**：`/product`
+
+**核心组件**：
+- `ProductWorkspace.vue` — 商品管理主页面
+- `BrandWorkspace.vue` — 品牌管理页面
+- `CategoryWorkspace.vue` — 分类管理页面
+
+**功能**：
+- 商品列表查询（支持品牌、分类筛选、分页）
+- 商品 CRUD 操作（创建/编辑/删除）
+- 商品规格管理（创建/编辑/删除规格，弹窗内联编辑）
+- 品牌管理（列表CRUD，支持按状态筛选）
+- 分类管理（树形结构展示，支持增删改）
+- 商品图片上传
+- 库存详情查看（跳转至库存模块）
+
+**关联服务**：
+- `productApi` — 商品及规格 API
+- `brandApi` — 品牌 API
+- `categoryApi` — 分类 API
+- `uploadApi` — 文件上传 API
+
+---
+
+### 7. 库存管理
+
+**路由**：`/inventory`
+
+**核心组件**：
+- `InventoryWorkspace.vue` — 库存管理页面
+- `WarehouseWorkspace.vue` — 仓库管理页面
+
+**功能**：
+- **仓库管理**：
+  - 仓库列表查询（支持状态、关键词筛选）
+  - 仓库创建和编辑（不支持删除）
+  - 仓库状态管理（启用/停用/维护中）
+- **库存管理**：
+  - 库存列表查询（支持仓库、商品、规格、状态筛选）
+  - 库存详情查看（含出入库批次汇总）
+  - 库存盘点（手动调整数量）
+- **出入库操作**：
+  - 入库操作（创建入库批次）
+  - 出库操作（创建出库批次）
+  - 批次记录查看
+- **批次管理**：
+  - 入库批次列表查询
+  - 出库批次列表查询
+  - 批次详情查看
+
+**关联服务**：
+- `warehouseApi` — 仓库 API
+- `stockApi` — 库存 API
+- `inboundBatchApi` — 入库批次 API
+- `outboundBatchApi` — 出库批次 API
+- `productApi` — 商品/规格查询 API
+
+**业务说明**：
+- 入库/出库通过批次接口实现
+- 批次记录包含完整的商品、规格、仓库、操作用户信息
+- 当前用户信息从 `localStorage.user` 获取
+
+---
+
+### 8. 应收款
+
+**路由**：`/finance/receivable`
+
+**核心组件**：
+- `ReceivableList.vue` — 应收款列表
+
+**功能**：
+- 应收款记录查询
+- 收款状态管理
+
+---
+
+### 9. 销售管理
+
+**路由**：`/sales`
+
+**核心组件**：
+- `SalesWorkspace.vue` — 销售模块主页（含客户、折扣等子功能）
+
+**子功能**：
+- 客户管理（CRM）
+- 客户折扣管理
+
+---
+
+### 10. 财务管理
+
+**路由**：`/finance`
+
+**核心组件**：
+- `FinanceWorkspace.vue` — 财务模块主页
+
+---
+
+### 11. 客户关系管理
+
+**路由**：`/crm`
+
+**核心组件**：
+- `CrmWorkspace.vue` — CRM 主页面
+- `CustomerDiscountWorkspace.vue` — 客户折扣管理
+
+**功能**：
+- 客户信息 CRUD
+- 客户折扣规则管理
+
+---
+
+### 12. 系统管理
+
+**路由**：无独立路由（通过侧边栏导航）
+
+**核心组件**：
+- `UserManagement.vue` — 用户管理
+- `RoleManagement.vue` — 角色管理
+- `PermissionManagement.vue` — 权限管理
+- `AccountManagement.vue` — 账户管理
+
+---
+
+### 13. AI 设置
+
+**路由**：无独立路由
+
+**核心组件**：
+- `AgentSettings.vue` — Agent 配置
+- `LlmSettings.vue` — LLM 模型设置
+- `SkillsSettings.vue` — 技能配置
+- `KnowledgeBaseSettings.vue` — 知识库配置
+- `McpSettings.vue` — MCP 配置
+- `IntelligentSettings.vue` — 智能功能设置
+
+---
+
+## 公共组件
+
+| 组件 | 说明 |
+|------|------|
+| `DashboardLayout.vue` | 主布局（侧边栏 + 内容区） |
+| `SidebarNav.vue` | 侧边栏导航 |
+| `DataTable.vue` | 可复用数据表格 |
+| `StatCard.vue` | 统计卡片 |
+| `LoginView.vue` | 登录页面 |
+| `common/InvoiceInfoManager.vue` | 发票信息管理公共组件 |
+
+---
+
+## API 服务
+
+所有后端接口调用统一在 `services/api.ts` 中定义，按模块导出：
+
+| API 对象 | 说明 |
+|---------|------|
+| `authApi` | 认证、用户管理 API |
+| `roleApi` | 角色管理 API |
+| `permissionApi` | 权限管理 API |
+| `salesOrderApi` | 销售订单 API |
+| `purchaseOrderApi` | 采购单 API |
+| `customerApi` | 客户管理 API (v1) |
+| `customerV2Api` | 客户管理 API (v2) |
+| `customerDiscountApi` | 客户折扣 API |
+| `productApi` | 商品、规格 API |
+| `brandApi` | 品牌 API |
+| `categoryApi` | 分类 API |
+| `warehouseApi` | 仓库 API |
+| `stockApi` | 库存 API |
+| `inboundBatchApi` | 入库批次 API |
+| `outboundBatchApi` | 出库批次 API |
+| `supplierApi` | 供应商 API |
+| `receivableApi` | 应收款 API |
+| `provinceApi` | 省市行政区 API |
+| `uploadApi` | 文件上传 API |
+| `llmApi` | LLM 模型 API |
+| `knowledgeBaseApi` | 知识库 API |
+| `mcpApi` | MCP 服务器 API |
+| `skillApi` | 技能 API |
+| `agentApi` | Agent API |
+| `chatWsService` | WebSocket 聊天服务 |
+
+**标准方法**：
+- `list(params)` — 列表查询
+- `getById(id)` — 详情查询
+- `create(data)` — 创建
+- `update(id, data)` — 更新
+- `delete(id)` — 删除

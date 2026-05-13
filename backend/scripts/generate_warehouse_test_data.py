@@ -3,8 +3,8 @@ import random
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime
 
-MONGODB_URL = "mongodb://10.5.5.66:20001"
-MONGODB_DB_NAME = "oai_erp"
+MONGODB_URL = "mongodb://132.232.212.151:58902"
+MONGODB_DB_NAME = "oai_erp_test"
 
 WAREHOUSE_NAMES = [
     "深圳中心仓", "广州配送中心", "东莞物流园", "佛山存储基地", "中山周转站",

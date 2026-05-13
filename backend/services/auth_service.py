@@ -941,7 +941,6 @@ class MySQLPermissionService:
                 perm_map[perm.parent_id]["children"].append(perm_data)
             else:
                 roots.append(perm_data)
-
         return roots
 
 

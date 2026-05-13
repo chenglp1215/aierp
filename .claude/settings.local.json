@@ -22,7 +22,29 @@
       "Bash(python -m py_compile app/routers/supplier.py models/supplier.py services/supplier_service.py validators/supplier_validator.py app/routers/__init__.py)",
       "Bash(python -m py_compile models/purchase_order.py services/purchase_order_service.py)",
       "Bash(python -m py_compile services/purchase_order_service.py app/routers/purchase_order.py)",
-      "Bash(python -c \"from models.sales_order import SalesOrderItem; print\\('SalesOrderItem fields:', [f for f in SalesOrderItem.model_fields.keys\\(\\)]\\)\")"
+      "Bash(python -c \"from models.sales_order import SalesOrderItem; print\\('SalesOrderItem fields:', [f for f in SalesOrderItem.model_fields.keys\\(\\)]\\)\")",
+      "Bash(mkdir -p openspec/specs)",
+      "Bash(openspec list *)",
+      "Bash(openspec new *)",
+      "Bash(openspec status *)",
+      "Bash(openspec instructions *)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git show *)",
+      "Bash(pip install *)",
+      "Bash(python -c \"from services.auth_service import mysql_user_service, mysql_role_service, mysql_permission_service; print\\('Service import success'\\)\")",
+      "Bash(pip uninstall *)",
+      "Bash(python -c \"from app.routers.auth import auth_router; print\\('Router import success'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python scripts/init_db_sync.py)",
+      "Bash(timeout 15 python main.py)",
+      "Bash(python -c \"import scripts.init_db_sync\")",
+      "Bash(mkdir -p openspec/specs/user-settings-dialog)"
+    ],
+    "additionalDirectories": [
+      "e:\\ai_erp\\aierp\\openspec\\specs",
+      "E:\\ai_erp\\aierp\\openspec\\specs"
     ]
   }
 }

@@ -2,8 +2,8 @@ import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 
-MONGODB_URL = "mongodb://10.5.5.66:20001"
-MONGODB_DB_NAME = "oai_erp"
+MONGODB_URL = "mongodb://132.232.212.151:58902"
+MONGODB_DB_NAME = "oai_erp_test"
 
 
 async def fix_stock_data():

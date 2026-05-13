@@ -1,0 +1,614 @@
+# 后端项目基础规范
+
+<!-- 变更日期: 2026-05-12 -->
+
+> 本文档为后端开发基础规范，包含项目架构、代码风格、接口规范、服务实现模式、模块拆分与解耦定位。修改本文档需经用户确认。
+
+---
+
+## 1. 项目架构
+
+### 技术栈
+
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| FastAPI | 0.115.0 | 异步 Web 框架 |
+| MongoDB | - | 主数据库，Motor 异步驱动 |
+| Redis | - | 缓存和会话存储 |
+| Pydantic | V2 | 数据验证和序列化 |
+| python-jose | - | JWT 认证 |
+| passlib | - | 密码加密 |
+| LangChain | - | AI Agent 框架 |
+
+### 目录结构
+
+```
+backend/
+├── app/
+│   ├── __init__.py          # 应用工厂，权限初始化，CORS 配置
+│   ├── database.py          # MongoDB + Redis 连接管理
+│   ├── decorators.py        # 通用装饰器（handle_result 统一响应）
+│   ├── middleware.py         # 中间件（JWT 认证、WebSocket 路径跳过）
+│   ├── agent/               # AI Agent 模块
+│   │   ├── llm/             # LLM 客户端
+│   │   ├── skills/          # 技能系统
+│   │   ├── tools/           # 工具注册（BaseTool 继承）
+│   │   ├── agent.py         # Agent 核心类
+│   │   ├── config.py        # Agent 配置
+│   │   └── manager.py       # Agent 管理器
+│   ├── routers/             # API 路由模块
+│       ├── __init__.py      # 路由注册
+│       ├── auth.py          # 认证、用户、角色、权限路由（合并模块）
+│       ├── customer.py      # 客户路由（当前使用）
+│       ├── customer_discount.py  # 客户折扣路由
+│       ├── product.py       # 商品路由（含品牌、分类、规格）
+│       ├── supplier.py      # 供应商路由
+│       ├── sales_order.py   # 销售订单路由
+│       ├── purchase_order.py # 采购单路由
+│       ├── inventory.py     # 库存路由（仓库/库存/出入库）
+│       ├── accounts_receivable.py  # 应收款路由
+│       ├── province_city.py # 省份城市路由
+│       ├── upload.py        # 文件上传路由
+│       ├── ai.py            # AI 聊天路由
+│       ├── health.py        # 健康检查路由
+│       ├── ws.py            # WebSocket 路由
+│       └── api_docs/        # 各模块 API 文档
+├── models/                  # Pydantic 数据模型
+│   ├── __init__.py          # 公共导出
+│   ├── common.py            # 共享枚举和工具函数
+│   └── ...                  # 各模块数据模型
+├── services/                # 业务逻辑层
+│   ├── __init__.py          # 服务导出
+│   ├── base_service.py      # 基础 CRUD 服务（MongoDB）
+│   └── ...                  # 各模块业务服务
+├── validators/              # 数据校验
+│   ├── base_validator.py    # 基础校验器
+│   └── ...                  # 各模块校验规则
+├── config/
+│   └── settings.py          # Pydantic Settings 配置
+├── scripts/
+│   └── init_db.py           # 数据库初始化脚本（部署时执行）
+├── main.py                  # 应用入口
+└── requirements.txt         # 依赖
+```
+
+### 各层职责
+
+| 层 | 目录 | 职责 |
+|----|------|------|
+| **路由层** | `routers/` | 接收请求、参数解析、调用服务、返回响应 |
+| **服务层** | `services/` | 业务逻辑处理、数据组装、业务规则校验 |
+| **模型层** | `models/` | Pydantic 数据结构定义、字段验证规则 |
+| **校验层** | `validators/` | 自定义业务校验逻辑 |
+
+---
+
+## 2. 代码风格
+
+### 命名规范
+
+| 类型 | 规范 | 示例 |
+|------|------|------|
+| 文件 | 小写下划线 | `sales_order_service.py` |
+| 类 | 大驼峰 | `SalesOrderService` |
+| 函数 | 小写下划线 | `get_order_by_no` |
+| 常量 | 全大写下划线 | `BLOCK_STATUS_CHOICES` |
+| MongoDB 集合 | 小写下划线 | `sales_orders`、`product_categories` |
+| 路由前缀 | 小写连字符 | `/sales-orders`、`/procurement-orders` |
+
+### 函数复杂度
+
+- 单函数不超过 20 条语句
+- 超过需拆分为子函数
+- 使用中文注释说明复杂逻辑的原因
+
+### 代码格式化
+
+- Black 格式化代码
+- isort 管理导入顺序
+- flake8 检查代码质量
+
+---
+
+## 3. 接口规范
+
+### 路由架构
+
+- 所有 API 路径前缀: `/api/v1`
+- 认证方式: Bearer Token (JWT)
+- HTTP 状态码: 仅使用 200（成功）、401（未认证）、5XX（服务器错误）
+- 业务错误通过响应体中的 `status: "error"` 表示
+
+### 统一响应格式
+
+#### 成功响应（列表）
+
+```json
+{
+  "status": "success",
+  "message": "操作成功",
+  "result": {
+    "total": 100,
+    "page": 1,
+    "page_size": 20,
+    "items": [...]
+  }
+}
+```
+
+#### 成功响应（详情）
+
+```json
+{
+  "status": "success",
+  "message": "操作成功",
+  "result": { ... }
+}
+```
+
+#### 错误响应
+
+```json
+{
+  "status": "error",
+  "message": "错误描述信息",
+  "result": null
+}
+```
+
+#### 校验错误响应
+
+```json
+{
+  "status": "error",
+  "message": "参数验证失败",
+  "validation_errors": [
+    { "field": "name", "message": "名称不能为空" }
+  ]
+}
+```
+
+### 编写示例
+
+#### 路由编写模式（wrap_response + require_permission）
+
+当前推荐的路由编写模式，使用 `@wrap_response` 装饰器统一处理异常和响应格式，配合 `require_permission` 做权限校验：
+
+```python
+from fastapi import APIRouter, Query, Depends
+from typing import Optional, Dict, Any
+from services.xxx_service import xxx_service
+from .auth import require_permission
+from app.decorators import wrap_response
+
+xxx_router = APIRouter(prefix="/xxx", tags=["xxx管理"])
+
+
+@xxx_router.get("/", response_model=dict)
+@wrap_response
+async def list_xxx(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    _: dict = Depends(require_permission("xxx.view"))
+):
+    """获取xxx列表"""
+    items, total = await xxx_service.list_xxx(
+        page=page, page_size=page_size, keyword=keyword
+    )
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": items
+    }
+
+
+@xxx_router.get("/{xxx_id}", response_model=dict)
+@wrap_response
+async def get_xxx(
+    xxx_id: str,
+    _: dict = Depends(require_permission("xxx.view"))
+):
+    """获取xxx详情"""
+    item = await xxx_service.get_xxx_by_id(xxx_id)
+    if not item:
+        raise ValueError("xxx不存在")
+    return item
+
+
+@xxx_router.post("/", response_model=dict)
+@wrap_response
+async def create_xxx(
+    xxx: Dict[str, Any],
+    _: dict = Depends(require_permission("xxx.create"))
+):
+    """创建xxx"""
+    xxx_data = await xxx_service.create_xxx(xxx)
+    return xxx_data
+
+
+@xxx_router.put("/{xxx_id}", response_model=dict)
+@wrap_response
+async def update_xxx(
+    xxx_id: str,
+    xxx: Dict[str, Any],
+    _: dict = Depends(require_permission("xxx.edit"))
+):
+    """更新xxx"""
+    await xxx_service.update_xxx(xxx_id, xxx)
+    return "xxx更新成功"
+
+
+@xxx_router.delete("/{xxx_id}", response_model=dict)
+@wrap_response
+async def delete_xxx(
+    xxx_id: str,
+    _: dict = Depends(require_permission("xxx.delete"))
+):
+    """删除xxx"""
+    await xxx_service.delete_xxx(xxx_id)
+    return "xxx删除成功"
+```
+
+#### 路由顺序规则
+
+**必须遵循**：固定路径路由放在动态参数路由之前，否则会被 `/{id}` 捕获导致 404。
+
+#### 关联子资源的路由设计
+
+当一个模块包含多个相关资源（如商品+品牌+分类）时，将它们统一放在同一个路由文件中，通过独立的 `APIRouter` 实例组织：
+
+```python
+# 所有关联子资源放在同一个路由文件中
+brand_router = APIRouter(prefix="/brands", tags=["品牌管理"])
+category_router = APIRouter(prefix="/categories", tags=["分类管理"])
+product_router = APIRouter(prefix="/products", tags=["商品管理"])
+
+# 在 __init__.py 中统一注册
+from .product import brand_router, category_router, product_router
+routers.extend([
+    ..., (brand_router, "/api/v1/brands"),
+    ..., (category_router, "/api/v1/categories"),
+    ..., (product_router, "/api/v1/products"),
+])
+```
+#### wrap_response 装饰器说明
+
+`wrap_response` 装饰器统一处理响应和异常，比 `handle_result` 更简洁：
+
+- 路由函数直接 `return` 数据，装饰器自动包装为标准响应格式
+- `ValueError` 异常自动捕获，返回 `{"status": "error", "message": "..."}`
+- 不需要手动构造 `(bool, result, message)` 元组
+- 配合 `Depends(require_permission("xxx.yyy"))` 做权限控制
+
+#### 参数校验模式
+
+使用 validators 目录下的配置化校验器进行业务校验，校验逻辑在 service 层调用：
+
+```python
+# validators/xxx_validator.py
+XXX_CREATE_CONFIG = {
+    'name': {'required': True, 'min_length': 1, 'max_length': 200},
+    'description': {'max_length': 500},
+}
+
+XXX_UPDATE_CONFIG = {
+    'name': {'min_length': 1, 'max_length': 200},
+    'description': {'max_length': 500},
+}
+
+# services/xxx_service.py 中使用
+def validate_xxx_create(self, data: dict) -> tuple[bool, Optional[dict]]:
+    return self.validate_data(data, XXX_CREATE_CONFIG)
+
+async def create_xxx(self, data: dict) -> dict:
+    valid, errors = self.validate_xxx_create(data)
+    if not valid:
+        raise ValueError(errors)
+    data["id"] = await self.create(data)
+    data.pop("_id", None)
+    return data
+```
+
+### HTTP 状态码规范
+
+| 状态码 | 说明 | 使用场景 |
+|--------|------|---------|
+| 200 | 请求成功 | 所有成功请求（含业务错误） |
+| 401 | 未认证 | Token 缺失或过期 |
+| 5XX | 服务器错误 | 未捕获的异常 |
+
+---
+
+## 4. 服务实现风格
+
+### BaseService 基类
+
+所有业务服务继承 `BaseService`，提供统一的 MongoDB CRUD 操作：
+
+```python
+from services.base_service import BaseService
+
+class XxxService(BaseService):
+    def __init__(self):
+        super().__init__("collection_name")  # MongoDB 集合名
+        self.models = XxxModel               # 关联的 Pydantic 模型（可选，用于类型提示）
+```
+
+#### BaseService 提供的方法
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `get_by_id(id)` | `async (str) -> Optional[dict]` | 按 ID 查询单条，不存在返回 None |
+| `create(data)` | `async (dict) -> str` | 创建记录，返回新生成的 ID |
+| `update(id, data)` | `async (str, dict) -> bool` | 更新记录（支持 `$` 开头操作符透传） |
+| `delete(id)` | `async (str) -> bool` | 删除记录 |
+| `find_one(filter)` | `async (dict) -> Optional[dict]` | 查询单条记录 |
+| `find_many(filter, limit, skip)` | `async (dict, int, int) -> list[dict]` | 查询多条，返回 list |
+| `count(filter)` | `async (dict) -> int` | 统计符合条件的记录数 |
+| `validate_data(data, config)` | `(dict, dict) -> tuple[bool, Optional[dict]]` | 校验数据，返回 (是否通过, 错误信息) |
+
+#### 服务层编写规范
+
+服务层是业务逻辑的核心，应遵循以下规范：
+
+1. **参数类型**：服务层方法参数使用 `Dict[str, Any]` 接收请求数据，由路由层直接传递
+2. **校验方法**：使用 `validate_data()` + 配置化校验器，通过 `raise ValueError` 抛出校验错误
+3. **格式化方法**：提供 `format()` / `format_list()` 用于数据返回前的加工处理
+4. **业务方法**：`create_xxx` / `update_xxx` / `delete_xxx` 包含完整业务逻辑
+5. **错误处理**：通过 `raise ValueError("错误描述")` 抛出业务错误，由路由层装饰器捕获
+6. **ID 格式化**：创建后需 `data.pop("_id", None)` 移除 MongoDB 原生 _id
+
+#### 服务层完整示例
+
+```python
+from typing import Optional, Dict, Any, List
+from datetime import datetime
+from bson import ObjectId
+from .base_service import BaseService
+from validators.xxx_validator import XXX_CREATE_CONFIG, XXX_UPDATE_CONFIG
+
+logger = logging.getLogger(__name__)
+
+
+class XxxService(BaseService):
+    def __init__(self):
+        super().__init__("xxx_collection")
+
+    # ============ 校验方法 ============
+
+    def validate_xxx_create(self, data: Dict[str, Any]) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(data, XXX_CREATE_CONFIG)
+
+    def validate_xxx_update(self, data: Dict[str, Any]) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(data, XXX_UPDATE_CONFIG)
+
+    # ============ 格式化方法 ============
+
+    async def format(self, xxx: Dict[str, Any]) -> Dict[str, Any]:
+        return xxx
+
+    async def format_list(self, xxxs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        return [await self.format(xxx) for xxx in xxxs]
+
+    # ============ CRUD 方法 ============
+
+    async def create_xxx(self, xxx_data: Dict[str, Any]) -> Dict[str, Any]:
+        valid, errors = self.validate_xxx_create(xxx_data)
+        if not valid:
+            raise ValueError(errors)
+        xxx_data["id"] = await self.create(xxx_data)
+        xxx_data.pop("_id", None)
+        return xxx_data
+
+    async def update_xxx(self, id: str, xxx_data: Dict[str, Any]) -> bool:
+        valid, errors = self.validate_xxx_update(xxx_data)
+        if not valid:
+            raise ValueError(errors)
+        return await self.update(id, xxx_data)
+
+    async def get_xxx_by_id(self, id: str) -> Dict[str, Any]:
+        xxx = await self.get_by_id(id)
+        if xxx is None:
+            raise ValueError("xxx不存在")
+        return await self.format(xxx)
+
+    async def delete_xxx(self, id: str) -> bool:
+        return await self.delete(id)
+
+    # ============ 列表查询方法 ============
+
+    async def list_xxxs(
+        self, keyword: str = None, page: int = 1, page_size: int = 20
+    ) -> tuple[List[Dict[str, Any]], int]:
+        query = {}
+        if keyword:
+            query["name"] = {"$regex": keyword}
+        items = await self.find_many(query, limit=page_size, skip=(page - 1) * page_size)
+        total = await self.count(query)
+        return await self.format_list(items), total
+
+
+# 服务实例（模块级单例）
+xxx_service = XxxService()
+```
+
+### 数据模型编写模式
+
+数据模型定义在 `models/` 目录下，统一放在一个文件中。当一个文件包含多个相关实体时，每个实体一个 class，文件名以主实体命名：
+
+```python
+from pydantic import BaseModel, Field
+from typing import Optional, List
+from datetime import datetime
+
+
+class Xxx(BaseModel):
+    id: Optional[str] = Field(None, description="ID（创建时不需要，由系统自动生成）")
+    name: str = Field(..., min_length=1, max_length=200, description="名称")
+    description: Optional[str] = Field(None, max_length=500, description="描述")
+    is_active: bool = Field(default=True, description="是否有效")
+    created_at: datetime = Field(default_factory=datetime.now, description="创建时间（由系统自动生成）")
+    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间（由系统自动更新）")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "507f1f77bcf86cd799439011",
+                "name": "示例",
+                "description": "描述",
+                "is_active": True,
+            }
+        }
+
+```
+
+#### 数据模型规范
+
+| 规则 | 说明 |
+|------|------|
+| `id` 字段使用 `Optional[str]` | 由 MongoDB 自动生成，`Field(None, ...)` |
+| `created_at` / `updated_at` | 使用 `default_factory=datetime.now` |
+| 必填字段用 `Field(...)` | `...` 表示必填 |
+| 可选字段用 `Optional[xxx] = Field(None)` | 默认值为 None |
+| `Field(...)` 中写清楚 `description` | 用于 API 文档自动生成 |
+| `json_schema_extra` 提供 example | 方便前端参考数据结构 |
+
+> **重要说明**：
+> 1. models 层仅用于定义有 MongoDB 数据库的模块（即 `models/` 目录下的文件描述的是数据库集合的表结构）
+> 2. 对于无数据库依赖的模块（如省份城市数据直接写死的情况），不需要创建 models 层
+> 3. **请求参数模型**（如 `UserCreate`、`LoginRequest` 等用于接收请求体的 Pydantic Model）不需要在 models 层定义，应直接在路由层或服务层通过 `Dict[str, Any]` 接收，由服务层内部负责校验和转换
+> 4. 接口文档通过 API 路由的 `description` 参数生成
+
+### 校验器编写模式
+
+校验器使用 **dict 配置**模式，定义在 `validators/` 目录下。配置命名规范：`{ENTITY}_{CREATE|UPDATE}_CONFIG`：
+
+```python
+# validators/xxx_validator.py
+
+# ============ XXX 验证配置 ============
+
+XXX_CREATE_CONFIG = {
+    'name': {
+        'required': True,
+        'min_length': 1,
+        'max_length': 200,
+    },
+    'description': {
+        'max_length': 500,
+    },
+    'status': {
+        'required': True,
+        'enum': ['active', 'inactive'],
+    },
+    'contact_info': {
+        'fields': {  # 嵌套对象验证
+            'phone': {
+                'pattern': r'^1[3-9]\d{9}$',
+                'msg': '手机号格式不正确'
+            }
+        }
+    },
+    'items': {
+        'items': {  # 列表项验证
+            'product_id': {'required': True, 'required_msg': '商品ID为必填'},
+            'qty': {'required': True, 'type': int, 'min': 1, 'required_msg': '数量为必填'}
+        }
+    },
+    '__conditional__': [  # 条件必填
+        {
+            'depends_on': 'status',
+            'required_value': 'active',
+            'field': 'reason',
+            'message': '状态为启用时，原因不能为空'
+        }
+    ]
+}
+
+XXX_UPDATE_CONFIG = {
+    'name': {
+        'min_length': 1,
+        'max_length': 200,
+    },
+    'status': {
+        'enum': ['active', 'inactive'],
+    }
+}
+```
+
+#### 配置规则说明
+
+| 规则 | 说明 | 示例 |
+|------|------|------|
+| `required` | 是否必填 | `True` / `False` |
+| `required_msg` | 必填错误提示 | `'名称为必填'` |
+| `type` | 类型检查 | `int`、`(int, float)` |
+| `min_length` | 最小长度（字符串/列表） | `1` |
+| `max_length` | 最大长度（字符串/列表） | `200` |
+| `min` | 最小值（数字） | `0` |
+| `max` | 最大值（数字） | `100` |
+| `enum` | 枚举值 | `['active', 'inactive']` |
+| `pattern` | 正则匹配 | `r'^1[3-9]\d{9}$'` |
+| `msg` | pattern 匹配失败的提示 | `'格式不正确'` |
+| `fields` | 嵌套对象验证 | `{'phone': {...}}` |
+| `items` | 列表项验证 | `{'product_id': {...}}` |
+| `__conditional__` | 条件必填 | 见上方示例 |
+
+#### 校验在 Service 层调用
+
+校验配置在 service 层通过 `self.validate_data()` 方法调用，不在路由层直接调用：
+
+```python
+# service 中调用
+def validate_xxx_create(self, data):
+    return self.validate_data(data, XXX_CREATE_CONFIG)
+
+async def create_xxx(self, data):
+    valid, errors = self.validate_xxx_create(data)
+    if not valid:
+        raise ValueError(errors)
+    ...
+```
+
+---
+
+## 5. 模块拆分与解耦
+
+### 标准模块文件结构
+
+每个业务模块应包含以下文件（按需选用）：
+
+```
+模块名/
+├── models/模块名.py              # 数据模型（Pydantic）
+├── services/模块名_service.py    # 业务逻辑
+├── validators/模块名_validator.py # 数据校验
+└── routers/模块名.py             # API 路由
+```
+
+### 各层解耦原则
+
+| 规则 | 说明 |
+|------|------|
+| 路由层不写业务逻辑 | 仅做参数解析、权限校验和调用服务 |
+| 服务层不依赖路由 | 通过 raise ValueError 传递业务错误 |
+| 模型层不做业务校验 | 仅定义数据结构和字段约束 |
+| 校验器不依赖服务 | 纯配置，通过 service 层的 `validate_data()` 调用 |
+| 关联子资源统一在同一路由文件 | 如商品+品牌+分类统一放 `product.py`，用独立 APIRouter 实例组织 |
+| 关联子资源的 Service 统一在同一路由文件 | 如 `product_service.py` 包含 BrandService、CategoryService、ProductService |
+
+### 共享模块
+
+`models/common.py` 存放跨模块共享的定义：
+
+- 枚举类型（SettleType、ShippingMethod、OrderStatus 等）
+- 工具函数（parse_datetime 等）
+- 通用数据结构
+
+### 模块间依赖规则
+
+- 模块间通过服务层调用，不直接跨模块访问数据库
+- 共享数据通过 `models/common.py` 中的枚举和工具函数
+- 禁止循环依赖

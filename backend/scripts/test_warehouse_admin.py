@@ -2,8 +2,8 @@ import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 
 async def check():
-    client = AsyncIOMotorClient('mongodb://10.5.5.66:20001')
-    db = client['oai_erp']
+    client = AsyncIOMotorClient('mongodb://132.232.212.151:58902')
+    db = client['oai_erp_test']
 
     # 检查 warehouse_admin 角色
     warehouse_admin_role = await db.roles.find_one({"code": "warehouse_admin"})

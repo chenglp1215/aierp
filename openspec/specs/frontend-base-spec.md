@@ -1,0 +1,358 @@
+# 前端项目基础规范
+
+<!-- 变更日期: 2026-05-05 -->
+
+> 本文档为前端开发基础规范，包含项目架构、组件规范、路由规范、状态管理。修改本文档需经用户确认。
+
+---
+
+## 1. 项目架构
+
+### 技术栈
+
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| Vue | 3 | 渐进式 JavaScript 框架 |
+| Vue Router | 5 | 路由管理 |
+| TypeScript | - | 类型安全 |
+| Vite | - | 构建工具 |
+| Pinia | - | 状态管理 |
+| vxe-table | 4 | 表格组件 |
+| Axios | - | HTTP 请求 |
+
+### 目录结构
+
+```
+web/src/
+├── components/
+│   ├── workspace/           # 业务工作区组件（核心页面）
+│   ├── DashboardLayout.vue  # 主布局组件（侧边栏 + 内容区）
+│   ├── SidebarNav.vue       # 侧边栏导航
+│   ├── LoginView.vue        # 登录页面
+│   └── common/              # 公共组件
+├── hooks/                   # 组合式函数
+│   └── usePermission.ts     # 权限 hook
+├── router/
+│   └── index.ts             # 路由配置
+├── services/
+│   └── api.ts               # API 服务（所有后端接口调用）
+├── styles/
+│   └── global.css           # 全局样式
+├── App.vue                  # 根组件
+└── main.ts                  # 入口文件
+```
+
+### 各层职责
+
+| 层 | 目录 | 职责 |
+|----|------|------|
+| **页面组件** | `workspace/` | 业务页面，包含完整业务逻辑 |
+| **布局组件** | `DashboardLayout.vue` | 页面框架、侧边栏、路由出口 |
+| **公共组件** | `common/` | 可复用的 UI 组件 |
+| **组合式函数** | `hooks/` | 可复用的逻辑（权限等） |
+| **API 服务** | `services/api.ts` | 所有后端接口调用封装 |
+
+---
+
+## 2. 组件规范
+
+### 基本原则
+
+- 使用 Vue 3 Composition API + `<script setup lang="ts">`
+- Props down, Events up
+- 状态最小化，衍生数据用 computed
+- 组件按功能拆分，避免"超级组件"
+
+### 组件编写模式
+
+```vue
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+
+// Props 定义
+interface Props {
+  title: string
+  data?: any[]
+}
+const props = withDefaults(defineProps<Props>(), {
+  data: () => []
+})
+
+// Emits 定义
+const emit = defineEmits<{
+  (e: 'update', value: any): void
+  (e: 'delete', id: string): void
+}>()
+
+// 响应式状态
+const loading = ref(false)
+const tableData = ref<any[]>([])
+
+// 计算属性
+const filteredData = computed(() => {
+  return tableData.value.filter(item => item.status === 'active')
+})
+
+// 方法
+const handleEdit = (row: any) => {
+  emit('update', row)
+}
+
+// 生命周期
+onMounted(() => {
+  loadData()
+})
+</script>
+
+<template>
+  <div class="workspace">
+    <div class="workspace-header">
+      <h2>{{ title }}</h2>
+    </div>
+    <div class="workspace-content">
+      <!-- 内容 -->
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.workspace {
+  padding: 20px;
+}
+</style>
+```
+
+### Workspace 组件命名
+
+- 文件名：`XxxWorkspace.vue`（如 `ProductWorkspace.vue`）
+- 主内容组件：`XxxManageContent.vue`
+- 详情组件：`XxxDetail.vue`
+- 列表组件：`XxxList.vue`
+- 弹窗组件：`XxxModal.vue`
+
+---
+
+## 3. 路由规范
+
+### 路由配置模式
+
+```typescript
+// router/index.ts
+const routes = [
+  {
+    path: '/xxx',
+    name: 'Xxx',
+    component: () => import('../components/DashboardLayout.vue'),
+    meta: { requiresAuth: true }
+  }
+]
+```
+
+### 路由守卫
+
+- 所有业务路由需设置 `meta.requiresAuth: true`
+- Token 过期检查通过 `localStorage` 中的 `token_expires_at` 判断
+- 已登录用户访问 `/login` 时自动跳转到 `/dashboard`
+- Token 过期时清除所有认证数据并跳转到 `/login`
+
+### 认证数据清除
+
+```typescript
+const keysToRemove = ['token', 'user', 'token_expires_at', 'remembered_username', 'remembered_password']
+keysToRemove.forEach(key => localStorage.removeItem(key))
+```
+
+---
+
+## 4. API 服务规范
+
+### API 调用模式
+
+所有后端接口调用统一在 `services/api.ts` 中定义：
+
+```typescript
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: '/api/v1',
+  timeout: 10000
+})
+
+// 请求拦截器：自动添加 Token
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// 响应拦截器：统一错误处理
+api.interceptors.response.use(
+  response => response.data,
+  error => {
+    if (error.response?.status === 401) {
+      // Token 过期，跳转登录
+      localStorage.clear()
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
+// 模块化 API 导出
+export const xxxApi = {
+  list: (params?: any) => api.get('/xxx', { params }),
+  getById: (id: string) => api.get(`/xxx/${id}`),
+  create: (data: any) => api.post('/xxx', data),
+  update: (id: string, data: any) => api.put(`/xxx/${id}`, data),
+  delete: (id: string) => api.delete(`/xxx/${id}`)
+}
+```
+
+---
+
+## 5. 权限系统
+
+### 权限类型
+
+| 类型 | 说明 |
+|------|------|
+| menu | 菜单权限，控制侧边栏显示 |
+| button | 按钮权限，控制操作按钮显示 |
+
+### 使用方式
+
+```typescript
+import { usePermission } from '@/hooks/usePermission'
+
+const { hasPermission } = usePermission()
+
+// 检查权限
+if (hasPermission('user.create')) {
+  // 显示创建按钮
+}
+```
+
+```vue
+<!-- 模板中使用 v-permission 指令 -->
+<button v-permission="'user.create'">新建</button>
+```
+
+### 权限代码命名
+
+- 格式：`模块.资源.操作`（如 `sales.order.create`）
+- admin 角色拥有所有权限
+- super_admin 角色跳过权限检查
+
+### 菜单权限映射
+
+参见 `hooks/usePermission.ts` 中的 `MENU_PERMISSION_MAP`。
+
+---
+
+## 6. VxeTable4 表格规范
+
+### 基础模板
+
+```vue
+<vxe-table
+  :data="tableData"
+  :column-config="{ resizable: true }"
+  :span-method="spanMethod"
+  :seq-config="{ seqMethod: seqMethod }"
+>
+  <vxe-column type="seq" title="序号" width="60" fixed="left" />
+  <vxe-column field="code" title="编号" width="130" />
+  <!-- 更多列 -->
+  <vxe-column title="操作" width="220" fixed="right">
+    <template #default="{ row }">
+      <span class="action-btns">
+        <button class="btn-link" @click="handleEdit(row)">编辑</button>
+        <button class="btn-link danger" @click="handleDelete(row)">删除</button>
+      </span>
+    </template>
+  </vxe-column>
+</vxe-table>
+
+<vxe-pager
+  v-model:current-page="page"
+  v-model:page-size="pageSize"
+  :total="total"
+  :layouts="['PrevPage', 'JumpNumber', 'NextPage', 'FullJump', 'Sizes', 'Total']"
+  @page-change="handlePageChange"
+/>
+```
+
+### 加载状态
+
+vxe-table v4 使用 `#loading` slot（需安装 `vxe-pc-ui`）：
+
+```vue
+<vxe-table :data="tableData">
+  <template #loading v-if="loading">
+    <vxe-loading text="加载中..."></vxe-loading>
+  </template>
+</vxe-table>
+```
+
+### 列表操作模式
+
+| 操作 | 处理方式 |
+|------|---------|
+| 编辑/更新 | 直接更新列表对应项（findIndex + 赋值） |
+| 删除 | 从列表 filter 移除 |
+| 新建 | 调用 loadXxx() 刷新（需获取后端 id） |
+| 状态切换 | 直接更新本地项状态 |
+
+---
+
+## 7. 样式规范
+
+### 全局样式变量
+
+```css
+/* global.css */
+:root {
+  --accent-blue: #0078d4;
+  --accent-red: #ef4444;
+  --accent-green: #10b981;
+  --text-primary: #1f2937;
+  --bg-card: #ffffff;
+  --border-color: #e5e7eb;
+  --transition-fast: 0.15s ease;
+}
+```
+
+### 主题切换
+
+支持 `data-theme="light"` 和 `data-theme="dark"` 两种主题。
+
+### 操作按钮样式
+
+```css
+.action-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+}
+
+.btn-link:hover {
+  background-color: rgba(0, 120, 212, 0.1);
+}
+
+.btn-link.danger {
+  color: var(--accent-red);
+}
+```
