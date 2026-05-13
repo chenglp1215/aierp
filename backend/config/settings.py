@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from urllib.parse import quote_plus
 import os
 
 
@@ -14,8 +15,8 @@ class Settings(BaseSettings):
     PORT: int = 8000
     WORKERS: int = 1
 
-    MONGODB_URL: str = "mongodb://10.5.5.66:20001"
-    MONGODB_DB_NAME: str = "oai_erp"
+    MONGODB_URL: str = "mongodb://132.232.212.151:58902"
+    MONGODB_DB_NAME: str = "oai_erp_test"
 
     # MySQL 配置
     MYSQL_HOST: str = "132.232.212.151"
@@ -58,3 +59,18 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Tortoise ORM 配置（用于 Aerich 迁移）
+# URL 编码密码中的特殊字符
+_MYSQL_ENCODED_PASSWORD = quote_plus(settings.MYSQL_PASSWORD)
+TORTOISE_ORM = {
+    "connections": {
+        "default": f"mysql://{settings.MYSQL_USER}:{_MYSQL_ENCODED_PASSWORD}@{settings.MYSQL_HOST}:{settings.MYSQL_PORT}/{settings.MYSQL_DATABASE}"
+    },
+    "apps": {
+        "models": {
+            "models": ["models_mysql.auth", "aerich.models"],
+            "default_connection": "default",
+        }
+    },
+}
