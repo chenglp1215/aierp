@@ -217,6 +217,39 @@ async def list_all_brands(
     result = await brand_service.get_all_brands()
     return result
 
+
+### 获取采购人员候选列表
+@brand_router.get("/purchaser-candidates", response_model=dict)
+@wrap_response
+async def get_purchaser_candidates(
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    _: dict = Depends(require_permission("brand.view"))
+):
+    """获取采购人员候选列表（采购组用户）"""
+    from services.auth_service import mysql_user_service
+
+    # 查询采购组角色的用户
+    result = await mysql_user_service.list_users(
+        page=1,
+        page_size=100,  # 下拉框不需要太多选项
+        status="active",
+        keyword=keyword,
+        role="purchaser_group"
+    )
+
+    # 简化返回数据，仅保留必要字段
+    candidates = [
+        {
+            "id": str(user["id"]),
+            "full_name": user.get("full_name", ""),
+            "username": user.get("username", "")
+        }
+        for user in result.get("items", [])
+    ]
+
+    return candidates
+
+
 @brand_router.post("/", response_model=dict)
 @wrap_response
 async def create_brand(
