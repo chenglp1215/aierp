@@ -18,11 +18,11 @@ class Settings(BaseSettings):
     MONGODB_DB_NAME: str = "oai_erp"
 
     # MySQL 配置
-    MYSQL_HOST: str = "localhost"
-    MYSQL_PORT: int = 3306
-    MYSQL_USER: str = "root"
-    MYSQL_PASSWORD: str = ""
-    MYSQL_DATABASE: str = "aierp"
+    MYSQL_HOST: str = "132.232.212.151"
+    MYSQL_PORT: int = 58901
+    MYSQL_USER: str = "admin"
+    MYSQL_PASSWORD: str = "Chenglp1215!@#"
+    MYSQL_DATABASE: str = "erp_test"
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
