@@ -768,7 +768,7 @@ class MySQLRoleService:
 
     async def _format_role(self, role: Role) -> dict:
         """格式化角色数据"""
-        permissions = await role.permissions.all()
+        # 直接使用已预加载的 permissions，无需再次查询
         return {
             "id": role.id,
             "code": role.code,
@@ -776,7 +776,7 @@ class MySQLRoleService:
             "description": role.description,
             "is_fixed": role.is_fixed,
             "status": role.status.value if role.status else None,
-            "permissions": [{"id": p.id, "code": p.code, "name": p.name} for p in permissions],
+            "permissions": [{"id": p.id, "code": p.code, "name": p.name} for p in role.permissions],
             "created_at": role.created_at.isoformat() if role.created_at else None,
             "updated_at": role.updated_at.isoformat() if role.updated_at else None,
         }
@@ -797,6 +797,10 @@ class MySQLRoleService:
         permission_ids = data.get("permission_ids", [])
         if permission_ids:
             permissions = await Permission.filter(id__in=permission_ids)
+            if len(permissions) != len(permission_ids):
+                found_ids = {p.id for p in permissions}
+                missing_ids = set(permission_ids) - found_ids
+                raise ValueError(f"权限ID {missing_ids} 不存在")
             await role.permissions.add(*permissions)
 
         return await self._format_role(role)
@@ -806,6 +810,9 @@ class MySQLRoleService:
         role = await Role.filter(id=role_id).first()
         if not role:
             raise ValueError("角色不存在")
+
+        if role.is_fixed:
+            raise ValueError("固化角色不允许修改")
 
         for key in ["name", "description", "status"]:
             if key in data:
@@ -817,6 +824,10 @@ class MySQLRoleService:
             await role.permissions.clear()
             if data["permission_ids"]:
                 permissions = await Permission.filter(id__in=data["permission_ids"])
+                if len(permissions) != len(data["permission_ids"]):
+                    found_ids = {p.id for p in permissions}
+                    missing_ids = set(data["permission_ids"]) - found_ids
+                    raise ValueError(f"权限ID {missing_ids} 不存在")
                 await role.permissions.add(*permissions)
 
         return True
@@ -825,14 +836,18 @@ class MySQLRoleService:
         """删除角色"""
         role = await Role.filter(id=role_id).first()
         if not role:
-            return False
+            raise ValueError("角色不存在")
+
+        if role.is_fixed:
+            raise ValueError("固化角色不允许删除")
+
         await role.permissions.clear()
         await role.delete()
         return True
 
     async def list_roles(
         self, page: int = 1, page_size: int = 20,
-        status: str = None, keyword: str = None
+        status: Optional[str] = None, keyword: Optional[str] = None
     ) -> dict:
         """获取角色列表"""
         query = Role.all()
@@ -853,6 +868,7 @@ class MySQLRoleService:
             "total": total,
             "page": page,
             "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0,
             "items": items
         }
 
@@ -883,7 +899,7 @@ class MySQLPermissionService:
         }
 
     async def list_permissions(
-        self, page: int = 1, page_size: int = 20, keyword: str = None
+        self, page: int = 1, page_size: int = 20, keyword: Optional[str] = None
     ) -> dict:
         """获取权限列表"""
         query = Permission.all()
@@ -902,6 +918,7 @@ class MySQLPermissionService:
             "total": total,
             "page": page,
             "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0,
             "items": items
         }
 
