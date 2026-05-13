@@ -146,7 +146,7 @@ const loadManagerCandidates = async () => {
   loadingCandidates.value = true
   try {
     const res = await warehouseApi.getManagerCandidates()
-    managerCandidates.value = res.result || []
+    managerCandidates.value = res || []
   } catch (error) {
     console.error('加载管理员候选失败:', error)
     managerCandidates.value = []
@@ -187,11 +187,6 @@ const openEditWarehouse = (row: any) => {
   showWarehouseModal.value = true
 }
 
-const confirmDelete = (row: any) => {
-  deleteTargetId.value = row.id
-  showDeleteConfirm.value = true
-}
-
 const handleSaveWarehouse = async () => {
   if (!warehouseForm.value.name?.trim()) {
     window.showToast('请输入仓库名称', 'warning')
@@ -226,24 +221,6 @@ const handleSaveWarehouse = async () => {
     window.showToast(error.message || '操作失败', 'error')
   } finally {
     formLoading.value = false
-  }
-}
-
-const handleDelete = async () => {
-  if (!deleteTargetId.value) return
-
-  deleteLoading.value = true
-  try {
-    await warehouseApi.delete(deleteTargetId.value)
-    window.showToast('仓库删除成功', 'success')
-    warehouses.value = warehouses.value.filter(w => w.id !== deleteTargetId.value)
-    total.value--
-    showDeleteConfirm.value = false
-    deleteTargetId.value = null
-  } catch (error: any) {
-    window.showToast(error.message || '删除失败', 'error')
-  } finally {
-    deleteLoading.value = false
   }
 }
 

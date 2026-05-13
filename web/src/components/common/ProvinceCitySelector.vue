@@ -1,95 +1,78 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { provinceApi, type ProvinceInfo, type CityInfo } from '../../services/api'
+import { ref, watch, onMounted } from 'vue'
+import { useProvinceCity } from '../../hooks/useProvinceCity'
+
+interface ProvinceOption {
+  code: string
+  name: string
+}
+
+interface CityOption {
+  code: string
+  name: string
+}
 
 interface Props {
-  modelValue?: {
-    province?: string
-    provinceCode?: string
-    city?: string
-    cityCode?: string
-  }
+  province?: string
+  provinceCode?: string
+  city?: string
+  cityCode?: string
   placeholder?: {
     province?: string
     city?: string
   }
 }
 
-interface Emits {
-  (e: 'update:modelValue', value: { province?: string; provinceCode?: string; city?: string; cityCode?: string }): void
-}
-
 const props = withDefaults(defineProps<Props>(), {
-  modelValue: () => ({}),
+  province: '',
+  provinceCode: '',
+  city: '',
+  cityCode: '',
   placeholder: () => ({
     province: '请选择省份',
     city: '请选择城市'
   })
 })
 
-const emit = defineEmits<Emits>()
+const emit = defineEmits<{
+  (e: 'update:province', value: string): void
+  (e: 'update:provinceCode', value: string): void
+  (e: 'update:city', value: string): void
+  (e: 'update:cityCode', value: string): void
+}>()
 
-const provinces = ref<ProvinceInfo[]>([])
-const cities = ref<CityInfo[]>([])
-const loadingProvinces = ref(false)
-const loadingCities = ref(false)
+const { loadProvinceCityData, getProvinces, getCities } = useProvinceCity()
 
-const selectedProvinceCode = ref(props.modelValue?.provinceCode || '')
-const selectedCityCode = ref(props.modelValue?.cityCode || '')
+const provinces = ref<ProvinceOption[]>([])
+const cities = ref<CityOption[]>([])
+const isDataReady = ref(false)
 
-const selectedProvinceName = computed(() => {
-  const province = provinces.value.find(p => p.code === selectedProvinceCode.value)
-  return province?.name || ''
-})
+const selectedProvinceCode = ref(props.provinceCode || '')
+const selectedCityCode = ref(props.cityCode || '')
 
-const loadProvinces = async () => {
-  loadingProvinces.value = true
-  try {
-    const res = await provinceApi.getProvinces()
-    provinces.value = res.result || []
-  } catch (error) {
-    console.error('加载省份失败:', error)
-    provinces.value = []
-  } finally {
-    loadingProvinces.value = false
+const initData = async () => {
+  const data = await loadProvinceCityData()
+  if (data) {
+    provinces.value = getProvinces()
+    isDataReady.value = true
   }
 }
 
-const loadCities = async (provinceCode: string) => {
-  if (!provinceCode) {
-    cities.value = []
-    return
-  }
-
-  loadingCities.value = true
-  try {
-    const provinceName = provinces.value.find(p => p.code === provinceCode)?.name || provinceCode
-    const res = await provinceApi.getCities(provinceName)
-    cities.value = res.result || []
-  } catch (error) {
-    console.error('加载城市失败:', error)
-    cities.value = []
-  } finally {
-    loadingCities.value = false
-  }
-}
-
-const handleProvinceChange = async (event: Event) => {
+const handleProvinceChange = (event: Event) => {
   const target = event.target as HTMLSelectElement
   selectedProvinceCode.value = target.value
   selectedCityCode.value = ''
   cities.value = []
 
   const province = provinces.value.find(p => p.code === target.value)
-  emit('update:modelValue', {
-    province: province?.name || '',
-    provinceCode: target.value,
-    city: '',
-    cityCode: ''
-  })
+  const provinceName = province?.name || ''
+  emit('update:province', provinceName)
+  emit('update:provinceCode', target.value)
+  emit('update:city', '')
+  emit('update:cityCode', '')
 
   if (target.value) {
-    await loadCities(target.value)
+    cities.value = getCities(provinceName)
   }
 }
 
@@ -98,49 +81,41 @@ const handleCityChange = (event: Event) => {
   selectedCityCode.value = target.value
 
   const city = cities.value.find(c => c.code === target.value)
-  emit('update:modelValue', {
-    province: selectedProvinceName.value,
-    provinceCode: selectedProvinceCode.value,
-    city: city?.name || '',
-    cityCode: target.value
-  })
+  const provinceName = provinces.value.find(p => p.code === selectedProvinceCode.value)?.name || ''
+  emit('update:province', provinceName)
+  emit('update:provinceCode', selectedProvinceCode.value)
+  emit('update:city', city?.name || '')
+  emit('update:cityCode', target.value)
 }
 
-// Watch for external province changes to reload cities
-watch(() => props.modelValue?.provinceCode, async (newProvinceCode) => {
+watch(() => props.provinceCode, async (newProvinceCode) => {
   if (newProvinceCode && newProvinceCode !== selectedProvinceCode.value) {
     selectedProvinceCode.value = newProvinceCode
-    await loadCities(newProvinceCode)
-    if (props.modelValue?.cityCode) {
-      selectedCityCode.value = props.modelValue.cityCode
+    const provinceName = provinces.value.find(p => p.code === newProvinceCode)?.name || ''
+    cities.value = provinceName ? getCities(provinceName) : []
+    if (props.cityCode) {
+      selectedCityCode.value = props.cityCode
     }
   }
 })
 
 onMounted(async () => {
-  await loadProvinces()
-  if (selectedProvinceCode.value) {
-    await loadCities(selectedProvinceCode.value)
+  await initData()
+  if (selectedProvinceCode.value && provinces.value.length > 0) {
+    const provinceName = provinces.value.find(p => p.code === selectedProvinceCode.value)?.name || ''
+    cities.value = provinceName ? getCities(provinceName) : []
   }
 })
 
-// Expose methods for external control
 defineExpose({
   reset: () => {
     selectedProvinceCode.value = ''
     selectedCityCode.value = ''
     cities.value = []
-    emit('update:modelValue', {
-      province: '',
-      provinceCode: '',
-      city: '',
-      cityCode: ''
-    })
-  },
-  setValues: (province: string, provinceCode: string, city: string, cityCode: string) => {
-    selectedProvinceCode.value = provinceCode
-    selectedCityCode.value = cityCode
-    emit('update:modelValue', { province, provinceCode, city, cityCode })
+    emit('update:province', '')
+    emit('update:provinceCode', '')
+    emit('update:city', '')
+    emit('update:cityCode', '')
   }
 })
 </script>
@@ -151,7 +126,6 @@ defineExpose({
       class="province-select"
       :value="selectedProvinceCode"
       @change="handleProvinceChange"
-      :disabled="loadingProvinces"
     >
       <option value="">{{ placeholder.province }}</option>
       <option v-for="province in provinces" :key="province.code" :value="province.code">
@@ -163,7 +137,7 @@ defineExpose({
       class="city-select"
       :value="selectedCityCode"
       @change="handleCityChange"
-      :disabled="!selectedProvinceCode || loadingCities"
+      :disabled="!selectedProvinceCode || !isDataReady"
     >
       <option value="">{{ placeholder.city }}</option>
       <option v-for="city in cities" :key="city.code" :value="city.code">

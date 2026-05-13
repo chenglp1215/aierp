@@ -30,14 +30,6 @@ class Brand(BaseModel):
         }
 
 
-class BrandListResponse(BaseModel):
-    total: int = Field(..., description="总记录数")
-    page: int = Field(..., description="当前页码")
-    page_size: int = Field(..., description="每页记录数")
-    items: List[Brand] = Field(..., description="品牌列表")
-
-
-
 class Category(BaseModel):
     id: Optional[str] = Field(None, description="分类ID（创建时不需要，由系统自动生成）")   
     name: str = Field(..., min_length=1, max_length=100, description="分类名称")
@@ -135,16 +127,3 @@ class Product(BaseModel):
             }
         }
 
-
-class ProductListResponse(BaseModel):
-    total: int = Field(..., description="总记录数")
-    page: int = Field(..., description="当前页码")
-    page_size: int = Field(..., description="每页记录数")
-    items: List[Product] = Field(..., description="商品列表")
-
-
-class ProductSpecListResponse(BaseModel):
-    total: int = Field(..., description="总记录数")
-    page: int = Field(..., description="当前页码")
-    page_size: int = Field(..., description="每页记录数")
-    items: List[ProductSpec] = Field(..., description="规格列表")

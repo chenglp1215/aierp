@@ -48,6 +48,7 @@ const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
 const filterActive = ref<boolean | ''>('')
+const filterBrands = ref<string[]>([])
 
 const showFormModal = ref(false)
 const showDeleteModal = ref(false)
@@ -80,7 +81,8 @@ const loadSuppliers = async () => {
       page: page.value,
       page_size: pageSize.value,
       keyword: keyword.value || undefined,
-      is_active: filterActive.value === '' ? undefined : filterActive.value
+      is_active: filterActive.value === '' ? undefined : filterActive.value,
+      brand_ids: filterBrands.value.length > 0 ? filterBrands.value : undefined
     })
     suppliers.value = res.items || []
     total.value = res.total || 0
@@ -94,7 +96,7 @@ const loadSuppliers = async () => {
 const loadBrands = async () => {
   try {
     const res = await brandApi.getAll({ is_active: true })
-    brands.value = res.result || []
+    brands.value = res || []
   } catch (error) {
     console.error('加载品牌列表失败:', error)
   }
@@ -114,11 +116,19 @@ const handleSearch = () => {
 const resetFilters = () => {
   keyword.value = ''
   filterActive.value = ''
+  filterBrands.value = []
   page.value = 1
   loadSuppliers()
 }
 
-const hasActiveFilters = computed(() => !!(keyword.value || filterActive.value !== ''))
+const hasActiveFilters = computed(() => !!(keyword.value || filterActive.value !== '' || filterBrands.value.length > 0))
+
+const removeBrandFilter = (brandId: string) => {
+  const index = filterBrands.value.indexOf(brandId)
+  if (index > -1) {
+    filterBrands.value.splice(index, 1)
+  }
+}
 
 const resetForm = () => {
   supplierForm.value = {
@@ -286,6 +296,10 @@ onMounted(() => {
             @keyup.enter="handleSearch"
           />
         </div>
+        <select v-model="filterBrands" multiple class="filter-select brand-select" size="1">
+          <option value="" disabled>选择品牌</option>
+          <option v-for="brand in brands" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
+        </select>
         <select v-model="filterActive" class="filter-select">
           <option value="">全部状态</option>
           <option :value="true">启用</option>
@@ -293,6 +307,12 @@ onMounted(() => {
         </select>
         <button class="filter-btn" @click="handleSearch">搜索</button>
         <button class="filter-btn reset-btn" @click="resetFilters" v-if="hasActiveFilters">重置</button>
+      </div>
+      <div class="filter-tags" v-if="filterBrands.length > 0">
+        <span class="filter-tag" v-for="brandId in filterBrands" :key="brandId">
+          {{ getBrandName(brandId) }}
+          <button class="tag-close" @click="removeBrandFilter(brandId)">×</button>
+        </span>
       </div>
     </div>
 
@@ -601,6 +621,49 @@ onMounted(() => {
   color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
+}
+
+.filter-select.brand-select {
+  min-width: 150px;
+  max-width: 200px;
+  height: auto;
+}
+
+.filter-select.brand-select option {
+  padding: 4px 8px;
+}
+
+.filter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background-color: var(--accent-blue);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.tag-close {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.tag-close:hover {
+  opacity: 1;
 }
 
 .filter-btn {

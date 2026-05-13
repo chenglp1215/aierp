@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch, onBeforeUnmount, nextTick } from 'vue'
-import { salesOrderApi, customerV2Api, productApi, warehouseApi, provinceApi, customerDiscountApi, brandApi, type CustomerV2 } from '../../services/api'
+import { salesOrderApi, customerApi, productApi, warehouseApi, customerDiscountApi, brandApi, type Customer } from '../../services/api'
+import { useProvinceCity } from '../../hooks/useProvinceCity'
 import PushPurchaseItemSelectModal from './PushPurchaseItemSelectModal.vue'
 
 const emit = defineEmits<{
@@ -188,7 +189,7 @@ const page = ref(1)
 const pageSize = ref(20)
 const filterStatus = ref('')
 const filterCustomerId = ref('')
-const filterOrderNo = ref('')
+const filterKeyword = ref('')
 
 // Modals
 const showOrderModal = ref(false)
@@ -210,7 +211,7 @@ const actionLoading = ref(false)
 const detailLoading = ref(false)
 
 // Dropdown data
-const customerList = ref<CustomerV2[]>([])
+const customerList = ref<Customer[]>([])
 const productTree = ref<ProductWithSpecs[]>([])
 const specSearchResults = ref<SpecSearchResult[]>([])
 const warehouseList = ref<Warehouse[]>([])
@@ -228,19 +229,11 @@ const customerSearchKeyword = ref('')
 const showCustomerDropdown = ref(false)
 const showProductDropdown = ref<number | null>(null)
 
+const { loadProvinceCityData, getProvinces, getCities } = useProvinceCity()
+
 // Province/City state
-interface ProvinceItem {
-  code: string
-  name: string
-  cities: string[]
-}
-interface CityItem {
-  code: string
-  name: string
-  province_code: string
-}
-const provinceList = ref<ProvinceItem[]>([])
-const cityList = ref<CityItem[]>([])
+const provinceList = ref<{ code: string; name: string }[]>([])
+const cityList = ref<{ code: string; name: string }[]>([])
 const selectedProvince = ref('')
 const selectedCity = ref('')
 
@@ -289,8 +282,7 @@ watch(quickAddSelectedProvince, async (val) => {
   quickAddShippingForm.value.city = ''
   if (val) {
     try {
-      const res = await provinceApi.getCities(val)
-      quickAddCityList.value = res.result || []
+      quickAddCityList.value = getCities(val)
     } catch (e) {
       console.error('加载城市列表失败:', e)
     }
@@ -319,8 +311,7 @@ watch(selectedProvince, async (val) => {
   orderForm.value.deliver_info.city = ''
   if (val) {
     try {
-      const res = await provinceApi.getCities(val)
-      cityList.value = res.result || []
+      cityList.value = getCities(val)
     } catch (e) {
       console.error('加载城市失败:', e)
     }
@@ -359,7 +350,7 @@ const orderForm = ref({
 })
 
 // Computed
-const hasActiveFilters = computed(() => !!(filterStatus.value || filterCustomerId.value || filterOrderNo.value))
+const hasActiveFilters = computed(() => !!(filterStatus.value || filterCustomerId.value || filterKeyword.value))
 
 // Methods
 const loadOrders = async () => {
@@ -372,7 +363,7 @@ const loadOrders = async () => {
     
     if (filterStatus.value) params.status = filterStatus.value
     if (filterCustomerId.value) params.customer_id = filterCustomerId.value
-    if (filterOrderNo.value) params.order_no = filterOrderNo.value
+    if (filterKeyword.value) params.keyword = filterKeyword.value
     
     const res = await salesOrderApi.list(params)
     orders.value = res.result?.items || []
@@ -390,7 +381,7 @@ const loadCustomers = async (keyword?: string) => {
   try {
     const params: any = { page_size: 50 }
     if (keyword) params.keyword = keyword
-    const res = await customerV2Api.list(params)
+    const res = await customerApi.list(params)
     customerList.value = res.result?.items || []
   } catch (error) {
     console.error('加载客户列表失败:', error)
@@ -415,8 +406,8 @@ const handleProductSearch = (keyword: string) => {
         productApi.search(keyword, 20),
         productApi.searchSpecs(keyword, 20)
       ])
-      const products: Product[] = productsRes.result || []
-      const allSpecs: SpecSearchResult[] = specsRes.result || []
+      const products: Product[] = productsRes || []
+      const allSpecs: SpecSearchResult[] = specsRes || []
 
       // 预加载每个商品的规格
       const tree: ProductWithSpecs[] = []
@@ -627,7 +618,7 @@ const handlePageChange = ({ currentPage, pageSize: newPageSize }: { currentPage:
 const resetFilters = () => {
   filterStatus.value = ''
   filterCustomerId.value = ''
-  filterOrderNo.value = ''
+  filterKeyword.value = ''
   page.value = 1
   loadOrders()
 }
@@ -727,7 +718,7 @@ const openEditOrder = async (order: SalesOrder) => {
 
   // 加载客户收货地址和开票信息用于下拉
   try {
-    const res = await customerV2Api.getById(order.customer_id)
+    const res = await customerApi.getById(order.customer_id)
     const detail = res.result
     customerInvoiceInfos.value = detail?.invoice_infos || []
     customerShippingAddresses.value = detail?.shipping_addresses || []
@@ -754,10 +745,8 @@ const openEditOrder = async (order: SalesOrder) => {
   // 设置省份/城市
   selectedProvince.value = order.deliver_info?.province || ''
   if (order.deliver_info?.province) {
-    provinceApi.getCities(order.deliver_info.province).then(res => {
-      cityList.value = res.result || []
-      selectedCity.value = order.deliver_info?.city || ''
-    })
+    cityList.value = getCities(order.deliver_info.province)
+    selectedCity.value = order.deliver_info?.city || ''
   }
   showOrderModal.value = true
 }
@@ -791,7 +780,7 @@ const selectCustomer = async (customer: any) => {
 
   try {
     // 获取客户详情（包含开票信息和收货地址）
-    const res = await customerV2Api.getById(customer.id)
+    const res = await customerApi.getById(customer.id)
     const detail = res.result
 
     // 存储所有开票信息和收货地址
@@ -897,10 +886,10 @@ const saveQuickAddShipping = async () => {
   }
   quickAddLoading.value = true
   try {
-    const res = await customerV2Api.addShippingAddress(orderForm.value.customer_id, quickAddShippingForm.value)
+    const res = await customerApi.addShippingAddress(orderForm.value.customer_id, quickAddShippingForm.value)
     const newAddr = res.result
     // 刷新客户地址列表
-    const detailRes = await customerV2Api.getById(orderForm.value.customer_id)
+    const detailRes = await customerApi.getById(orderForm.value.customer_id)
     customerShippingAddresses.value = detailRes.result?.shipping_addresses || []
     // 选中新添加的地址
     selectedShippingAddressId.value = newAddr.id
@@ -938,10 +927,10 @@ const saveQuickAddInvoice = async () => {
   }
   quickAddLoading.value = true
   try {
-    const res = await customerV2Api.addInvoiceInfo(orderForm.value.customer_id, quickAddInvoiceForm.value)
+    const res = await customerApi.addInvoiceInfo(orderForm.value.customer_id, quickAddInvoiceForm.value)
     const newInv = res.result
     // 刷新客户开票信息列表
-    const detailRes = await customerV2Api.getById(orderForm.value.customer_id)
+    const detailRes = await customerApi.getById(orderForm.value.customer_id)
     customerInvoiceInfos.value = detailRes.result?.invoice_infos || []
     // 选中新添加的开票信息
     selectedInvoiceInfoId.value = newInv.id
@@ -1060,9 +1049,8 @@ const handleSaveOrder = async () => {
       remark: orderForm.value.remark,
       items: orderForm.value.items.map(item => ({
         row_no: item.row_no,
-        product_id: item.product_id,
-        spec_id: item.spec_id,
-        spec_code: item.spec_code,
+        product_code: item.product_code || item.product_id,
+        spec_code: item.spec_code || item.spec_id,
         packaging: item.packaging,
         sales_spec: item.sales_spec,
         qty: item.qty,
@@ -1125,9 +1113,8 @@ const handleSaveAndSubmit = async () => {
       remark: orderForm.value.remark,
       items: orderForm.value.items.map(item => ({
         row_no: item.row_no,
-        product_id: item.product_id,
-        spec_id: item.spec_id,
-        spec_code: item.spec_code,
+        product_code: item.product_code || item.product_id,
+        spec_code: item.spec_code || item.spec_id,
         packaging: item.packaging,
         sales_spec: item.sales_spec,
         qty: item.qty,
@@ -1247,7 +1234,7 @@ const confirmPushPurchase = async (orderNo: string) => {
     if (uniqueBrandIds.length > 0) {
       try {
         const purchaserRes = await brandApi.batchGetPurchasers(uniqueBrandIds)
-        const purchaserMap: Record<string, { purchaser_id: string; purchaser_name: string }> = purchaserRes.result || {}
+        const purchaserMap: Record<string, { purchaser_id: string; purchaser_name: string }> = purchaserRes || {}
         enrichedItems.forEach((item: any) => {
           if (item.brand_id && purchaserMap[item.brand_id]) {
             item.purchaser_name = purchaserMap[item.brand_id].purchaser_name || ''
@@ -1312,7 +1299,7 @@ const handleCancelOrder = async () => {
 const refreshFlows = async (orderNo: string) => {
   try {
     const flowRes = await salesOrderApi.getStatusFlows(orderNo)
-    selectedOrderFlows.value = flowRes.result?.items || []
+    selectedOrderFlows.value = flowRes.result || []
   } catch (e) {
     console.error('刷新流转记录失败:', e)
   }
@@ -1402,8 +1389,8 @@ onMounted(async () => {
   loadWarehouses()
   // 加载省份列表
   try {
-    const res = await provinceApi.getProvinces()
-    provinceList.value = res.result || []
+    await loadProvinceCityData()
+    provinceList.value = getProvinces()
   } catch (e) {
     console.error('加载省份失败:', e)
   }
@@ -1432,8 +1419,8 @@ onBeforeUnmount(() => {
           <input
             type="text"
             class="filter-input"
-            placeholder="搜索订单编号..."
-            v-model="filterOrderNo"
+            placeholder="搜索订单号、客户名称..."
+            v-model="filterKeyword"
             @keyup.enter="handleSearch"
           />
         </div>

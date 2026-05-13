@@ -40,7 +40,11 @@ class ApiService {
       const searchParams = new URLSearchParams()
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          searchParams.append(key, String(value))
+          if (Array.isArray(value)) {
+            value.forEach(v => searchParams.append(key, String(v)))
+          } else {
+            searchParams.append(key, String(value))
+          }
         }
       })
       const queryString = searchParams.toString()
@@ -92,14 +96,22 @@ class ApiService {
     const data = await response.json()
     if (data.status === 'error') {
       if (data.validation_errors) {
-        const messages = Object.entries(data.validation_errors as Record<string, string[]>)
-          .map(([field, errors]) => `${field}: ${(errors as string[]).join(', ')}`)
-          .join('; ')
+        let messages: string
+        if (Array.isArray(data.validation_errors)) {
+          messages = data.validation_errors.map((err: any) => `${err.field || '字段'}: ${err.message}`).join('; ')
+        } else {
+          messages = Object.entries(data.validation_errors as Record<string, string[]>)
+            .map(([field, errors]) => `${field}: ${(errors as string[]).join(', ')}`)
+            .join('; ')
+        }
         throw new Error(`${data.message || '操作失败'} - ${messages}`)
       }
       throw new Error(data.message || '操作失败')
     }
 
+    if (data.result !== undefined) {
+      return data.result
+    }
     return data
   }
 
@@ -244,7 +256,7 @@ export const permissionApi = {
 
 export const salesOrderApi = {
   // 获取订单列表
-  list: (params: { page?: number; page_size?: number; status?: string; customer_id?: string; order_no?: string }) => {
+  list: (params: { page?: number; page_size?: number; status?: string; customer_id?: string; order_no?: string; keyword?: string }) => {
     return apiService.get<any>('/sales-orders/', params)
   },
 
@@ -277,8 +289,8 @@ export const salesOrderApi = {
     remark?: string
     items: Array<{
       row_no: number
-      product_id: string
-      spec_id: string
+      product_code: string
+      spec_code: string
       brand_id?: string
       brand_name?: string
       qty: number
@@ -315,8 +327,8 @@ export const salesOrderApi = {
     remark?: string
     items: Array<{
       row_no: number
-      product_id: string
-      spec_id: string
+      product_code: string
+      spec_code: string
       brand_id?: string
       brand_name?: string
       qty: number
@@ -362,32 +374,32 @@ export const salesOrderApi = {
 
   // 更新订单状态
   updateOrderStatus: (orderNo: string, status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/order-status`, { status })
+    return apiService.patch<any>(`/sales-orders/${orderNo}/order_status`, { status })
   },
 
   // 确认订单
   confirm: (orderNo: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/order-status`, { status: 'confirmed' })
+    return apiService.patch<any>(`/sales-orders/${orderNo}/order_status`, { status: 'confirmed' })
   },
 
   // 更新状态（别名）
   updateStatus: (orderNo: string, status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/order-status`, { status })
+    return apiService.patch<any>(`/sales-orders/${orderNo}/order_status`, { status })
   },
 
   // 更新发货状态
   updateDeliveryStatus: (orderNo: string, delivery_status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/delivery-status`, { delivery_status })
+    return apiService.patch<any>(`/sales-orders/${orderNo}/delivery_status`, { status: delivery_status })
   },
 
   // 更新收货状态
   updateReceiveStatus: (orderNo: string, receive_status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/receive-status`, { receive_status })
+    return apiService.patch<any>(`/sales-orders/${orderNo}/receive_status`, { status: receive_status })
   },
 
   // 更新开票状态
   updateInvoiceStatus: (orderNo: string, invoice_status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/invoice-status`, { invoice_status })
+    return apiService.patch<any>(`/sales-orders/${orderNo}/invoice_status`, { status: invoice_status })
   },
 
   // 获取订单状态流转记录
@@ -569,57 +581,7 @@ export const receivableApi = {
   }
 }
 
-export const customerApi = {
-  list: (params: { page?: number; page_size?: number; status?: string; level?: string; keyword?: string; customer_type?: string }) => {
-    return apiService.get<any>('/customers/', params)
-  },
-
-  getById: (id: string) => {
-    return apiService.get<any>(`/customers/${id}`)
-  },
-
-  create: (data: any) => {
-    return apiService.post<any>('/customers/', data)
-  },
-
-  update: (id: string, data: any) => {
-    return apiService.put<any>(`/customers/${id}`, data)
-  },
-
-  delete: (id: string) => {
-    return apiService.delete<any>(`/customers/${id}`)
-  },
-
-  updateStatus: (id: string, status: string) => {
-    return apiService.patch<any>(`/customers/${id}/status`, { status })
-  },
-
-  search: (keyword: string, limit?: number) => {
-    return apiService.get<any>('/customers/search', { keyword, limit })
-  },
-
-  getStats: () => {
-    return apiService.get<any>('/customers/stats')
-  },
-
-  addShippingAddress: (customerId: string, address: any) => {
-    return apiService.post<any>(`/customers/${customerId}/shipping-addresses`, address)
-  },
-
-  updateShippingAddress: (customerId: string, addressId: string, address: any) => {
-    return apiService.put<any>(`/customers/${customerId}/shipping-addresses/${addressId}`, address)
-  },
-
-  deleteShippingAddress: (customerId: string, addressId: string) => {
-    return apiService.delete<any>(`/customers/${customerId}/shipping-addresses/${addressId}`)
-  },
-
-  setDefaultShippingAddress: (customerId: string, addressId: string) => {
-    return apiService.patch<any>(`/customers/${customerId}/shipping-addresses/${addressId}/default`)
-  }
-}
-
-// customers-v2 API (新版本客户管理)
+// customers API (客户管理)
 export interface InvoiceInfo {
   id?: string
   invoice_title: string
@@ -647,28 +609,7 @@ export interface ShippingAddressV2 {
   updated_at?: string
 }
 
-export interface CustomerV2 {
-  id: string
-  customer_code: string
-  name: string
-  customer_type: 'terminal' | 'dealer'  // 终端、经销商
-  research_group?: string  // 课题组信息（仅终端客户）
-  contact_info?: {
-    contact_person?: string
-    contact_phone?: string
-    contact_email?: string
-  }
-  invoice_infos: InvoiceInfo[]
-  shipping_addresses: ShippingAddressV2[]
-  sales_user_id?: string
-  sales_user_name?: string
-  status: string
-  is_active: boolean
-  created_at?: string
-  updated_at?: string
-}
-
-export interface CustomerV2ListItem {
+export interface Customer {
   id: string
   customer_code: string
   name: string
@@ -676,14 +617,107 @@ export interface CustomerV2ListItem {
   research_group?: string
   contact_person?: string
   contact_phone?: string
-  default_shipping_address?: ShippingAddressV2
-  invoice_count: number
-  shipping_address_count: number
+  contact_email?: string
+  invoice_infos: InvoiceInfo[]
+  shipping_addresses: ShippingAddressV2[]
+  sales_user_id?: string
   sales_user_name?: string
   status: string
-  is_active: boolean
   created_at?: string
   updated_at?: string
+}
+
+export interface CustomerListItem {
+  id: string
+  customer_code: string
+  name: string
+  customer_type: 'terminal' | 'dealer'
+  research_group?: string
+  contact_person?: string
+  contact_phone?: string
+  sales_user_name?: string
+  status: string
+  created_at?: string
+  updated_at?: string
+}
+
+export const customerApi = {
+  // 获取客户列表
+  list: (params: { page?: number; page_size?: number; status?: string; keyword?: string; customer_type?: string; sales_user_id?: string }) => {
+    return apiService.get<any>('/customers/', params)
+  },
+
+  // 获取客户详情
+  getById: (id: string) => {
+    return apiService.get<any>(`/customers/${id}`)
+  },
+
+  // 创建客户
+  create: (data: any) => {
+    return apiService.post<any>('/customers/', data)
+  },
+
+  // 更新客户
+  update: (id: string, data: any) => {
+    return apiService.put<any>(`/customers/${id}`, data)
+  },
+
+  // 删除客户
+  delete: (id: string) => {
+    return apiService.delete<any>(`/customers/${id}`)
+  },
+
+  // 获取客户统计
+  getStats: () => {
+    return apiService.get<any>('/customers/stats')
+  },
+
+  // 搜索客户
+  search: (keyword: string, limit?: number) => {
+    return apiService.get<any>('/customers/search', { keyword, limit })
+  },
+
+  // 更新客户状态
+  updateStatus: (id: string, status: string) => {
+    return apiService.patch<any>(`/customers/${id}/status`, { status })
+  },
+
+  // 转移客户
+  transfer: (customerId: string, newUserId: string) => {
+    return apiService.patch<any>(`/customers/${customerId}/transfer`, { new_user_id: newUserId })
+  },
+
+  // AI 创建客户（从文本或图片提取信息）
+  createFromAi: (data: { input?: string; file_path?: string }) => {
+    return apiService.post<any>('/customers/create_customer_from_ai', data)
+  },
+
+  // 以下为保持向后兼容的方法（供SalesOrder等模块使用）
+  // 添加收货地址 - 通过更新客户实现
+  addShippingAddress: async (customerId: string, address: ShippingAddressV2) => {
+    const detailRes = await apiService.get<any>(`/customers/${customerId}`)
+    const customer = detailRes.result
+    if (!customer) throw new Error('客户不存在')
+
+    const shippingAddresses = [...(customer.shipping_addresses || []), { ...address, id: undefined }]
+    await apiService.put<any>(`/customers/${customerId}`, {
+      shipping_addresses: shippingAddresses
+    })
+    return { result: shippingAddresses[shippingAddresses.length - 1] }
+  },
+
+  // 添加开票信息 - 通过更新客户实现
+  addInvoiceInfo: async (customerId: string, invoice: InvoiceInfo) => {
+    const detailRes = await apiService.get<any>(`/customers/${customerId}`)
+    const customer = detailRes.result
+    if (!customer) throw new Error('客户不存在')
+
+    const invoiceInfos = [...(customer.invoice_infos || []), { ...invoice, id: undefined }]
+    await apiService.put<any>(`/customers/${customerId}`, {
+      invoice_infos: invoiceInfos
+    })
+    return { result: invoiceInfos[invoiceInfos.length - 1] }
+  },
 }
 
 export interface ProvinceInfo {
@@ -698,129 +732,47 @@ export interface CityInfo {
   province_code: string
 }
 
-export interface SalesUser {
-  id: string
-  username: string
-  display_name?: string
-  email?: string
+export interface DistrictInfo {
+  name: string
+  province_code: string
+  city: string
 }
 
-export const customerV2Api = {
-  // 获取客户列表
-  list: (params: { page?: number; page_size?: number; status?: string; keyword?: string; customer_type?: string; sales_user_id?: string }) => {
-    return apiService.get<any>('/customers-v2/', params)
-  },
+export interface SearchLocationItem {
+  type: 'province' | 'city' | 'district'
+  name: string
+  province?: string
+  city?: string
+  code?: string
+}
 
-  // 获取客户详情
-  getById: (id: string) => {
-    return apiService.get<any>(`/customers-v2/${id}`)
-  },
+export interface ProvinceCityData {
+  [provinceName: string]: {
+    code: string
+    cities: {
+      [cityName: string]: {
+        code: string
+        districts: string[]
+      }
+    }
+  }
+}
 
-  // 创建客户
-  create: (data: any) => {
-    return apiService.post<any>('/customers-v2/', data)
-  },
+export interface ProvinceCityInfo {
+  code: string
+  name: string
+}
 
-  // 更新客户
-  update: (id: string, data: any) => {
-    return apiService.put<any>(`/customers-v2/${id}`, data)
-  },
-
-  // 删除客户
-  delete: (id: string) => {
-    return apiService.delete<any>(`/customers-v2/${id}`)
-  },
-
-  // 获取客户统计
-  getStats: () => {
-    return apiService.get<any>('/customers-v2/stats')
-  },
-
-  // 搜索客户
-  search: (keyword: string, limit?: number) => {
-    return apiService.get<any>('/customers-v2/search', { keyword, limit })
-  },
-
-  // 更新客户状态
-  updateStatus: (id: string, status: string) => {
-    return apiService.patch<any>(`/customers-v2/${id}/status`, { status })
-  },
-
-  // 更新联系人信息
-  updateContactInfo: (id: string, data: { contact_person?: string; contact_phone?: string; contact_email?: string }) => {
-    return apiService.put<any>(`/customers-v2/${id}/contact-info`, data)
-  },
-
-  // 添加开票信息
-  addInvoiceInfo: (customerId: string, data: InvoiceInfo) => {
-    return apiService.post<any>(`/customers-v2/${customerId}/invoice-infos`, data)
-  },
-
-  // 更新开票信息
-  updateInvoiceInfo: (customerId: string, invoiceId: string, data: InvoiceInfo) => {
-    return apiService.put<any>(`/customers-v2/${customerId}/invoice-infos/${invoiceId}`, data)
-  },
-
-  // 删除开票信息
-  deleteInvoiceInfo: (customerId: string, invoiceId: string) => {
-    return apiService.delete<any>(`/customers-v2/${customerId}/invoice-infos/${invoiceId}`)
-  },
-
-  // 设置默认开票信息
-  setDefaultInvoiceInfo: (customerId: string, invoiceId: string) => {
-    return apiService.patch<any>(`/customers-v2/${customerId}/invoice-infos/${invoiceId}/default`)
-  },
-
-  // 添加收货地址
-  addShippingAddress: (customerId: string, data: ShippingAddressV2) => {
-    return apiService.post<any>(`/customers-v2/${customerId}/shipping-addresses`, data)
-  },
-
-  // 更新收货地址
-  updateShippingAddress: (customerId: string, addressId: string, data: ShippingAddressV2) => {
-    return apiService.put<any>(`/customers-v2/${customerId}/shipping-addresses/${addressId}`, data)
-  },
-
-  // 删除收货地址
-  deleteShippingAddress: (customerId: string, addressId: string) => {
-    return apiService.delete<any>(`/customers-v2/${customerId}/shipping-addresses/${addressId}`)
-  },
-
-  // 设置默认收货地址
-  setDefaultShippingAddress: (customerId: string, addressId: string) => {
-    return apiService.patch<any>(`/customers-v2/${customerId}/shipping-addresses/${addressId}/default`)
-  },
-
-  // 获取销售员列表
-  getSalesUsers: (keyword?: string) => {
-    return apiService.get<any>('/customers-v2/sales-users/list', keyword ? { keyword } : undefined)
-  },
-
-  // 转移客户
-  transfer: (customerId: string, newSalesUserId: string) => {
-    return apiService.patch<any>(`/customers-v2/${customerId}/transfer`, { new_sales_user_id: newSalesUserId })
-  },
+export interface CityDistrictInfo {
+  code: string
+  name: string
+  districts: string[]
 }
 
 export const provinceApi = {
-  // 获取所有省份
-  getProvinces: () => {
-    return apiService.get<any>('/province-city/provinces')
-  },
-
-  // 获取省份下的城市
-  getCities: (province: string) => {
-    return apiService.get<any>('/province-city/cities', { province })
-  },
-
-  // 获取省份下的区县
-  getDistricts: (province: string, city: string) => {
-    return apiService.get<any>('/province-city/districts', { province, city })
-  },
-
-  // 搜索省/市/区
-  searchLocations: (keyword: string) => {
-    return apiService.get<any>('/province-city/search', { keyword })
+  // 获取所有省份城市数据（合并接口）
+  getAll: () => {
+    return apiService.get<ProvinceCityData>('/province-city/')
   }
 }
 
@@ -834,7 +786,11 @@ export interface ProductSpec {
   cas_number?: string
   is_active: boolean
   stock_quantity?: number
-  stock_status?: string
+  stock_status?: Array<{
+    warehouse_id: string
+    warehouse_name: string
+    quantity: number
+  }>
   created_at?: string
   updated_at?: string
 }
@@ -1055,7 +1011,7 @@ export const brandApi = {
 }
 
 export const supplierApi = {
-  list: (params: { page?: number; page_size?: number; keyword?: string; is_active?: boolean }) => {
+  list: (params: { page?: number; page_size?: number; keyword?: string; is_active?: boolean; brand_ids?: string[] }) => {
     return apiService.get<any>('/suppliers/', params)
   },
 

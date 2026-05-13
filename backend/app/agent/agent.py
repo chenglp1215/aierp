@@ -158,20 +158,49 @@ class Agent:
 
         return messages
 
-    async def chat(
+    async def single_chat(
         self,
         user_message: str,
-        session_id: Optional[str] = None,
-        user: Optional[User] = None,
-        stream_callback: Optional[Callable[..., Any]] = None,
-        user_permissions: Optional[List[str]] = None
+        file_path: Optional[str] = None,
+        system_prompt: Optional[str] = None
     ) -> str:
         if not self._agent:
             await self.initialize()
+        messages= []
+        if self.config.system_prompt:
+            messages.append(("system", self.config.system_prompt))
+        if system_prompt:
+            messages.append(("system", system_prompt))
 
-        messages = [("user", user_message)]
-        result = self._agent.invoke({"messages": messages})
+        if file_path:
+            image_content = self._read_image_as_base64(file_path)
+            if image_content:
+                content = [
+                    {"type": "text", "text": user_message or ""},
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_content}"}}
+                ]
+                messages.append(("user", content))
+            else:
+                if user_message:
+                    messages.append(("user", user_message))
+        else:
+            if user_message:
+                messages.append(("user", user_message))
+
+        result = await self._agent.ainvoke({"messages": messages})
         return result.get("messages", [[]])[-1].content
+
+    def _read_image_as_base64(self, file_path: str) -> Optional[str]:
+        """读取图片文件并转为 base64 编码"""
+        import base64
+        import os
+        try:
+            if os.path.exists(file_path):
+                with open(file_path, "rb") as image_file:
+                    return base64.b64encode(image_file.read()).decode("utf-8")
+        except Exception as e:
+            logger.error(f"读取图片文件失败: {file_path}, error: {e}")
+        return None
 
     async def chat_with_tools(
         self,

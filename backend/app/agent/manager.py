@@ -95,6 +95,12 @@ class AgentManager:
     def get_agent(self, agent_id: str) -> Optional[Agent]:
         return self._agents.get(agent_id)
 
+    def get_agent_by_name(self, agent_name: str) -> Optional[Agent]:
+        for agent in self._agents.values():
+            if agent.config.name == agent_name:
+                return agent
+        return None
+
     def get_all_agents(self) -> List[Agent]:
         return list(self._agents.values())
 

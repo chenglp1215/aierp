@@ -211,6 +211,7 @@
 | page_size | int | 否 | 每页数量（默认：20，最大：100） |
 | keyword | string | 否 | 搜索关键词（供应商名称） |
 | is_active | boolean | 否 | 是否激活 |
+| brand_ids | string[] | 否 | 品牌ID列表（逗号分隔或多值形式） |
 
 #### 响应示例
 

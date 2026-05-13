@@ -1,13 +1,9 @@
 from fastapi import APIRouter
 from .health import health_router
 from .sales_order import sales_order_router
-from .customer import customer_router
-from .customer_v2 import customer_router_v2
-from .customer_discount import customer_discount_router
+from .customer import customer_router, customer_discount_router
 from .product import product_router, category_router, brand_router
 from .auth import auth_router
-from .role import role_router
-from .permission import permission_router
 from .ai import llm_router, kb_router, mcp_router, skill_router, agent_router, ai_tools_router
 from .inventory import warehouse_router, stock_router, inbound_router, outbound_router
 from .purchase_order import purchase_order_router
@@ -20,12 +16,9 @@ from .upload import upload_router
 api_router = APIRouter()
 
 api_router.include_router(health_router, prefix="/health", tags=["健康检查"])
-api_router.include_router(auth_router, tags=["认证"])
-api_router.include_router(role_router, prefix="/auth", tags=["角色管理"])
-api_router.include_router(permission_router, prefix="/auth", tags=["权限管理"])
+api_router.include_router(auth_router, tags=["认证", "用户管理", "角色管理", "权限管理"])
 api_router.include_router(sales_order_router, tags=["销售订单"])
 api_router.include_router(customer_router, tags=["客户管理"])
-api_router.include_router(customer_router_v2, tags=["客户管理V2"])
 api_router.include_router(customer_discount_router, tags=["客户折扣管理"])
 api_router.include_router(product_router, tags=["商品管理"])
 api_router.include_router(category_router, tags=["分类管理"])

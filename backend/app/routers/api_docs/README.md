@@ -161,8 +161,8 @@ Authorization: Bearer <token>
 
 | 文档 | 描述 |
 |------|------|
-| [customer_v2.md](./customer_v2.md) | 客户管理 v2（当前使用版本） |
-| [customer_discount.md](./customer_discount.md) | 客户折扣管理 |
+| [customer.md](./customer.md) | 客户管理（含客户折扣，当前使用版本） |
+| [customer_discount.md](./customer_discount.md) | 客户折扣管理（已合并到 customer 模块） |
 
 ### 地理位置
 

@@ -306,7 +306,7 @@ const setProvinceCityForEdit = (addr: ShippingAddressV2, val: { province?: strin
             <td colspan="2">
               <ProvinceCitySelector
                 v-model="provinceCityValueForNew"
-                @update:model-value="(val) => {
+                @update:model-value="(val: any) => {
                   newAddressForm.province = val.province || ''
                   newAddressForm.province_code = val.provinceCode || ''
                   newAddressForm.city = val.city || ''

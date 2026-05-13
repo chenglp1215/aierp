@@ -240,14 +240,14 @@ class ProductSpecService(BaseService):
 
     async def format(self, spec: Dict[str, Any]) -> Dict[str, Any]:
         from .inventory_service import warehouse_service, stock_service
-        spec['stock_status'] = await stock_service.get_stock_status_by_spec_ids([spec.get("spec_id")]).get(spec.get("spec_id"), [])
+        spec['stock_status'] = await stock_service.get_stock_status_by_spec_ids([spec.get("id")]).get(spec.get("id"), [])
         return spec
     
     async def format_list(self, specs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         from .inventory_service import warehouse_service, stock_service
-        stock_status_map = await stock_service.get_stock_status_by_spec_ids([spec.get("spec_id") for spec in specs])
+        stock_status_map = await stock_service.get_stock_status_by_spec_ids([spec.get("id") for spec in specs])
         for spec in specs:
-            spec['stock_status'] = stock_status_map.get(spec.get("spec_id"), [])
+            spec['stock_status'] = stock_status_map.get(spec.get("id"), [])
         return specs
 
     def validate_spec_create(self, spec_data: Dict[str, Any]) -> tuple[bool, Optional[Dict[str, List[str]]]]:
@@ -445,6 +445,13 @@ class ProductService(BaseService):
         if is_formatted:
             products = await self.format_list(products) 
         return products
+
+    async def get_product_by_codes(self, codes: List[str], is_formatted: bool = False) -> List[Dict[str, Any]]:
+        products = await self.find_many({"product_code": {"$in": codes}}, limit=len(codes)) 
+        if is_formatted:
+            products = await self.format_list(products) 
+        return products
+
 
     async def list_products(self, 
         brand_id: Optional[str] = None,

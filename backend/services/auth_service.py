@@ -1,23 +1,26 @@
 from datetime import datetime, timedelta
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import logging
 import bcrypt
 from bson import ObjectId
 from jose import JWTError, jwt
 
 from config import settings
-from models.auth import (
-    User, UserCreate, UserUpdate, UserStatus,
-    Role, RoleCreate, RoleUpdate,
-)
+from models.auth import UserStatus
 from .base_service import BaseService
+from validators.auth_validator import (
+    USER_CREATE_CONFIG,
+    USER_UPDATE_CONFIG,
+    ROLE_CREATE_CONFIG,
+    ROLE_UPDATE_CONFIG,
+    PASSWORD_CHANGE_CONFIG,
+    PASSWORD_RESET_CONFIG,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class AuthService(BaseService):
-    """认证服务"""
-
     def __init__(self):
         super().__init__("users")
 
@@ -30,7 +33,6 @@ class AuthService(BaseService):
         return self.db["permissions"]
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """验证密码"""
         if not hashed_password:
             return False
         return bcrypt.checkpw(
@@ -39,12 +41,10 @@ class AuthService(BaseService):
         )
 
     def get_password_hash(self, password: str) -> str:
-        """生成密码哈希"""
         salt = bcrypt.gensalt()
         return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
     def create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
-        """创建访问令牌"""
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
@@ -54,8 +54,7 @@ class AuthService(BaseService):
         encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         return encoded_jwt
 
-    async def authenticate_user(self, username: str, password: str) -> Optional[User]:
-        """认证用户"""
+    async def authenticate_user(self, username: str, password: str) -> Optional[dict]:
         user = await self.find_one({"username": username})
         if not user:
             return None
@@ -63,18 +62,15 @@ class AuthService(BaseService):
             return None
         return user
 
-    async def get_user_by_id(self, user_id: str) -> Optional[User]:
-        """根据ID获取用户"""
+    async def get_user_by_id(self, user_id: str) -> Optional[dict]:
         user = await self.get_by_id(user_id)
         if user:
-            # 加载用户角色
             roles, all_permissions = await self._get_user_roles_optimized(user["role_ids"])
             user["roles"] = roles
             user["permissions"] = all_permissions
         return user
 
-    async def get_user_by_username(self, username: str) -> Optional[User]:
-        """根据用户名获取用户"""
+    async def get_user_by_username(self, username: str) -> Optional[dict]:
         user = await self.find_one({"username": username})
         if user:
             roles, all_permissions = await self._get_user_roles_optimized(user["role_ids"])
@@ -82,17 +78,10 @@ class AuthService(BaseService):
             user["permissions"] = all_permissions
         return user
 
-
     async def _get_user_roles_optimized(self, role_ids: List[str]) -> tuple[List[dict], List[str]]:
-        """批量获取用户角色及所有权限（优化版）
-
-        Returns:
-            tuple: (roles_with_permissions, all_permission_codes)
-        """
         if not role_ids:
             return [], []
 
-        from bson import ObjectId
         roles = []
         all_permissions = []
         all_permission_ids = []
@@ -133,31 +122,46 @@ class AuthService(BaseService):
 
         return roles, all_permissions
 
-    async def create_user(self, user_data: UserCreate) -> str:
-        """创建用户"""
-        existing_user = await self.find_one({"username": user_data.username})
+    def validate_user_create(self, data: Dict[str, Any]) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(data, USER_CREATE_CONFIG)
+
+    def validate_user_update(self, data: Dict[str, Any]) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(data, USER_UPDATE_CONFIG)
+
+    async def create_user(self, user_data: Dict[str, Any]) -> str:
+        valid, errors = self.validate_user_create(user_data)
+        if not valid:
+            raise ValueError(errors)
+
+        username = user_data.get("username")
+        existing_user = await self.find_one({"username": username})
         if existing_user:
             raise ValueError("用户名已存在")
 
-        if user_data.email:
-            existing_email = await self.find_one({"email": user_data.email})
+        email = user_data.get("email")
+        if email:
+            existing_email = await self.find_one({"email": email})
             if existing_email:
                 raise ValueError("邮箱已存在")
 
-        if user_data.phone:
-            existing_phone = await self.find_one({"phone": user_data.phone})
+        phone = user_data.get("phone")
+        if phone:
+            existing_phone = await self.find_one({"phone": phone})
             if existing_phone:
                 raise ValueError("手机号已被使用")
 
-        if not user_data.username.replace("_", "").replace("-", "").isalnum():
+        if not username.replace("_", "").replace("-", "").isalnum():
             raise ValueError("用户名只能包含字母、数字、下划线和连字符")
 
-        data = user_data.model_dump()
-        data["password"] = self.get_password_hash(data["password"])
+        password = user_data.get("password")
+
+        data = dict(user_data)
+        data["password"] = self.get_password_hash(password)
         data["status"] = UserStatus.ACTIVE.value
 
-        if data.get("role_ids"):
-            role_ids = list(set(data["role_ids"]))
+        role_ids = data.get("role_ids", [])
+        if role_ids:
+            role_ids = list(set(role_ids))
             cursor = self.roles_collection.find({
                 "_id": {"$in": [ObjectId(rid) for rid in role_ids]}
             })
@@ -170,27 +174,32 @@ class AuthService(BaseService):
 
         return await self.create(data)
 
-    async def update_user(self, user_id: str, user_data: UserUpdate) -> bool:
-        """更新用户信息"""
-        data = user_data.model_dump(exclude_unset=True)
+    async def update_user(self, user_id: str, user_data: Dict[str, Any]) -> bool:
+        valid, errors = self.validate_user_update(user_data)
+        if not valid:
+            raise ValueError(errors)
 
-        if "email" in data and data["email"]:
-            existing = await self.find_one({"email": data["email"], "_id": {"$ne": ObjectId(user_id)}})
+        email = user_data.get("email")
+        if email:
+            existing = await self.find_one({"email": email, "_id": {"$ne": ObjectId(user_id)}})
             if existing:
                 raise ValueError("邮箱已被其他用户使用")
 
-        if "phone" in data and data["phone"]:
-            existing = await self.find_one({"phone": data["phone"], "_id": {"$ne": ObjectId(user_id)}})
+        phone = user_data.get("phone")
+        if phone:
+            existing = await self.find_one({"phone": phone, "_id": {"$ne": ObjectId(user_id)}})
             if existing:
                 raise ValueError("手机号已被其他用户使用")
 
-        if "new_password" in data and data["new_password"]:
-            hashed_password = self.get_password_hash(data["new_password"])
-            data["password"] = hashed_password
-            del data["new_password"]
+        new_password = user_data.get("new_password")
+        if new_password:
+            hashed_password = self.get_password_hash(new_password)
+            user_data["password"] = hashed_password
+            del user_data["new_password"]
 
-        if "role_ids" in data and data["role_ids"]:
-            role_ids = list(set(data["role_ids"]))
+        role_ids = user_data.get("role_ids")
+        if role_ids:
+            role_ids = list(set(role_ids))
             cursor = self.roles_collection.find({
                 "_id": {"$in": [ObjectId(rid) for rid in role_ids]}
             })
@@ -201,20 +210,38 @@ class AuthService(BaseService):
                 if rid not in found_ids:
                     raise ValueError(f"角色ID {rid} 不存在")
 
-        logger.info(f"更新用户 {user_id} 的角色为 {data}")
-        return await self.update(user_id, data)
+        logger.info(f"更新用户 {user_id} 的角色为 {user_data}")
+        return await self.update(user_id, user_data)
 
-    async def change_password(self, user_id: str, new_password: str) -> bool:
-        """修改密码"""
+    def validate_password_change(self, data: Dict[str, Any]) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(data, PASSWORD_CHANGE_CONFIG)
+
+    async def change_password(self, user_id: str, old_password: str, new_password: str) -> bool:
+        valid, errors = self.validate_password_change({
+            "old_password": old_password,
+            "new_password": new_password
+        })
+        if not valid:
+            raise ValueError(errors)
+
         user = await self.get_by_id(user_id)
         if not user:
             raise ValueError("用户不存在")
 
+        if not self.verify_password(old_password, user.get("password", "")):
+            raise ValueError("旧密码错误")
+
         hashed_password = self.get_password_hash(new_password)
         return await self.update(user_id, {"password": hashed_password})
 
+    def validate_password_reset(self, data: Dict[str, Any]) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(data, PASSWORD_RESET_CONFIG)
+
     async def reset_password(self, user_id: str, new_password: str) -> bool:
-        """重置密码（管理员操作）"""
+        valid, errors = self.validate_password_reset({"new_password": new_password})
+        if not valid:
+            raise ValueError(errors)
+
         logger.info(f"重置用户 {user_id} 的密码为 {new_password}")
         hashed_password = self.get_password_hash(new_password)
         return await self.update(user_id, {"password": hashed_password})
@@ -225,9 +252,8 @@ class AuthService(BaseService):
         page_size: int = 20,
         status: Optional[str] = None,
         keyword: Optional[str] = None,
-        role_ids: Optional[list[str]] = None
+        role: Optional[str] = None
     ) -> dict:
-        """分页查询用户列表"""
         filters = {}
         if status:
             filters["status"] = status
@@ -237,9 +263,7 @@ class AuthService(BaseService):
                 {"full_name": {"$regex": keyword, "$options": "i"}},
                 {"email": {"$regex": keyword, "$options": "i"}}
             ]
-        if role_ids:
-            filters["role_ids"] = role_ids
-        
+
         result = await self.list(page, page_size, filters, "created_at", -1)
 
         role_ids_set = set()
@@ -269,8 +293,6 @@ class AuthService(BaseService):
 
 
 class RoleService(BaseService):
-    """角色服务"""
-
     def __init__(self):
         super().__init__("roles")
 
@@ -278,15 +300,25 @@ class RoleService(BaseService):
     def permissions_collection(self):
         return self.db["permissions"]
 
-    async def create_role(self, role_data: RoleCreate) -> str:
-        """创建角色"""
-        existing_role = await self.find_one({"code": role_data.code})
+    def validate_role_create(self, data: Dict[str, Any]) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(data, ROLE_CREATE_CONFIG)
+
+    def validate_role_update(self, data: Dict[str, Any]) -> tuple[bool, Optional[Dict[str, List[str]]]]:
+        return self.validate_data(data, ROLE_UPDATE_CONFIG)
+
+    async def create_role(self, role_data: Dict[str, Any]) -> dict:
+        valid, errors = self.validate_role_create(role_data)
+        if not valid:
+            raise ValueError(errors)
+
+        code = role_data.get("code")
+        existing_role = await self.find_one({"code": code})
         if existing_role:
             raise ValueError("角色编码已存在")
 
-        if role_data.permission_ids:
-            perm_ids = list(set(role_data.permission_ids))
-            from bson import ObjectId
+        permission_ids = role_data.get("permission_ids", [])
+        if permission_ids:
+            perm_ids = list(set(permission_ids))
             cursor = self.permissions_collection.find({
                 "_id": {"$in": [ObjectId(pid) for pid in perm_ids]}
             })
@@ -297,19 +329,20 @@ class RoleService(BaseService):
                 if pid not in found_ids:
                     raise ValueError(f"权限ID {pid} 不存在")
 
-        data = role_data.model_dump()
+        data = dict(role_data)
         data["id"] = await self.create(data)
         if "_id" in data:
             data.pop("_id")
         return data
 
-    async def update_role(self, role_id: str, role_data: RoleUpdate) -> bool:
-        """更新角色"""
-        data = role_data.model_dump(exclude_unset=True) if isinstance(role_data, RoleUpdate) else dict(role_data)
+    async def update_role(self, role_id: str, role_data: Dict[str, Any]) -> bool:
+        valid, errors = self.validate_role_update(role_data)
+        if not valid:
+            raise ValueError(errors)
 
-        if "permission_ids" in data and data["permission_ids"]:
-            perm_ids = list(set(data["permission_ids"]))
-            from bson import ObjectId
+        permission_ids = role_data.get("permission_ids")
+        if permission_ids:
+            perm_ids = list(set(permission_ids))
             cursor = self.permissions_collection.find({
                 "_id": {"$in": [ObjectId(pid) for pid in perm_ids]}
             })
@@ -320,7 +353,7 @@ class RoleService(BaseService):
                 if pid not in found_ids:
                     raise ValueError(f"权限ID {pid} 不存在")
 
-        return await self.update(role_id, data)
+        return await self.update(role_id, role_data)
 
     async def list_roles(
         self,
@@ -329,7 +362,6 @@ class RoleService(BaseService):
         status: Optional[str] = None,
         keyword: Optional[str] = None
     ) -> dict:
-        """分页查询角色列表"""
         filters = {}
         if status:
             filters["status"] = status
@@ -367,8 +399,6 @@ class RoleService(BaseService):
         return result
 
 class PermissionService(BaseService):
-    """权限服务"""
-
     def __init__(self):
         super().__init__("permissions")
 
@@ -378,7 +408,6 @@ class PermissionService(BaseService):
         page_size: int = 20,
         keyword: Optional[str] = None
     ) -> dict:
-        """分页查询权限列表"""
         filters = {}
         if keyword:
             filters["$or"] = [
@@ -389,7 +418,6 @@ class PermissionService(BaseService):
         return await self.list(page, page_size, filters, "sort_order", 1)
 
     async def get_permission_tree(self) -> List[dict]:
-        """获取权限树形结构"""
         permissions = await self.collection.find({}).sort("sort_order", 1).to_list(length=None)
 
         perm_dict = {}
@@ -409,7 +437,6 @@ class PermissionService(BaseService):
         return roots
 
 
-# 全局实例
 auth_service = AuthService()
 role_service = RoleService()
 permission_service = PermissionService()

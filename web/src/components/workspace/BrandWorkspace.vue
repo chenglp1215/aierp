@@ -193,7 +193,7 @@ const formatDate = (dateStr?: string) => {
 const loadPurchasers = async () => {
   try {
     const res = await brandApi.getPurchaserCandidates()
-    purchaserCandidates.value = res.result || []
+    purchaserCandidates.value = res || []
   } catch (e) {
     console.error('加载采购人员失败:', e)
   }

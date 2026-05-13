@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onBeforeUnmount, nextTick } from 'vue'
-import { salesOrderApi, customerV2Api, productApi, warehouseApi, provinceApi, customerDiscountApi, type CustomerV2 } from '../../services/api'
+import { salesOrderApi, customerApi, productApi, warehouseApi, customerDiscountApi, type Customer } from '../../services/api'
+import { useProvinceCity } from '../../hooks/useProvinceCity'
 
 const emit = defineEmits<{
   back: []
@@ -88,7 +89,7 @@ const shippingMethodOptions = [
 const formLoading = ref(false)
 
 // Dropdown data
-const customerList = ref<CustomerV2[]>([])
+const customerList = ref<Customer[]>([])
 const productTree = ref<ProductWithSpecs[]>([])
 const specSearchResults = ref<SpecSearchResult[]>([])
 const warehouseList = ref<Warehouse[]>([])
@@ -111,13 +112,12 @@ const showWarehouseDropdown = ref<number | null>(null)
 interface ProvinceItem {
   code: string
   name: string
-  cities: string[]
 }
 interface CityItem {
   code: string
   name: string
-  province_code: string
 }
+const { loadProvinceCityData, getProvinces, getCities } = useProvinceCity()
 const provinceList = ref<ProvinceItem[]>([])
 const cityList = ref<CityItem[]>([])
 const selectedProvince = ref('')
@@ -149,8 +149,7 @@ watch(selectedProvince, async (val) => {
   orderForm.value.deliver_info.city = ''
   if (val) {
     try {
-      const res = await provinceApi.getCities(val)
-      cityList.value = res.result || []
+      cityList.value = getCities(val)
     } catch (e) {
       console.error('加载城市失败:', e)
     }
@@ -193,7 +192,7 @@ const loadCustomers = async (keyword?: string) => {
   try {
     const params: any = { page_size: 50 }
     if (keyword) params.keyword = keyword
-    const res = await customerV2Api.list(params)
+    const res = await customerApi.list(params)
     customerList.value = res.result?.items || []
   } catch (error) {
     console.error('加载客户列表失败:', error)
@@ -217,8 +216,8 @@ const handleProductSearch = (keyword: string) => {
         productApi.search(keyword, 20),
         productApi.searchSpecs(keyword, 20)
       ])
-      const products: Product[] = productsRes.result || []
-      const allSpecs: SpecSearchResult[] = specsRes.result || []
+      const products: Product[] = productsRes || []
+      const allSpecs: SpecSearchResult[] = specsRes || []
 
       const tree: ProductWithSpecs[] = []
       const specIdsInTree = new Set<string>()
@@ -432,7 +431,7 @@ const selectCustomer = async (customer: any) => {
   showCustomerDropdown.value = false
 
   try {
-    const res = await customerV2Api.getById(customer.id)
+    const res = await customerApi.getById(customer.id)
     const detail = res.result
 
     customerInvoiceInfos.value = detail?.invoice_infos || []
@@ -573,8 +572,8 @@ const handleSaveOrder = async () => {
       remark: orderForm.value.remark,
       items: orderForm.value.items.map(item => ({
         row_no: item.row_no,
-        product_id: item.product_id,
-        spec_id: item.spec_id,
+        product_code: item.product_code || item.product_id,
+        spec_code: item.spec_code || item.spec_id,
         qty: item.qty,
         price: item.price,
         discount: item.discount,
@@ -592,13 +591,14 @@ const handleSaveOrder = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('click', handleclickOutside)
-  provinceApi.getProvinces().then((res: any) => {
-    provinceList.value = res.result || []
-  }).catch((e: any) => {
+  try {
+    await loadProvinceCityData()
+    provinceList.value = getProvinces()
+  } catch (e) {
     console.error('加载省份失败:', e)
-  })
+  }
 })
 
 onBeforeUnmount(() => {

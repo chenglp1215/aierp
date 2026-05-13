@@ -9,7 +9,8 @@ interface InboundBatch {
   inventory_id: string
   batch_code: string
   quantity: number
-  operator_name?: string
+  user_id?: string
+  user_name?: string
   remarks?: string
   created_at: string
 }
@@ -19,7 +20,8 @@ interface OutboundBatch {
   inventory_id: string
   batch_code: string
   quantity: number
-  operator_name?: string
+  user_id?: string
+  user_name?: string
   remarks?: string
   created_at: string
 }
@@ -89,8 +91,6 @@ interface ProductSpec {
   product_code?: string
 }
 
-type SpanMethod = (params: { row: any; columnIndex: number }) => { rowspan: number; colspan: number } | void
-
 const props = defineProps<{
   warehouseId?: string
   warehouseName?: string
@@ -112,7 +112,6 @@ const filterStatus = ref('')
 const filterSpecId = ref('')
 const filterSpecName = ref('')
 const warehouses = ref<Warehouse[]>([])
-const expandedStockId = ref<string | null>(null)
 const stockDetail = ref<(Stock & {
   inbound_batches?: InboundBatch[]
   outbound_batches?: OutboundBatch[]
@@ -130,6 +129,11 @@ const filterKeyword = ref('')
 const filterSearchResults = ref<ProductSpec[]>([])
 const showFilterDropdown = ref(false)
 const selectedFilterSpec = ref<ProductSpec | null>(null)
+
+const filterSpecInput = computed({
+  get: () => selectedFilterSpec.value ? filterSpecName.value : filterKeyword.value,
+  set: (val) => { filterKeyword.value = val }
+})
 
 const productKeyword = ref('')
 const productSearchResults = ref<any[]>([])
@@ -237,26 +241,6 @@ const buildVerticalTableData = () => {
   verticalTableData.value = data
 }
 
-const verticalSpanMethod: SpanMethod = ({ row, columnIndex }) => {
-  const productCols = [0, 1, 2, 3, 4]  // 序号、展开、商品编码、商品名称、仓库
-  const actionCol = 11
-  if (productCols.includes(columnIndex) && row.isFirst) {
-    return { rowspan: row.rowspan, colspan: 1 }
-  }
-  if (productCols.includes(columnIndex) || (columnIndex === actionCol && !row.isFirst)) {
-    return { rowspan: 0, colspan: 0 }
-  }
-  if (columnIndex === actionCol && row.isFirst) {
-    return { rowspan: row.rowspan, colspan: 1 }
-  }
-}
-
-const seqMethod = ({ row }: { row: any }) => {
-  if (!row.isFirst) return 0
-  const firstRows = verticalTableData.value.filter(r => r.isFirst)
-  return firstRows.findIndex(r => r._id === row._id) + 1 + (page.value - 1) * pageSize.value
-}
-
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -280,13 +264,13 @@ const loadStocks = async () => {
       spec_id: filterSpecId.value || undefined,
       status: filterStatus.value || undefined
     })
-    const items = res.result?.items ?? []
+    const items = res.items ?? []
     stocks.value = items.map((item: Stock) => ({
       ...item,
       status: formatStatus(item.status)
     }))
     productGroups.value = groupStocksByProduct(stocks.value)
-    total.value = res.result?.total || 0
+    total.value = res.total || 0
     buildVerticalTableData()
   } catch (error) {
     console.error('加载库存列表失败:', error)
@@ -298,7 +282,7 @@ const loadStocks = async () => {
 const loadWarehouses = async () => {
   try {
     const res = await warehouseApi.list({ page: 1, page_size: 100 })
-    warehouses.value = res.result?.items ?? []
+    warehouses.value = res.items ?? []
   } catch (error) {
     console.error('加载仓库列表失败:', error)
   }
@@ -307,8 +291,16 @@ const loadWarehouses = async () => {
 const loadStockDetail = async (stockId: string) => {
   detailLoading.value = true
   try {
-    const res = await stockApi.getDetail(stockId)
-    stockDetail.value = res.result || res
+    const [stockRes, inboundRes, outboundRes] = await Promise.all([
+      stockApi.getById(stockId),
+      inboundBatchApi.list({ stock_id: stockId, page_size: 50 }),
+      outboundBatchApi.list({ stock_id: stockId, page_size: 50 })
+    ])
+    stockDetail.value = {
+      ...stockRes,
+      inbound_batches: inboundRes.items || [],
+      outbound_batches: outboundRes.items || []
+    }
   } catch (error) {
     console.error('加载库存详情失败:', error)
   } finally {
@@ -319,7 +311,7 @@ const loadStockDetail = async (stockId: string) => {
 const updateStockInList = async (stockId: string) => {
   try {
     const res = await stockApi.getById(stockId)
-    const updatedStock = res.result || res
+    const updatedStock = res
     const index = stocks.value.findIndex(s => s.id === stockId)
     if (index !== -1) {
       stocks.value[index] = updatedStock
@@ -349,7 +341,7 @@ const searchFilterSpecs = async () => {
   }
   try {
     const res = await productApi.searchSpecs(filterKeyword.value, 20)
-    filterSearchResults.value = res.items || res.result?.items || []
+    filterSearchResults.value = res.items || []
     showFilterDropdown.value = true
   } catch (error) {
     console.error('搜索规格失败:', error)
@@ -361,7 +353,7 @@ const selectFilterSpec = (spec: ProductSpec) => {
   selectedFilterSpec.value = spec
   filterSpecId.value = spec.id
   filterSpecName.value = `${spec.product_name || ''} ${spec.spec_code} ${spec.packaging || ''}`.trim()
-  filterKeyword.value = filterSpecName.value
+  filterSearchResults.value = []
   showFilterDropdown.value = false
   handleSearch()
 }
@@ -398,6 +390,8 @@ const resetFilters = () => {
   filterSpecId.value = ''
   filterSpecName.value = ''
   selectedFilterSpec.value = null
+  filterKeyword.value = ''
+  filterSearchResults.value = []
   if (!props.warehouseId) {
     filterWarehouse.value = ''
   }
@@ -412,8 +406,12 @@ const searchProducts = async () => {
     return
   }
   try {
-    const res = await productApi.searchSpecs(productKeyword.value, 20)
-    productSearchResults.value = res.items || res.result?.items || []
+    const res = await productApi.list({
+      page: 1,
+      page_size: 20,
+      keyword: productKeyword.value
+    })
+    productSearchResults.value = res.items || []
     showProductDropdown.value = true
   } catch (error) {
     console.error('搜索商品失败:', error)
@@ -453,16 +451,6 @@ const hideProductDropdown = () => {
   setTimeout(() => { showProductDropdown.value = false }, 200)
 }
 
-const toggleExpand = async (row: any) => {
-  if (expandedStockId.value === row.stockId) {
-    expandedStockId.value = null
-    stockDetail.value = null
-  } else {
-    expandedStockId.value = row.stockId
-    await loadStockDetail(row.stockId)
-  }
-}
-
 const searchSpecs = async () => {
   if (!specKeyword.value.trim()) {
     specSearchResults.value = []
@@ -470,7 +458,7 @@ const searchSpecs = async () => {
   }
   try {
     const res = await productApi.searchSpecs(specKeyword.value, 20)
-    specSearchResults.value = res.items || res.result?.items || []
+    specSearchResults.value = res.items || []
     showSpecDropdown.value = true
   } catch (error) {
     console.error('搜索规格失败:', error)
@@ -498,10 +486,6 @@ const openCreateInbound = () => {
   specKeyword.value = ''
   specSearchResults.value = []
   showInboundModal.value = true
-}
-
-const openCreateOutbound = () => {
-  window.showToast('请先选择一条库存记录进行出库操作', 'info')
 }
 
 const openInboundModal = (row: any) => {
@@ -580,9 +564,6 @@ const handleInbound = async () => {
     showInboundModal.value = false
     if (inboundTargetStock.value) {
       await updateStockInList(inboundTargetStock.value.id)
-      if (expandedStockId.value === inboundTargetStock.value.id) {
-        await loadStockDetail(inboundTargetStock.value.id)
-      }
     }
     loadStocks()
   } catch (error: any) {
@@ -626,9 +607,6 @@ const handleOutbound = async () => {
     window.showToast('出库成功', 'success')
     showOutboundModal.value = false
     await updateStockInList(outboundTargetStock.value.id)
-    if (expandedStockId.value === outboundTargetStock.value.id) {
-      await loadStockDetail(outboundTargetStock.value.id)
-    }
     loadStocks()
   } catch (error: any) {
     window.showToast(error.message || '出库失败', 'error')
@@ -668,7 +646,6 @@ onMounted(() => {
       </div>
       <div class="header-actions">
         <button class="primary-btn" @click="openCreateInbound">新增入库</button>
-        <button class="primary-btn" @click="openCreateOutbound">新增出库</button>
       </div>
     </div>
 
@@ -711,7 +688,7 @@ onMounted(() => {
           <div class="spec-search-container small">
             <input
               type="text"
-              v-model="filterKeyword"
+              v-model="filterSpecInput"
               placeholder="搜索规格..."
               @input="handleFilterInput"
               @focus="showFilterDropdown = filterSearchResults.length > 0"
@@ -755,17 +732,8 @@ onMounted(() => {
       <vxe-table
         :data="verticalTableData"
         :column-config="{ resizable: true }"
-        :span-method="verticalSpanMethod"
-        :seq-config="{ seqMethod: seqMethod }"
       >
         <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
-        <vxe-column field="expand" title="" width="40" class-name="col--center">
-          <template #default="{ row }">
-            <button class="expand-btn" @click="toggleExpand(row)">
-              {{ expandedStockId === row.stockId ? '▼' : '▶' }}
-            </button>
-          </template>
-        </vxe-column>
         <vxe-column field="product_code" title="商品编码" min-width="100" class-name="col--center" />
         <vxe-column field="product_name" title="商品名称" min-width="150">
           <template #default="{ row }">
@@ -954,7 +922,7 @@ onMounted(() => {
               <h4>入库记录 ({{ stockDetail.inbound_batches?.length || 0 }})</h4>
               <div class="batch-scroll-list">
                 <div class="batch-scroll-item" v-for="batch in stockDetail.inbound_batches" :key="batch.id">
-                  <span class="batch-code">{{ batch.batch_code }}</span>
+                  <span class="batch-user">{{ batch.user_name || '-' }}</span>
                   <span class="batch-qty success">+{{ batch.quantity }}</span>
                   <span class="batch-time">{{ formatDate(batch.created_at) }}</span>
                 </div>
@@ -965,7 +933,7 @@ onMounted(() => {
               <h4>出库记录 ({{ stockDetail.outbound_batches?.length || 0 }})</h4>
               <div class="batch-scroll-list">
                 <div class="batch-scroll-item" v-for="batch in stockDetail.outbound_batches" :key="batch.id">
-                  <span class="batch-code">{{ batch.batch_code }}</span>
+                  <span class="batch-user">{{ batch.user_name || '-' }}</span>
                   <span class="batch-qty danger">-{{ batch.quantity }}</span>
                   <span class="batch-time">{{ formatDate(batch.created_at) }}</span>
                 </div>
@@ -1676,7 +1644,7 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.batch-scroll-item .batch-code {
+.batch-scroll-item .batch-user {
   color: var(--accent-blue);
   font-weight: 500;
 }

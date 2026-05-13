@@ -30,6 +30,20 @@ class BaseService:
         result = await self.collection.insert_one(data)
         return str(result.inserted_id)
 
+    async def get_by_ids(self, ids: List[str]) -> List[Dict[str, Any]]:
+        """根据ID列表获取文档"""
+        from bson import ObjectId
+        try:
+            docs = await self.collection.find(
+                {"_id": {"$in": [ObjectId(id) for id in ids]}}
+            ).to_list(length=None)
+            for doc in docs:
+                doc["id"] = str(doc.pop("_id"))
+            return docs
+        except Exception as e:
+            logger.error(f"Error getting documents by ids: {e}")
+            return []
+
     async def get_by_id(self, id: str) -> Optional[Dict[str, Any]]:
         """根据ID获取文档"""
         from bson import ObjectId

@@ -141,18 +141,26 @@ async def init_default_permissions():
 
 
 async def init_super_admin_group():
-    from services.auth_service import role_service
+    from services.auth_service import role_service, permission_service
     try:
         existing_fixed = await role_service.collection.count_documents({"code": SUPER_ADMIN_CODE})
+        all_perms = await permission_service.collection.find({}).to_list(length=None)
+        all_perm_ids = [str(perm["_id"]) for perm in all_perms]
+
         if existing_fixed > 0:
-            logger.info(f"固化超级管理员角色已存在（共 {existing_fixed} 条），跳过初始化")
+            existing_role = await role_service.find_one({"code": SUPER_ADMIN_CODE})
+            if existing_role and not existing_role.get("permission_ids"):
+                await role_service.update(existing_role["id"], {"permission_ids": all_perm_ids})
+                logger.info(f"更新超级管理员角色权限成功")
+            else:
+                logger.info(f"固化超级管理员角色已存在且已有权限，跳过初始化")
             return
 
         await role_service.create({
             "code": SUPER_ADMIN_CODE,
             "name": "超级管理员",
             "description": "系统超级管理员，拥有所有权限",
-            "permission_ids": [],
+            "permission_ids": all_perm_ids,
             "status": "active",
             "is_fixed": True
         })
@@ -234,14 +242,13 @@ async def init_admin_user():
             logger.error("超级管理员角色不存在，请先初始化固化角色")
             return
 
-        from models.auth import UserCreate
-        user_data = UserCreate(
-            username="admin",
-            password="admin123",
-            email="admin@example.com",
-            full_name="系统管理员",
-            role_ids=[super_admin_role["id"]]
-        )
+        user_data = {
+            "username": "admin",
+            "password": "admin123",
+            "email": "admin@example.com",
+            "full_name": "系统管理员",
+            "role_ids": [super_admin_role["id"]]
+        }
 
         user_id = await auth_service.create_user(user_data)
         logger.info(f"创建管理员账号成功，绑定超级管理员角色")

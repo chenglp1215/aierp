@@ -168,12 +168,18 @@ class StockService(BaseService):
         """
         if not spec_ids:
             return {}
+
+        print(f"---------------spec_ids: {spec_ids}----------------")
         stocks = await self.find_many({"spec_id": {"$in": spec_ids}})
+        print(f"---------------stocks: {stocks}----------------")
         result: Dict[str, List[Dict[str, Any]]] = {}
+
+        warehouse_list = {w['id']: w for w in await warehouse_service.get_warehouse_by_ids([stock.get('warehouse_id') for stock in stocks])}
+        print(f"---------------warehouse_list: {warehouse_list}----------------")
         for stock in stocks:
             spec_id = stock.get('spec_id')
             warehouse_id = stock.get('warehouse_id')
-            warehouse_name = stock.get('warehouse_name')
+            warehouse_name = warehouse_list.get(warehouse_id, {}).get('name', 'warehouse_name')
             if not spec_id:
                 continue
             if spec_id not in result:

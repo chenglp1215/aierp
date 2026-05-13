@@ -65,7 +65,7 @@ const loadCategories = async () => {
   categoriesLoading.value = true
   try {
     const res = await categoryApi.list()
-    categories.value = res.result || []
+    categories.value = res || []
   } catch (error) {
     console.error('加载分类失败:', error)
   } finally {
@@ -77,7 +77,7 @@ const loadBrands = async () => {
   brandsLoading.value = true
   try {
     const res = await brandApi.getAll()
-    brands.value = res.result || []
+    brands.value = res || []
   } catch (error) {
     console.error('加载品牌失败:', error)
   } finally {
@@ -98,16 +98,6 @@ const productForm = ref<ProductFormData>({
 const verticalTableData = ref<any[]>([])
 
 const formatPrice = (price: number) => `¥${(price || 0).toFixed(2)}`
-
-const getStockStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    'normal': '正常',
-    'low_stock': '低库存',
-    'out_of_stock': '缺货',
-    'overstock': '超库存'
-  }
-  return statusMap[status] || status || '-'
-}
 
 const handleImageUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -150,6 +140,11 @@ const loadProducts = async () => {
   }
 }
 
+const computeStockQuantity = (spec: ProductSpec): number => {
+  if (!spec.stock_status || spec.stock_status.length === 0) return 0
+  return spec.stock_status.reduce((sum, stock) => sum + (stock.quantity || 0), 0)
+}
+
 const buildVerticalTableData = () => {
   const data: any[] = []
   for (const group of productGroups.value) {
@@ -170,7 +165,7 @@ const buildVerticalTableData = () => {
         price: 0,
         spec_is_active: false,
         stock_quantity: 0,
-        stock_status: '',
+        stock_status: [],
         isFirst: true,
         rowspan: 1,
         product_rowspan: 1,
@@ -193,8 +188,8 @@ const buildVerticalTableData = () => {
           sales_spec: spec.sales_spec || '-',
           price: spec.price,
           spec_is_active: spec.is_active,
-          stock_quantity: spec.stock_quantity || 0,
-          stock_status: spec.stock_status,
+          stock_quantity: computeStockQuantity(spec),
+          stock_status: spec.stock_status || [],
           isFirst: i === 0,
           rowspan: i === 0 ? specs.length : 0,
           product_rowspan: i === 0 ? specs.length : 0,
@@ -468,7 +463,7 @@ const openStockDetail = async (row: any) => {
     showStockDetail.value = true
     stockDetailLoading.value = false
     stockDetailData.value = spec.stock_status || []
-    stockDetailTotal.value = spec.stock_quantity || 0
+    stockDetailTotal.value = computeStockQuantity(spec)
   }
 }
 
@@ -786,32 +781,24 @@ const handleEscKey = (e: KeyboardEvent) => {
         </div>
         <div class="modal-body">
           <div class="stock-detail-info">
-            <p class="stock-total">总库存数量: <strong>{{ stockDetailTotal || selectedSpecForStock?.stock_quantity || 0 }}</strong></p>
+            <p class="stock-total">总库存数量: <strong>{{ stockDetailTotal || 0 }}</strong></p>
           </div>
           <div v-if="stockDetailLoading" class="stock-loading">加载中...</div>
           <table v-else-if="stockDetailData.length > 0" class="stock-detail-table">
             <thead>
               <tr>
                 <th>仓库</th>
-                <th>仓库编号</th>
                 <th>数量</th>
-                <th>最小库存</th>
-                <th>最大库存</th>
-                <th>状态</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in stockDetailData" :key="item.id">
+              <tr v-for="item in stockDetailData" :key="item.warehouse_id">
                 <td>{{ item.warehouse_name || '-' }}</td>
-                <td>{{ item.warehouse_code || '-' }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>{{ item.min_stock ?? '-' }}</td>
-                <td>{{ item.max_stock ?? '-' }}</td>
-                <td>{{ getStockStatusText(item.status) }}</td>
+                <td>{{ item.quantity || 0 }}</td>
               </tr>
             </tbody>
           </table>
-          <div v-else class="empty-cell">暂无数据</div>
+          <div v-else class="empty-cell">暂无库存数据</div>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showStockDetail = false">关闭</button>

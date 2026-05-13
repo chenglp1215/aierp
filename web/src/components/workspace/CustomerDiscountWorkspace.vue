@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineOptions({ name: 'CustomerDiscountWorkspace' })
 
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onActivated } from 'vue'
 import { customerDiscountApi, brandApi } from '../../services/api'
 
 // ==================== Props ====================
@@ -50,8 +50,8 @@ const loadDiscounts = async () => {
       page_size: pageSize.value,
       customer_id: props.customerId
     })
-    discounts.value = res.result?.items || []
-    total.value = res.result?.total || 0
+    discounts.value = res.items || []
+    total.value = res.total || 0
   } catch (error) {
     console.error('加载折扣列表失败:', error)
     window.showToast('加载折扣列表失败', 'error')
@@ -63,7 +63,7 @@ const loadDiscounts = async () => {
 const loadBrands = async () => {
   try {
     const res = await brandApi.getAll({ is_active: true })
-    brands.value = res.result || []
+    brands.value = res || []
   } catch (error) {
     console.error('加载品牌列表失败:', error)
   }
@@ -157,15 +157,17 @@ const handleBack = () => {
 }
 
 // ==================== 生命周期 ====================
+// 使用 onActivated 确保每次进入页面都会加载数据（KeepAlive 缓存时有效）
 onMounted(() => {
+  document.addEventListener('keydown', handleEscKey)
   loadDiscounts()
   loadBrands()
 })
 
-// 监听customerId变化
-watch(() => props.customerId, (newVal) => {
-  if (newVal) {
+onActivated(() => {
+  if (props.customerId) {
     loadDiscounts()
+    loadBrands()
   }
 })
 
@@ -175,10 +177,6 @@ const handleEscKey = (e: KeyboardEvent) => {
     closeAddModal()
   }
 }
-
-onMounted(() => {
-  document.addEventListener('keydown', handleEscKey)
-})
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleEscKey)
@@ -200,7 +198,12 @@ const formatDiscount = (value: number) => {
         </button>
         <h2 class="workspace-title">{{ customerTitle }}</h2>
       </div>
-      <button class="primary-btn" @click="openAddModal">添加折扣</button>
+      <div class="header-actions">
+        <button class="icon-btn" @click="loadDiscounts" title="刷新">
+          <span class="refresh-icon">↻</span>
+        </button>
+        <button class="primary-btn" @click="openAddModal">添加折扣</button>
+      </div>
     </div>
 
     <!-- 折扣列表 -->
@@ -317,6 +320,37 @@ const formatDiscount = (value: number) => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.refresh-icon {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .back-btn {

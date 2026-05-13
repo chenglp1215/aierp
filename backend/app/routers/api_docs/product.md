@@ -220,7 +220,21 @@ GET /api/v1/products/?page=1&page_size=20&keyword=红茶
             "sales_spec": "100g*24罐/箱",
             "price": 128.00,
             "cas_number": "68917-21-1",
-            "is_active": true
+            "is_active": true,
+            "created_at": "2026-05-08T10:00:00",
+            "updated_at": "2026-05-08T10:00:00",
+            "stock_status": [
+              {
+                "warehouse_id": "507f1f77bcf86cd799439015",
+                "warehouse_name": "北京仓",
+                "quantity": 100
+              },
+              {
+                "warehouse_id": "507f1f77bcf86cd799439016",
+                "warehouse_name": "上海仓",
+                "quantity": 50
+              }
+            ]
           }
         ]
       }
@@ -1196,6 +1210,15 @@ GET /api/v1/brands/?page=1&page_size=20&keyword=茶语
 | is_active | boolean | 是否有效 |
 | created_at | datetime | 创建时间 |
 | updated_at | datetime | 更新时间 |
+| stock_status | array | 各仓库库存汇总，字段见下方 |
+
+### ProductSpecStockStatus（规格库存信息）
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| warehouse_id | string | 仓库ID |
+| warehouse_name | string | 仓库名称 |
+| quantity | integer | 当前库存数量 |
 
 ### Brand（品牌）
 

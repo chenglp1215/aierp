@@ -1,17 +1,16 @@
 from datetime import timedelta
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Dict, Any
 from jose import JWTError, jwt
 
 from config import settings
-from models.auth import (
-    User, UserCreate, UserUpdate, UserChangePassword, UserResetPassword,
-    UserListResponse, LoginRequest, LoginResponse, TokenPayload
-)
-from services.auth_service import auth_service
+from models.auth import TokenPayload
+from services.auth_service import auth_service, role_service, permission_service
+from app.decorators import wrap_response
 import logging
-logger = logging.getLogger('')
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer(auto_error=False)
 auth_router = APIRouter(prefix="/auth", tags=["认证"])
@@ -31,8 +30,10 @@ MOCK_ADMIN_USER = {
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> dict:
-    """获取当前用户，LOCAL_DEBUG 模式下跳过认证"""
     if settings.LOCAL_DEBUG:
+        user = await auth_service.get_user_by_username("admin")
+        if user:
+            return user
         return MOCK_ADMIN_USER
 
     if credentials is None:
@@ -51,21 +52,12 @@ async def get_current_user(
 
 
 async def get_current_active_user(current_user: dict = Depends(get_current_user)) -> dict:
-    """获取当前活跃用户"""
     if current_user.get("status") != "active":
         raise HTTPException(status_code=400, detail="用户已被禁用")
     return current_user
 
 
 def require_permission(*permissions: str) -> Callable:
-    """权限检查装饰器
-
-    使用方式:
-        @require_permission("user.create", "user.edit")
-        async def create_user(...): ...
-
-    超级管理员(admin角色)拥有所有权限，直接放行
-    """
     def dependency(current_user: dict = Depends(get_current_active_user)) -> dict:
         user_roles = current_user.get("roles", [])
         role_codes = [
@@ -93,14 +85,19 @@ def require_permission(*permissions: str) -> Callable:
     return dependency
 
 
-@auth_router.post("/login", response_model=LoginResponse)
-async def login(login_data: LoginRequest):
-    """用户登录"""
-    user = await auth_service.authenticate_user(login_data.username, login_data.password)
+@auth_router.post("/login")
+@wrap_response
+async def login(login_data: Dict[str, Any]):
+    username = login_data.get("username")
+    password = login_data.get("password")
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="用户名和密码不能为空")
+
+    user = await auth_service.authenticate_user(username, password)
     if not user:
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
-    user = await auth_service.get_user_by_username(login_data.username)
+    user = await auth_service.get_user_by_username(username)
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth_service.create_access_token(
@@ -121,136 +118,238 @@ async def login(login_data: LoginRequest):
     }
 
 
-@auth_router.post("/register", response_model=dict)
-async def register(user_data: UserCreate):
-    """用户注册"""
-    try:
-        user_id = await auth_service.create_user(user_data)
-        return {
-            "status": True,
-            "message": "注册成功",
-            "result": {"id": user_id}
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@auth_router.post("/register")
+@wrap_response
+async def register(user_data: Dict[str, Any]):
+    user_id = await auth_service.create_user(user_data)
+    return {"id": user_id}
 
 
-@auth_router.get("/me", response_model=dict)
+@auth_router.get("/me")
+@wrap_response
 async def get_me(current_user: dict = Depends(get_current_active_user)):
-    """获取当前用户信息"""
     return current_user
 
 
-@auth_router.put("/me/password", response_model=dict)
+@auth_router.put("/me/password")
+@wrap_response
 async def change_password(
-    password_data: UserChangePassword,
-    current_user: User = Depends(get_current_active_user)
+    password_data: Dict[str, Any],
+    current_user: dict = Depends(get_current_active_user)
 ):
-    """修改密码"""
-    try:
-        success = await auth_service.change_password(
-            current_user["id"],
-            password_data.old_password,
-            password_data.new_password
-        )
-        if not success:
-            raise HTTPException(status_code=400, detail="修改密码失败")
-        return {"status": True, "message": "密码修改成功"}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    old_password = password_data.get("old_password")
+    new_password = password_data.get("new_password")
+    if not old_password or not new_password:
+        raise ValueError("旧密码和新密码都不能为空")
+    await auth_service.change_password(
+        current_user["id"],
+        old_password,
+        new_password
+    )
+    return "密码修改成功"
 
 
-@auth_router.get("/users/", response_model=UserListResponse)
+@auth_router.get("/users/")
+@wrap_response
 async def list_users(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     status: Optional[str] = Query(None, description="用户状态"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     role: Optional[str] = Query(None, description="角色"),
-    current_user: User = Depends(require_permission("user.view"))
+    current_user: dict = Depends(require_permission("user.view"))
 ):
-    """获取用户列表"""
     return await auth_service.list_users(page, page_size, status, keyword, role)
 
 
-@auth_router.get("/users/{user_id}/", response_model=User)
+@auth_router.get("/users/{user_id}/")
+@wrap_response
 async def get_user(
     user_id: str,
-    current_user: User = Depends(require_permission("user.view"))
+    current_user: dict = Depends(require_permission("user.view"))
 ):
-    """获取用户详情"""
     user = await auth_service.get_user_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise ValueError("用户不存在")
     return user
 
 
-@auth_router.post("/users/", response_model=dict)
+@auth_router.post("/users/")
+@wrap_response
 async def create_user(
-    user_data: UserCreate,
-    current_user: User = Depends(require_permission("user.create"))
+    user_data: Dict[str, Any],
+    current_user: dict = Depends(require_permission("user.create"))
 ):
-    """创建用户"""
-    try:
-        user_id = await auth_service.create_user(user_data)
-        return {
-            "status": True,
-            "message": "用户创建成功",
-            "result": {"id": user_id}
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    user_id = await auth_service.create_user(user_data)
+    return {"id": user_id}
 
 
-@auth_router.put("/users/{user_id}/", response_model=dict)
+@auth_router.put("/users/{user_id}/")
+@wrap_response
 async def update_user(
     user_id: str,
-    user_data: UserUpdate,
-    current_user: User = Depends(require_permission("user.edit"))
+    user_data: Dict[str, Any],
+    current_user: dict = Depends(require_permission("user.edit"))
 ):
-    """更新用户信息"""
     success = await auth_service.update_user(user_id, user_data)
     if not success:
-        raise HTTPException(status_code=404, detail="用户不存在或更新失败")
-    return {"status": True, "message": "用户更新成功"}
+        raise ValueError("用户不存在或更新失败")
+    return "用户更新成功"
 
 
-@auth_router.delete("/users/{user_id}/", response_model=dict)
+@auth_router.delete("/users/{user_id}/")
+@wrap_response
 async def delete_user(
     user_id: str,
-    current_user: User = Depends(require_permission("user.delete"))
+    current_user: dict = Depends(require_permission("user.delete"))
 ):
-    """删除用户"""
     success = await auth_service.delete(user_id)
     if not success:
-        raise HTTPException(status_code=404, detail="用户不存在或删除失败")
-    return {"status": True, "message": "用户删除成功"}
+        raise ValueError("用户不存在或删除失败")
+    return "用户删除成功"
 
 
-@auth_router.patch("/users/{user_id}/password", response_model=dict)
+@auth_router.patch("/users/{user_id}/password")
+@wrap_response
 async def reset_password(
     user_id: str,
-    password_data: UserResetPassword,
-    current_user: User = Depends(require_permission("user.reset-password"))
+    password_data: Dict[str, Any],
+    current_user: dict = Depends(require_permission("user.reset-password"))
 ):
-    """重置用户密码"""
-    try:
-        success = await auth_service.reset_password(user_id, password_data.new_password)
-        if not success:
-            raise HTTPException(status_code=404, detail="用户不存在")
-        return {"status": True, "message": "密码重置成功"}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    new_password = password_data.get("new_password")
+    if not new_password:
+        raise ValueError("新密码不能为空")
+    success = await auth_service.reset_password(user_id, new_password)
+    if not success:
+        raise ValueError("用户不存在")
+    return "密码重置成功"
 
 
-@auth_router.patch("/users/{user_id}/status", response_model=dict)
+@auth_router.patch("/users/{user_id}/status")
+@wrap_response
 async def update_user_status(
     user_id: str,
-    status: str,
-    current_user: User = Depends(require_permission("user.edit"))
+    status: str = Query(..., description="用户状态"),
+    current_user: dict = Depends(require_permission("user.edit"))
 ):
-    """更新用户状态"""
     success = await auth_service.update(user_id, {"status": status})
     if not success:
-        raise HTTPException(status_code=404, detail="用户不存在")
-    return {"status": True, "message": "用户状态更新成功"}
+        raise ValueError("用户不存在")
+    return "用户状态更新成功"
+
+
+@auth_router.get("/roles/")
+@wrap_response
+async def list_roles(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    status: Optional[str] = Query(None, description="角色状态"),
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    current_user: dict = Depends(require_permission("role.view"))
+):
+    return await role_service.list_roles(page, page_size, status, keyword)
+
+
+@auth_router.get("/roles/{role_id}/")
+@wrap_response
+async def get_role(
+    role_id: str,
+    current_user: dict = Depends(require_permission("role.view"))
+):
+    role = await role_service.get_by_id(role_id)
+    if not role:
+        raise ValueError("角色不存在")
+    return role
+
+
+@auth_router.post("/roles/")
+@wrap_response
+async def create_role(
+    role_data: Dict[str, Any],
+    current_user: dict = Depends(require_permission("role.create"))
+):
+    role_data = await role_service.create_role(role_data)
+    return {"id": role_data["id"]}
+
+
+@auth_router.put("/roles/{role_id}/")
+@wrap_response
+async def update_role(
+    role_id: str,
+    role_data: Dict[str, Any],
+    current_user: dict = Depends(require_permission("role.edit"))
+):
+    role = await role_service.get_by_id(role_id)
+    if not role:
+        raise ValueError("角色不存在")
+
+    if role.get("is_fixed"):
+        raise ValueError("固化角色不允许修改")
+
+    success = await role_service.update_role(role_id, role_data)
+    if not success:
+        raise ValueError("角色不存在或更新失败")
+    return "角色更新成功"
+
+
+@auth_router.delete("/roles/{role_id}/")
+@wrap_response
+async def delete_role(
+    role_id: str,
+    current_user: dict = Depends(require_permission("role.delete"))
+):
+    role = await role_service.get_by_id(role_id)
+    if not role:
+        raise ValueError("角色不存在")
+
+    if role.get("is_fixed"):
+        raise ValueError("固化角色不允许删除")
+
+    success = await role_service.delete(role_id)
+    if not success:
+        raise ValueError("角色不存在或删除失败")
+    return "角色删除成功"
+
+
+@auth_router.patch("/roles/{role_id}/status")
+@wrap_response
+async def update_role_status(
+    role_id: str,
+    status: str = Query(..., description="角色状态"),
+    current_user: dict = Depends(require_permission("role.edit"))
+):
+    success = await role_service.update(role_id, {"status": status})
+    if not success:
+        raise ValueError("角色不存在")
+    return "角色状态更新成功"
+
+
+@auth_router.get("/permissions/")
+@wrap_response
+async def list_permissions(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    current_user: dict = Depends(require_permission("permission.view"))
+):
+    return await permission_service.list_permissions(page, page_size, keyword)
+
+
+@auth_router.get("/permissions/tree")
+@wrap_response
+async def get_permission_tree(
+    current_user: dict = Depends(require_permission("permission.view"))
+):
+    return await permission_service.get_permission_tree()
+
+
+@auth_router.get("/permissions/{permission_id}/")
+@wrap_response
+async def get_permission(
+    permission_id: str,
+    current_user: dict = Depends(require_permission("permission.view"))
+):
+    permission = await permission_service.get_by_id(permission_id)
+    if not permission:
+        raise ValueError("权限不存在")
+    return permission
