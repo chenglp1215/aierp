@@ -261,6 +261,17 @@ async def create_brand(
     return brand_data
 
 
+@brand_router.get("/{brand_id}", response_model=dict)
+@wrap_response
+async def get_brand(
+    brand_id: str,
+    _: dict = Depends(require_permission("brand.view"))
+):
+    """获取品牌详情"""
+    brand = await brand_service.get_brand_by_id(to_int_id(brand_id))
+    return brand
+
+
 @brand_router.put("/{brand_id}", response_model=dict)
 @wrap_response
 async def update_brand(
@@ -271,16 +282,6 @@ async def update_brand(
     """更新品牌"""
     await brand_service.update_brand(to_int_id(brand_id), brand)
     return "品牌更新成功"
-
-@brand_router.get("/{brand_id}", response_model=dict)
-@wrap_response
-async def get_brand(
-    brand_id: str,
-    _: dict = Depends(require_permission("brand.view"))
-):
-    """获取品牌详情"""
-    brand = await brand_service.get_brand_by_id(to_int_id(brand_id))
-    return brand
 
 
 @brand_router.delete("/{brand_id}", response_model=dict)
