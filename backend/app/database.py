@@ -1,5 +1,6 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from redis.asyncio import Redis
+from tortoise import Tortoise
 from typing import Optional
 
 from config import settings
@@ -67,11 +68,29 @@ class Database:
 db = Database()
 
 
+async def init_mysql():
+    """初始化 MySQL (Tortoise ORM) 连接"""
+    await Tortoise.init(
+        db_url=f"mysql://{settings.MYSQL_USER}:{settings.MYSQL_PASSWORD}@{settings.MYSQL_HOST}:{settings.MYSQL_PORT}/{settings.MYSQL_DATABASE}",
+        modules={"models": ["models_mysql.auth"]},
+        generate_schemas=True,
+    )
+    print("✅ MySQL (Tortoise ORM) 连接成功")
+
+
+async def close_mysql():
+    """关闭 MySQL 连接"""
+    await Tortoise.close_connections()
+    print("✅ MySQL 连接已关闭")
+
+
 async def init_db():
     """初始化数据库"""
     await db.init_db()
+    await init_mysql()
 
 
 async def close_db():
     """关闭数据库连接"""
     await db.close_db()
+    await close_mysql()
