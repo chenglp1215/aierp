@@ -293,6 +293,79 @@ def init_admin_user(conn):
     logger.info("创建管理员账号成功，绑定超级管理员角色")
 
 
+def init_product_tables(conn):
+    """初始化商品模块表"""
+    cursor = conn.cursor()
+
+    # 创建品牌表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS brands (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL UNIQUE,
+            logo_url VARCHAR(500),
+            description VARCHAR(500),
+            purchaser_id INT,
+            purchaser_name VARCHAR(100),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+
+    # 创建分类表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS categories (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL UNIQUE,
+            parent_id INT,
+            tax_code VARCHAR(50),
+            sort_order INT DEFAULT 0,
+            is_shop_display BOOLEAN DEFAULT TRUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+
+    # 创建商品表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS products (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            product_code VARCHAR(50) NOT NULL UNIQUE,
+            name VARCHAR(200) NOT NULL,
+            image_url VARCHAR(500),
+            brand_id INT NOT NULL,
+            category_id INT NOT NULL,
+            tax_code VARCHAR(50),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE RESTRICT,
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+
+    # 创建商品规格表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS product_specs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            product_id INT NOT NULL,
+            spec_code VARCHAR(50) NOT NULL UNIQUE,
+            packaging VARCHAR(100),
+            sales_spec VARCHAR(100),
+            price DOUBLE NOT NULL,
+            cas_number VARCHAR(50),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+
+    conn.commit()
+    logger.info("商品模块表初始化成功")
+
+
 def main():
     logger.info("开始初始化 MySQL 数据库数据...")
 
@@ -305,6 +378,7 @@ def main():
         init_purchaser_group_role(conn)
         init_default_user_role(conn)
         init_admin_user(conn)
+        init_product_tables(conn)
 
         conn.close()
         logger.info("MySQL 数据库初始化完成")
