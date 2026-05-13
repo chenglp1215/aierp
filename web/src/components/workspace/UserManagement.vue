@@ -5,19 +5,19 @@ import { ref, onMounted } from 'vue'
 import { authApi, roleApi } from '../../services/api'
 
 interface User {
-  id: string
+  id: number
   username: string
   email: string
   phone?: string
   full_name?: string
-  role_ids?: string[]
+  role_ids?: number[]
   role_names?: string[]
   status: string
   created_at?: string
 }
 
 interface Role {
-  id: string
+  id: number
   name: string
   code: string
 }
@@ -34,8 +34,8 @@ const showModal = ref(false)
 const showDeleteConfirm = ref(false)
 const showResetPwdModal = ref(false)
 const editingUser = ref<User | null>(null)
-const deleteTargetId = ref<string | null>(null)
-const resetPwdTarget = ref<{ id: string; username: string } | null>(null)
+const deleteTargetId = ref<number | null>(null)
+const resetPwdTarget = ref<{ id: number; username: string } | null>(null)
 const newPassword = ref('')
 const formLoading = ref(false)
 const deleteLoading = ref(false)
@@ -47,7 +47,7 @@ const userForm = ref({
   phone: '',
   full_name: '',
   password: '',
-  role_ids: [] as string[]
+  role_ids: [] as number[]
 })
 
 const columns = [
@@ -134,7 +134,7 @@ const openEdit = (user: User) => {
   showModal.value = true
 }
 
-const confirmDelete = (id: string) => {
+const confirmDelete = (id: number) => {
   deleteTargetId.value = id
   showDeleteConfirm.value = true
 }
@@ -176,9 +176,9 @@ const handleSave = async () => {
       const index = users.value.findIndex(u => u.id === editingUser.value!.id)
       if (index !== -1) {
         const roleNames = userForm.value.role_ids.length > 0
-          ? userForm.value.role_ids.map((rid: string) => {
+          ? userForm.value.role_ids.map((rid: number) => {
               const role = roles.value.find(r => r.id === rid)
-              return role ? role.name : rid
+              return role ? role.name : String(rid)
             })
           : users.value[index].role_names
         users.value[index] = {

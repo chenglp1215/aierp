@@ -5,24 +5,24 @@ import { ref, onMounted, computed } from 'vue'
 import { roleApi, permissionApi } from '../../services/api'
 
 interface Role {
-  id: string
+  id: number
   name: string
   code: string
   description?: string
   is_fixed?: boolean
-  permission_ids?: string[]
-  permissions?: { id: string }[]
+  permission_ids?: number[]
+  permissions?: { id: number }[]
   created_at?: string
 }
 
 interface Permission {
-  id: string
+  id: number
   code: string
   name: string
   type: string
   path?: string
   sort_order?: number
-  parent_id?: string
+  parent_id?: number
   children?: Permission[]
 }
 
@@ -37,18 +37,18 @@ const keyword = ref('')
 const showModal = ref(false)
 const showDeleteConfirm = ref(false)
 const editingRole = ref<Role | null>(null)
-const deleteTargetId = ref<string | null>(null)
+const deleteTargetId = ref<number | null>(null)
 const formLoading = ref(false)
 const deleteLoading = ref(false)
 
-const expandedKeys = ref<Set<string>>(new Set())
-const checkedKeys = ref<Set<string>>(new Set())
+const expandedKeys = ref<Set<number>>(new Set())
+const checkedKeys = ref<Set<number>>(new Set())
 
 const roleForm = ref({
   name: '',
   code: '',
   description: '',
-  permission_ids: [] as string[]
+  permission_ids: [] as number[]
 })
 
 const columns = [
@@ -108,7 +108,7 @@ const autoExpandFirstLevel = () => {
   )
 }
 
-const toggleExpand = (key: string) => {
+const toggleExpand = (key: number) => {
   const newSet = new Set(expandedKeys.value)
   if (newSet.has(key)) {
     newSet.delete(key)
@@ -118,7 +118,7 @@ const toggleExpand = (key: string) => {
   expandedKeys.value = newSet
 }
 
-const isExpanded = (key: string) => expandedKeys.value.has(key)
+const isExpanded = (key: number) => expandedKeys.value.has(key)
 
 const flattenTree = (
   items: Permission[],
@@ -137,8 +137,8 @@ const flattenTree = (
 
 const flatPermissions = computed(() => flattenTree(permissionTree.value))
 
-const getAllDescendantKeys = (item: Permission): string[] => {
-  const keys: string[] = []
+const getAllDescendantKeys = (item: Permission): number[] => {
+  const keys: number[] = []
   if (item.children) {
     for (const child of item.children) {
       keys.push(child.id)
@@ -163,7 +163,7 @@ const toggleCheckWithChildren = (item: Permission) => {
   roleForm.value.permission_ids = Array.from(newSet)
 }
 
-const isChecked = (key: string) => checkedKeys.value.has(key)
+const isChecked = (key: number) => checkedKeys.value.has(key)
 
 const handlePageChange = (newPage: number) => {
   page.value = newPage
@@ -208,7 +208,7 @@ const openEdit = async (role: Role) => {
   showModal.value = true
 }
 
-const confirmDelete = (id: string) => {
+const confirmDelete = (id: number) => {
   deleteTargetId.value = id
   showDeleteConfirm.value = true
 }
@@ -267,7 +267,7 @@ const handleDelete = async () => {
 }
 
 const checkAll = () => {
-  const allKeys = new Set<string>()
+  const allKeys = new Set<number>()
   const collectKeys = (items: Permission[]) => {
     for (const item of items) {
       allKeys.add(item.id)

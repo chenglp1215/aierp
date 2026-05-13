@@ -2,12 +2,12 @@ import { ref, computed } from 'vue'
 import { permissionApi } from '../services/api'
 
 interface Permission {
-  id: string
+  id: number
   code: string
   name: string
   type: 'menu' | 'button' | 'api'
   path?: string
-  parent_id?: string | null
+  parent_id?: number | null
   children?: Permission[]
 }
 

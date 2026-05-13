@@ -5,13 +5,13 @@ import { ref } from 'vue'
 import { permissionApi } from '../../services/api'
 
 interface Permission {
-  id: string
+  id: number
   code: string
   name: string
   type: string
   path?: string
   sort_order?: number
-  parent_id?: string
+  parent_id?: number
   children?: Permission[]
   created_at?: string
   updated_at?: string
@@ -19,8 +19,8 @@ interface Permission {
 
 const loading = ref(false)
 const permissions = ref<Permission[]>([])
-const expandedKeys = ref<Set<string>>(new Set())
-const checkedKeys = ref<Set<string>>(new Set())
+const expandedKeys = ref<Set<number>>(new Set())
+const checkedKeys = ref<Set<number>>(new Set())
 
 const typeMap: Record<string, { label: string; color: string }> = {
   menu: { label: '菜单', color: 'menu' },
@@ -51,7 +51,7 @@ const autoExpandFirstLevel = () => {
   )
 }
 
-const toggleExpand = (key: string) => {
+const toggleExpand = (key: number) => {
   const newSet = new Set(expandedKeys.value)
   if (newSet.has(key)) {
     newSet.delete(key)
@@ -61,7 +61,7 @@ const toggleExpand = (key: string) => {
   expandedKeys.value = newSet
 }
 
-const isExpanded = (key: string) => expandedKeys.value.has(key)
+const isExpanded = (key: number) => expandedKeys.value.has(key)
 
 const flattenTree = (items: Permission[]): { item: Permission; level: number; hasChildren: boolean }[] => {
   const result: { item: Permission; level: number; hasChildren: boolean }[] = []
@@ -80,10 +80,10 @@ const flattenTree = (items: Permission[]): { item: Permission; level: number; ha
 
 const flatPermissions = () => flattenTree(permissions.value)
 
-const isChecked = (key: string) => checkedKeys.value.has(key)
+const isChecked = (key: number) => checkedKeys.value.has(key)
 
-const getAllDescendantKeys = (item: Permission): string[] => {
-  const keys: string[] = []
+const getAllDescendantKeys = (item: Permission): number[] => {
+  const keys: number[] = []
   if (item.children) {
     for (const child of item.children) {
       keys.push(child.id)
@@ -108,7 +108,7 @@ const toggleCheckWithChildren = (item: Permission) => {
 }
 
 const checkAll = () => {
-  const allKeys = new Set<string>()
+  const allKeys = new Set<number>()
   const collectKeys = (items: Permission[]) => {
     for (const item of items) {
       allKeys.add(item.id)
