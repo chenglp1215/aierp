@@ -682,7 +682,7 @@ class MySQLUserService:
         }
 
     async def authenticate_user(self, username: str, password: str) -> Optional[dict]:
-        """用户认证"""
+        """用户认证，返回用户信息和 JWT Token"""
         user = await User.filter(username=username).prefetch_related("roles__permissions").first()
         if not user:
             return None
@@ -693,7 +693,26 @@ class MySQLUserService:
         user.last_login = datetime.now()
         await user.save()
 
-        return await self._format_user(user)
+        user_dict = await self._format_user(user)
+
+        # 生成 JWT Token
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = self._create_access_token(
+            data={
+                "sub": str(user.id),
+                "username": user.username,
+                "roles": [role.code for role in user.roles],
+                "permissions": user_dict.get("permissions", [])
+            },
+            expires_delta=access_token_expires
+        )
+
+        return {
+            "user": user_dict,
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": int(access_token_expires.total_seconds())
+        }
 
     async def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
         """修改密码"""
@@ -730,5 +749,186 @@ class MySQLUserService:
         return encoded_jwt
 
 
+class MySQLRoleService:
+    """角色服务（MySQL 版）"""
+
+    async def get_by_id(self, role_id: int) -> Optional[dict]:
+        """根据 ID 获取角色"""
+        role = await Role.filter(id=role_id).prefetch_related("permissions").first()
+        if not role:
+            return None
+        return await self._format_role(role)
+
+    async def get_by_code(self, code: str) -> Optional[dict]:
+        """根据编码获取角色"""
+        role = await Role.filter(code=code).prefetch_related("permissions").first()
+        if not role:
+            return None
+        return await self._format_role(role)
+
+    async def _format_role(self, role: Role) -> dict:
+        """格式化角色数据"""
+        permissions = await role.permissions.all()
+        return {
+            "id": role.id,
+            "code": role.code,
+            "name": role.name,
+            "description": role.description,
+            "is_fixed": role.is_fixed,
+            "status": role.status.value if role.status else None,
+            "permissions": [{"id": p.id, "code": p.code, "name": p.name} for p in permissions],
+            "created_at": role.created_at.isoformat() if role.created_at else None,
+            "updated_at": role.updated_at.isoformat() if role.updated_at else None,
+        }
+
+    async def create_role(self, data: Dict[str, Any]) -> dict:
+        """创建角色"""
+        code = data.get("code")
+        if await Role.filter(code=code).exists():
+            raise ValueError("角色编码已存在")
+
+        role = await Role.create(
+            code=code,
+            name=data.get("name"),
+            description=data.get("description"),
+            is_fixed=data.get("is_fixed", False),
+        )
+
+        permission_ids = data.get("permission_ids", [])
+        if permission_ids:
+            permissions = await Permission.filter(id__in=permission_ids)
+            await role.permissions.add(*permissions)
+
+        return await self._format_role(role)
+
+    async def update_role(self, role_id: int, data: Dict[str, Any]) -> bool:
+        """更新角色"""
+        role = await Role.filter(id=role_id).first()
+        if not role:
+            raise ValueError("角色不存在")
+
+        for key in ["name", "description", "status"]:
+            if key in data:
+                setattr(role, key, data[key])
+
+        await role.save()
+
+        if "permission_ids" in data:
+            await role.permissions.clear()
+            if data["permission_ids"]:
+                permissions = await Permission.filter(id__in=data["permission_ids"])
+                await role.permissions.add(*permissions)
+
+        return True
+
+    async def delete(self, role_id: int) -> bool:
+        """删除角色"""
+        role = await Role.filter(id=role_id).first()
+        if not role:
+            return False
+        await role.permissions.clear()
+        await role.delete()
+        return True
+
+    async def list_roles(
+        self, page: int = 1, page_size: int = 20,
+        status: str = None, keyword: str = None
+    ) -> dict:
+        """获取角色列表"""
+        query = Role.all()
+
+        if status:
+            query = query.filter(status=status)
+        if keyword:
+            query = query.filter(
+                Q(code__icontains=keyword) | Q(name__icontains=keyword)
+            )
+
+        total = await query.count()
+        roles = await query.offset((page - 1) * page_size).limit(page_size).prefetch_related("permissions")
+
+        items = [await self._format_role(role) for role in roles]
+
+        return {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "items": items
+        }
+
+
+class MySQLPermissionService:
+    """权限服务（MySQL 版）"""
+
+    async def get_by_id(self, permission_id: int) -> Optional[dict]:
+        """根据 ID 获取权限"""
+        perm = await Permission.filter(id=permission_id).first()
+        if not perm:
+            return None
+        return await self._format_permission(perm)
+
+    async def _format_permission(self, perm: Permission) -> dict:
+        """格式化权限数据"""
+        return {
+            "id": perm.id,
+            "code": perm.code,
+            "name": perm.name,
+            "type": perm.type.value,
+            "path": perm.path,
+            "parent_id": perm.parent_id,
+            "description": perm.description,
+            "sort_order": perm.sort_order,
+            "created_at": perm.created_at.isoformat() if perm.created_at else None,
+            "updated_at": perm.updated_at.isoformat() if perm.updated_at else None,
+        }
+
+    async def list_permissions(
+        self, page: int = 1, page_size: int = 20, keyword: str = None
+    ) -> dict:
+        """获取权限列表"""
+        query = Permission.all()
+
+        if keyword:
+            query = query.filter(
+                Q(code__icontains=keyword) | Q(name__icontains=keyword)
+            )
+
+        total = await query.count()
+        permissions = await query.offset((page - 1) * page_size).limit(page_size)
+
+        items = [await self._format_permission(p) for p in permissions]
+
+        return {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "items": items
+        }
+
+    async def get_permission_tree(self) -> List[dict]:
+        """获取权限树"""
+        permissions = await Permission.all().order_by("sort_order")
+
+        # 构建映射
+        perm_map = {p.id: await self._format_permission(p) for p in permissions}
+
+        # 初始化 children
+        for perm_data in perm_map.values():
+            perm_data["children"] = []
+
+        # 构建树
+        roots = []
+        for perm in permissions:
+            perm_data = perm_map[perm.id]
+            if perm.parent_id and perm.parent_id in perm_map:
+                perm_map[perm.parent_id]["children"].append(perm_data)
+            else:
+                roots.append(perm_data)
+
+        return roots
+
+
 # MySQL 版服务实例
 mysql_user_service = MySQLUserService()
+mysql_role_service = MySQLRoleService()
+mysql_permission_service = MySQLPermissionService()
