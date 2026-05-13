@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     MONGODB_URL: str = "mongodb://10.5.5.66:20001"
     MONGODB_DB_NAME: str = "oai_erp"
 
+    # MySQL 配置
+    MYSQL_HOST: str = "localhost"
+    MYSQL_PORT: int = 3306
+    MYSQL_USER: str = "root"
+    MYSQL_PASSWORD: str = ""
+    MYSQL_DATABASE: str = "aierp"
+
     REDIS_URL: str = "redis://localhost:6379/0"
 
     SECRET_KEY: str = "your-secret-key-change-in-production"
