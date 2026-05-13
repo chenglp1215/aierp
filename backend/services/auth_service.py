@@ -7,6 +7,8 @@ from jose import JWTError, jwt
 
 from config import settings
 from models.auth import UserStatus
+from models_mysql.auth import User, Role, Permission, UserStatus as MySQLUserStatus, RoleStatus
+from tortoise.expressions import Q
 from .base_service import BaseService
 from validators.auth_validator import (
     USER_CREATE_CONFIG,
@@ -440,3 +442,293 @@ class PermissionService(BaseService):
 auth_service = AuthService()
 role_service = RoleService()
 permission_service = PermissionService()
+
+
+# ============ MySQL 版服务（Tortoise ORM）============
+
+class MySQLUserService:
+    """用户服务（MySQL 版）"""
+
+    def _hash_password(self, password: str) -> str:
+        """密码加密"""
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+    def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """密码验证"""
+        if not hashed_password:
+            return False
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+
+    async def get_by_id(self, user_id: int) -> Optional[dict]:
+        """根据 ID 获取用户"""
+        user = await User.filter(id=user_id).prefetch_related("roles__permissions").first()
+        if not user:
+            return None
+        return await self._format_user(user)
+
+    async def get_by_username(self, username: str) -> Optional[dict]:
+        """根据用户名获取用户"""
+        user = await User.filter(username=username).prefetch_related("roles__permissions").first()
+        if not user:
+            return None
+        return await self._format_user(user)
+
+    async def _format_user(self, user: User) -> dict:
+        """格式化用户数据，包含角色和权限"""
+        roles = []
+        all_permissions = []
+
+        for role in user.roles:
+            role_data = {
+                "id": role.id,
+                "code": role.code,
+                "name": role.name,
+                "description": role.description,
+                "status": role.status.value if role.status else None,
+                "permissions": []
+            }
+            for perm in role.permissions:
+                perm_data = {
+                    "id": perm.id,
+                    "code": perm.code,
+                    "name": perm.name,
+                    "type": perm.type.value if perm.type else None,
+                    "path": perm.path
+                }
+                role_data["permissions"].append(perm_data)
+                if perm.code not in all_permissions:
+                    all_permissions.append(perm.code)
+            roles.append(role_data)
+
+        return {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "phone": user.phone,
+            "full_name": user.full_name,
+            "avatar": user.avatar,
+            "status": user.status.value if user.status else None,
+            "last_login": user.last_login.isoformat() if user.last_login else None,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+            "roles": roles,
+            "permissions": all_permissions
+        }
+
+    async def create_user(self, user_data: Dict[str, Any]) -> int:
+        """创建用户，返回用户 ID"""
+        username = user_data.get("username")
+        if not username:
+            raise ValueError("用户名不能为空")
+
+        # 校验用户名唯一性
+        existing = await User.filter(username=username).first()
+        if existing:
+            raise ValueError("用户名已存在")
+
+        # 校验邮箱唯一性
+        email = user_data.get("email")
+        if email:
+            existing = await User.filter(email=email).first()
+            if existing:
+                raise ValueError("邮箱已存在")
+
+        # 校验手机号唯一性
+        phone = user_data.get("phone")
+        if phone:
+            existing = await User.filter(phone=phone).first()
+            if existing:
+                raise ValueError("手机号已被使用")
+
+        # 校验用户名格式
+        if not username.replace("_", "").replace("-", "").isalnum():
+            raise ValueError("用户名只能包含字母、数字、下划线和连字符")
+
+        # 密码加密
+        password = user_data.get("password")
+        if not password:
+            raise ValueError("密码不能为空")
+        hashed_password = self._hash_password(password)
+
+        # 创建用户
+        user = await User.create(
+            username=username,
+            password=hashed_password,
+            email=email,
+            phone=phone,
+            full_name=user_data.get("full_name"),
+            avatar=user_data.get("avatar"),
+            status=MySQLUserStatus.ACTIVE
+        )
+
+        # 关联角色
+        role_ids = user_data.get("role_ids", [])
+        if role_ids:
+            roles = await Role.filter(id__in=role_ids, status=RoleStatus.ACTIVE)
+            if len(roles) != len(role_ids):
+                found_ids = {r.id for r in roles}
+                missing_ids = set(role_ids) - found_ids
+                raise ValueError(f"角色ID {missing_ids} 不存在或已禁用")
+            await user.roles.add(*roles)
+
+        return user.id
+
+    async def update_user(self, user_id: int, user_data: Dict[str, Any]) -> bool:
+        """更新用户信息"""
+        user = await User.filter(id=user_id).first()
+        if not user:
+            raise ValueError("用户不存在")
+
+        # 校验邮箱唯一性
+        email = user_data.get("email")
+        if email:
+            existing = await User.filter(email=email).exclude(id=user_id).first()
+            if existing:
+                raise ValueError("邮箱已被其他用户使用")
+
+        # 校验手机号唯一性
+        phone = user_data.get("phone")
+        if phone:
+            existing = await User.filter(phone=phone).exclude(id=user_id).first()
+            if existing:
+                raise ValueError("手机号已被其他用户使用")
+
+        # 更新密码
+        new_password = user_data.get("new_password")
+        if new_password:
+            user.password = self._hash_password(new_password)
+
+        # 更新基本信息
+        update_fields = ["email", "phone", "full_name", "avatar", "status"]
+        for field in update_fields:
+            if field in user_data:
+                setattr(user, field, user_data[field])
+
+        await user.save()
+
+        # 更新角色关联
+        role_ids = user_data.get("role_ids")
+        if role_ids is not None:
+            roles = await Role.filter(id__in=role_ids, status=RoleStatus.ACTIVE)
+            if len(roles) != len(role_ids):
+                found_ids = {r.id for r in roles}
+                missing_ids = set(role_ids) - found_ids
+                raise ValueError(f"角色ID {missing_ids} 不存在或已禁用")
+            await user.roles.clear()
+            await user.roles.add(*roles)
+
+        return True
+
+    async def delete(self, user_id: int) -> bool:
+        """删除用户"""
+        user = await User.filter(id=user_id).first()
+        if not user:
+            raise ValueError("用户不存在")
+
+        await user.roles.clear()
+        await user.delete()
+        return True
+
+    async def list_users(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        status: Optional[str] = None,
+        keyword: Optional[str] = None,
+        role: Optional[str] = None
+    ) -> dict:
+        """获取用户列表"""
+        query = User.all()
+
+        # 状态过滤
+        if status:
+            query = query.filter(status=status)
+
+        # 关键字搜索
+        if keyword:
+            query = query.filter(
+                Q(username__icontains=keyword) |
+                Q(full_name__icontains=keyword) |
+                Q(email__icontains=keyword)
+            )
+
+        # 角色过滤
+        if role:
+            query = query.filter(roles__code=role)
+
+        # 统计总数
+        total = await query.count()
+
+        # 分页查询
+        offset = (page - 1) * page_size
+        users = await query.prefetch_related("roles__permissions").offset(offset).limit(page_size).order_by("-created_at")
+
+        # 格式化结果
+        items = []
+        for user in users:
+            user_dict = await self._format_user(user)
+            items.append(user_dict)
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0
+        }
+
+    async def authenticate_user(self, username: str, password: str) -> Optional[dict]:
+        """用户认证"""
+        user = await User.filter(username=username).prefetch_related("roles__permissions").first()
+        if not user:
+            return None
+        if not self._verify_password(password, user.password):
+            return None
+
+        # 更新最后登录时间
+        user.last_login = datetime.now()
+        await user.save()
+
+        return await self._format_user(user)
+
+    async def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
+        """修改密码"""
+        user = await User.filter(id=user_id).first()
+        if not user:
+            raise ValueError("用户不存在")
+
+        if not self._verify_password(old_password, user.password):
+            raise ValueError("旧密码错误")
+
+        user.password = self._hash_password(new_password)
+        await user.save()
+        return True
+
+    async def reset_password(self, user_id: int, new_password: str) -> bool:
+        """重置密码"""
+        user = await User.filter(id=user_id).first()
+        if not user:
+            raise ValueError("用户不存在")
+
+        user.password = self._hash_password(new_password)
+        await user.save()
+        return True
+
+    def _create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
+        """生成 JWT Token"""
+        to_encode = data.copy()
+        if expires_delta:
+            expire = datetime.utcnow() + expires_delta
+        else:
+            expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        return encoded_jwt
+
+
+# MySQL 版服务实例
+mysql_user_service = MySQLUserService()
