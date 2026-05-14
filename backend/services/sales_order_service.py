@@ -7,8 +7,8 @@ from typing import Dict, Any, List, Optional, Tuple
 
 from bson import ObjectId
 from services.base_service import BaseService
-from services.product_service import product_service, product_spec_service, brand_service
-from services.customer_service import customer_service
+from services.product_service_mysql import product_service, product_spec_service, brand_service
+from services.customer_service_mysql import customer_service
 from validators.sales_order_validator import (
     SALES_ORDER_CREATE_CONFIG,
     SALES_ORDER_UPDATE_CONFIG,
