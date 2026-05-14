@@ -200,7 +200,7 @@ async def transfer_customer(
 
     # 获取目标用户信息
     from services.auth_service import mysql_user_service
-    new_user = await mysql_user_service.get_user_by_id(int(new_user_id))
+    new_user = await mysql_user_service.get_by_id(int(new_user_id))
     if not new_user:
         raise ValueError("目标销售不存在")
 
