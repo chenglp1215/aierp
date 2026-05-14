@@ -21,11 +21,11 @@ class TestResult:
     def record(self, name, success, detail=""):
         if success:
             self.passed += 1
-            print(f"  ✅ {name}")
+            print(f"  [OK] {name}")
         else:
             self.failed += 1
             self.errors.append({"test": name, "detail": detail})
-            print(f"  ❌ {name}: {detail}")
+            print(f"  [FAIL] {name}: {detail}")
 
     def summary(self):
         total = self.passed + self.failed
@@ -93,7 +93,7 @@ def check_field(body, field, test_name):
 # ============ 仓库测试 ============
 
 def test_create_warehouse():
-    print("\n📦 [1/16] 创建仓库")
+    print("\n[1/16] 创建仓库")
     resp, err = api("POST", "/warehouses/", {
         "warehouse_code": "WH_TEST_001",
         "name": "测试仓库-深圳仓",
@@ -120,7 +120,7 @@ def test_create_warehouse():
 
 
 def test_list_warehouses():
-    print("\n📦 [2/16] 查询仓库列表")
+    print("\n[2/16] 查询仓库列表")
     resp, err = api("GET", "/warehouses/", params={"page": 1, "page_size": 20})
     body = parse(resp, err, "查询仓库列表")
     if not body:
@@ -141,10 +141,10 @@ def test_list_warehouses():
 
 
 def test_get_warehouse():
-    print("\n📦 [3/16] 查询仓库详情")
+    print("\n[3/16] 查询仓库详情")
     wh_id = created_ids.get("warehouse_id", "")
     if not wh_id:
-        print("  ⏭ 跳过（无测试仓库）")
+        print("  [SKIP] 跳过（无测试仓库）")
         return
     resp, err = api("GET", f"/warehouses/{wh_id}")
     body = parse(resp, err, "查询仓库详情")
@@ -162,10 +162,10 @@ def test_get_warehouse():
 
 
 def test_update_warehouse():
-    print("\n📦 [4/16] 更新仓库")
+    print("\n[4/16] 更新仓库")
     wh_id = created_ids.get("warehouse_id", "")
     if not wh_id:
-        print("  ⏭ 跳过（无测试仓库）")
+        print("  [SKIP] 跳过（无测试仓库）")
         return
     resp, err = api("PUT", f"/warehouses/{wh_id}", {
         "name": "测试仓库-已更新",
@@ -189,17 +189,58 @@ def test_update_warehouse():
 # ============ 入库批次测试 ============
 
 def test_create_inbound_batch():
-    print("\n📦 [5/16] 创建入库批次（自动创建库存）")
+    print("\n[5/16] 创建入库批次（自动创建库存）")
     wh_id = created_ids.get("warehouse_id", "")
+
+    # 先创建分类
+    resp, err = api("POST", "/categories/", {
+        "name": "测试库存分类",
+        "tax_code": "TAX_INV"
+    })
+    cat_body = parse(resp, err, "创建测试分类")
+    if cat_body and cat_body.get("status") == "success":
+        created_ids["category_id"] = cat_body["result"]["id"]
+
+    # 创建品牌
+    resp, err = api("POST", "/brands/", {"name": "测试库存品牌"})
+    brand_body = parse(resp, err, "创建测试品牌")
+    if brand_body and brand_body.get("status") == "success":
+        created_ids["brand_id"] = brand_body["result"]["id"]
+
+    # 创建商品
+    resp, err = api("POST", "/products/", {
+        "name": "测试库存商品",
+        "category_id": created_ids.get("category_id", ""),
+        "brand_id": created_ids.get("brand_id", "")
+    })
+    prod_body = parse(resp, err, "创建测试商品")
+    if not prod_body or prod_body.get("status") != "success":
+        print("  [SKIP] 无法创建测试商品")
+        return None
+    created_ids["product_id"] = prod_body["result"]["id"]
+
+    # 创建规格
+    resp, err = api("POST", f"/products/{created_ids['product_id']}/specs", {
+        "spec_code": "SPEC_INV_001",
+        "packaging": "500g/袋",
+        "price": 88.00
+    })
+    spec_body = parse(resp, err, "创建测试规格")
+    if not spec_body or spec_body.get("status") != "success":
+        print("  [SKIP] 无法创建测试规格")
+        return None
+    created_ids["spec_id"] = spec_body["result"]["id"]
+
+    # 创建入库批次
     resp, err = api("POST", "/inbound-batches/", {
         "warehouse_id": wh_id,
-        "product_id": "TEST_PROD_ID_001",
-        "product_code": "TPC001",
-        "product_name": "测试入库商品",
-        "spec_id": "TEST_SPEC_ID_001",
-        "spec_code": "TSC001",
+        "product_id": created_ids["product_id"],
+        "product_code": prod_body["result"].get("product_code", ""),
+        "product_name": "测试库存商品",
+        "spec_id": created_ids["spec_id"],
+        "spec_code": "SPEC_INV_001",
         "quantity": 100,
-        "user_id": "TEST_USER_001",
+        "user_id": 1,
         "user_name": "测试操作员"
     })
     body = parse(resp, err, "创建入库批次")
@@ -214,7 +255,7 @@ def test_create_inbound_batch():
         result.record("创建入库批次-stock_id已填充", bool(stock_id), f"stock_id={stock_id}")
         result.record("创建入库批次-warehouse_id正确", data.get("warehouse_id") == wh_id)
         result.record("创建入库批次-quantity正确", data.get("quantity") == 100)
-        result.record("创建入库批次-product_name正确", data.get("product_name") == "测试入库商品")
+        result.record("创建入库批次-product_name正确", data.get("product_name") == "测试库存商品")
         created_ids["inbound_batch_id"] = batch_id
         created_ids["stock_id"] = stock_id
         return batch_id
@@ -222,7 +263,7 @@ def test_create_inbound_batch():
 
 
 def test_list_inbound_batches():
-    print("\n📦 [6/16] 查询入库批次列表")
+    print("\n[6/16] 查询入库批次列表")
     stock_id = created_ids.get("stock_id", "")
     params = {"page": 1, "page_size": 20}
     if stock_id:
@@ -244,10 +285,10 @@ def test_list_inbound_batches():
 
 
 def test_get_inbound_batch():
-    print("\n📦 [7/16] 查询入库批次详情")
+    print("\n[7/16] 查询入库批次详情")
     batch_id = created_ids.get("inbound_batch_id", "")
     if not batch_id:
-        print("  ⏭ 跳过（无测试入库批次）")
+        print("  [SKIP] 跳过（无测试入库批次）")
         return
     resp, err = api("GET", f"/inbound-batches/{batch_id}")
     body = parse(resp, err, "查询入库批次详情")
@@ -264,10 +305,10 @@ def test_get_inbound_batch():
 
 
 def test_update_inbound_batch():
-    print("\n📦 [8/16] 更新入库批次")
+    print("\n[8/16] 更新入库批次")
     batch_id = created_ids.get("inbound_batch_id", "")
     if not batch_id:
-        print("  ⏭ 跳过（无测试入库批次）")
+        print("  [SKIP] 跳过（无测试入库批次）")
         return
     resp, err = api("PUT", f"/inbound-batches/{batch_id}", {
         "product_name": "测试入库商品-已更新"
@@ -283,7 +324,7 @@ def test_update_inbound_batch():
 # ============ 库存测试 ============
 
 def test_list_stocks():
-    print("\n📦 [9/16] 查询库存列表")
+    print("\n[9/16] 查询库存列表")
     wh_id = created_ids.get("warehouse_id", "")
     params = {"page": 1, "page_size": 20}
     if wh_id:
@@ -307,10 +348,10 @@ def test_list_stocks():
 
 
 def test_get_stock():
-    print("\n📦 [10/16] 查询库存详情")
+    print("\n[10/16] 查询库存详情")
     stock_id = created_ids.get("stock_id", "")
     if not stock_id:
-        print("  ⏭ 跳过（无测试库存）")
+        print("  [SKIP] 跳过（无测试库存）")
         return
     resp, err = api("GET", f"/stocks/{stock_id}")
     body = parse(resp, err, "查询库存详情")
@@ -327,10 +368,10 @@ def test_get_stock():
 
 
 def test_update_stock():
-    print("\n📦 [11/16] 手动盘库更新库存")
+    print("\n[11/16] 手动盘库更新库存")
     stock_id = created_ids.get("stock_id", "")
     if not stock_id:
-        print("  ⏭ 跳过（无测试库存）")
+        print("  [SKIP] 跳过（无测试库存）")
         return
     resp, err = api("PUT", f"/stocks/{stock_id}", {
         "quantity": 95,
@@ -353,22 +394,24 @@ def test_update_stock():
 # ============ 出库批次测试 ============
 
 def test_create_outbound_batch():
-    print("\n📦 [12/16] 创建出库批次")
+    print("\n[12/16] 创建出库批次")
     stock_id = created_ids.get("stock_id", "")
     wh_id = created_ids.get("warehouse_id", "")
+    product_id = created_ids.get("product_id", "")
+    spec_id = created_ids.get("spec_id", "")
     if not stock_id:
-        print("  ⏭ 跳过（无测试库存）")
+        print("  [SKIP] 跳过（无测试库存）")
         return None
     resp, err = api("POST", "/outbound-batches/", {
         "warehouse_id": wh_id,
-        "product_id": "TEST_PROD_ID_001",
+        "product_id": product_id,
         "product_code": "TPC001",
         "product_name": "测试出库商品",
-        "spec_id": "TEST_SPEC_ID_001",
-        "spec_code": "TSC001",
+        "spec_id": spec_id,
+        "spec_code": "SPEC_INV_001",
         "stock_id": stock_id,
         "quantity": 20,
-        "user_id": "TEST_USER_001",
+        "user_id": 1,
         "user_name": "测试操作员"
     })
     body = parse(resp, err, "创建出库批次")
@@ -393,7 +436,7 @@ def test_create_outbound_batch():
 
 
 def test_list_outbound_batches():
-    print("\n📦 [13/16] 查询出库批次列表")
+    print("\n[13/16] 查询出库批次列表")
     stock_id = created_ids.get("stock_id", "")
     params = {"page": 1, "page_size": 20}
     if stock_id:
@@ -415,10 +458,10 @@ def test_list_outbound_batches():
 
 
 def test_get_outbound_batch():
-    print("\n📦 [14/16] 查询出库批次详情")
+    print("\n[14/16] 查询出库批次详情")
     batch_id = created_ids.get("outbound_batch_id", "")
     if not batch_id:
-        print("  ⏭ 跳过（无测试出库批次）")
+        print("  [SKIP] 跳过（无测试出库批次）")
         return
     resp, err = api("GET", f"/outbound-batches/{batch_id}")
     body = parse(resp, err, "查询出库批次详情")
@@ -434,10 +477,10 @@ def test_get_outbound_batch():
 
 
 def test_update_outbound_batch():
-    print("\n📦 [15/16] 更新出库批次")
+    print("\n[15/16] 更新出库批次")
     batch_id = created_ids.get("outbound_batch_id", "")
     if not batch_id:
-        print("  ⏭ 跳过（无测试出库批次）")
+        print("  [SKIP] 跳过（无测试出库批次）")
         return
     resp, err = api("PUT", f"/outbound-batches/{batch_id}", {
         "product_name": "测试出库商品-已更新"
@@ -453,14 +496,15 @@ def test_update_outbound_batch():
 # ============ 异常验证测试 ============
 
 def test_validation():
-    print("\n🔍 [16/16] 异常参数验证测试")
+    print("\n[16/16] 异常参数验证测试")
 
     print("\n  [异常-1] 创建仓库-缺少必填warehouse_code")
     resp, err = api("POST", "/warehouses/", {"name": "无编码仓库", "address": "测试地址"})
     body = parse(resp, err, "异常-仓库缺少warehouse_code")
     if body:
-        result.record("异常-仓库缺少warehouse_code应报错",
-                       body.get("status") == "error",
+        # warehouse_code 会自动生成，所以应该返回成功
+        result.record("异常-仓库缺少warehouse_code应自动生成",
+                       body.get("status") == "success",
                        f"status={body.get('status')}, msg={body.get('message')}")
 
     print("\n  [异常-2] 创建仓库-缺少必填name")
@@ -498,14 +542,14 @@ def test_validation():
     print("\n  [异常-6] 创建出库批次-stock_id不存在")
     resp, err = api("POST", "/outbound-batches/", {
         "warehouse_id": created_ids.get("warehouse_id", ""),
-        "product_id": "TEST_PROD_ID_001",
+        "product_id": created_ids.get("product_id", 1),
         "product_code": "TPC001",
         "product_name": "测试",
-        "spec_id": "TEST_SPEC_ID_001",
-        "spec_code": "TSC001",
-        "stock_id": "000000000000000000000099",
+        "spec_id": created_ids.get("spec_id", 1),
+        "spec_code": "SPEC001",
+        "stock_id": 99999,
         "quantity": 10,
-        "user_id": "U001",
+        "user_id": 1,
         "user_name": "测试"
     })
     body = parse(resp, err, "异常-出库stock_id不存在")
@@ -519,14 +563,14 @@ def test_validation():
     if stock_id:
         resp, err = api("POST", "/outbound-batches/", {
             "warehouse_id": created_ids.get("warehouse_id", ""),
-            "product_id": "TEST_PROD_ID_001",
+            "product_id": created_ids.get("product_id", 1),
             "product_code": "TPC001",
             "product_name": "测试",
-            "spec_id": "TEST_SPEC_ID_001",
-            "spec_code": "TSC001",
+            "spec_id": created_ids.get("spec_id", 1),
+            "spec_code": "SPEC001",
             "stock_id": stock_id,
             "quantity": 999999,
-            "user_id": "U001",
+            "user_id": 1,
             "user_name": "测试"
         })
         body = parse(resp, err, "异常-出库超库存")
@@ -536,7 +580,7 @@ def test_validation():
                            f"status={body.get('status')}, msg={body.get('message')}")
 
     print("\n  [异常-8] 查询不存在的仓库详情")
-    resp, err = api("GET", "/warehouses/000000000000000000000099")
+    resp, err = api("GET", "/warehouses/99999")
     body = parse(resp, err, "异常-查询不存在仓库")
     if body:
         result.record("异常-查询不存在仓库应报错",
@@ -544,7 +588,7 @@ def test_validation():
                        f"status={body.get('status')}, msg={body.get('message')}")
 
     print("\n  [异常-9] 查询不存在的库存详情")
-    resp, err = api("GET", "/stocks/000000000000000000000099")
+    resp, err = api("GET", "/stocks/99999")
     body = parse(resp, err, "异常-查询不存在库存")
     if body:
         result.record("异常-查询不存在库存应报错",
@@ -552,7 +596,7 @@ def test_validation():
                        f"status={body.get('status')}, msg={body.get('message')}")
 
     print("\n  [异常-10] 查询不存在的入库批次详情")
-    resp, err = api("GET", "/inbound-batches/000000000000000000000099")
+    resp, err = api("GET", "/inbound-batches/99999")
     body = parse(resp, err, "异常-查询不存在入库批次")
     if body:
         result.record("异常-查询不存在入库批次应报错",
@@ -560,7 +604,7 @@ def test_validation():
                        f"status={body.get('status')}, msg={body.get('message')}")
 
     print("\n  [异常-11] 查询不存在的出库批次详情")
-    resp, err = api("GET", "/outbound-batches/000000000000000000000099")
+    resp, err = api("GET", "/outbound-batches/99999")
     body = parse(resp, err, "异常-查询不存在出库批次")
     if body:
         result.record("异常-查询不存在出库批次应报错",
@@ -568,7 +612,7 @@ def test_validation():
                        f"status={body.get('status')}, msg={body.get('message')}")
 
     print("\n  [异常-12] 手动盘库-库存不存在")
-    resp, err = api("PUT", "/stocks/000000000000000000000099", {"quantity": 10})
+    resp, err = api("PUT", "/stocks/99999", {"quantity": 10})
     body = parse(resp, err, "异常-盘库库存不存在")
     if body:
         result.record("异常-盘库库存不存在应报错",
@@ -585,11 +629,11 @@ def main():
     print(f"服务地址: {BASE_URL}")
     print("=" * 60)
 
-    health_resp, health_err = api("GET", "/health")
+    health_resp, health_err = api("GET", "/health/")
     if health_err or (health_resp and health_resp.status_code != 200):
-        print(f"\n❌ 服务未就绪: {health_err or health_resp.status_code}")
+        print(f"\n[FAIL] 服务未就绪: {health_err or health_resp.status_code}")
         sys.exit(1)
-    print("✅ 服务健康检查通过")
+    print("[OK] 服务健康检查通过")
 
     test_create_warehouse()
     test_list_warehouses()

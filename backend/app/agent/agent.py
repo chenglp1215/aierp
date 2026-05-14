@@ -10,7 +10,7 @@ from langchain_core.outputs import LLMResult
 from .config import AgentConfig
 from .llm.config import LLMConfig
 from .tools import tool_registry
-from models.auth import User
+from models_mysql.auth import User
 from langchain_core.messages.tool import ToolMessage
 from langchain_core.tools import StructuredTool
 from app.agent.tools.base import BaseTool

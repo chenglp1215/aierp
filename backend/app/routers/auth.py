@@ -5,7 +5,7 @@ from typing import Optional, List, Callable, Dict, Any
 from jose import JWTError, jwt
 
 from config import settings
-from models.auth import TokenPayload
+from app.middleware import TokenPayload
 from services.auth_service import mysql_user_service, mysql_role_service, mysql_permission_service
 from app.decorators import wrap_response
 import logging
