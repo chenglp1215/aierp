@@ -32,3 +32,24 @@
 #### Scenario: 幂等性保证
 - **WHEN** 初始化数据已存在
 - **THEN** 系统 SHALL 跳过已存在的数据，不产生重复或错误
+
+### Requirement: Tortoise ORM 模型注册
+系统 SHALL 在初始化 MySQL 连接时注册所有需要使用的模型模块。
+
+#### Scenario: 添加新的 MySQL 模型模块
+- **WHEN** 在 `models_mysql/` 目录下新增模型文件（如 `product.py`）
+- **THEN** 开发者 SHALL 在 `app/database.py` 的 `init_mysql()` 函数中添加对应模块到 `modules["models"]` 列表
+- **AND** 格式为 `"models_mysql.{模块名}"`
+
+#### Scenario: 模型未注册时的错误
+- **WHEN** 使用未注册的 Tortoise ORM 模型进行数据库操作
+- **THEN** 系统 SHALL 抛出 `ConfigurationError: default_connection for the model cannot be None`
+- **AND** 需检查 `init_mysql()` 中的 `modules["models"]` 是否包含该模型所在模块
+
+#### Scenario: 模型注册示例
+- **GIVEN** 项目有 `models_mysql/auth.py` 和 `models_mysql/product.py` 两个模型文件
+- **WHEN** 初始化数据库连接时
+- **THEN** `Tortoise.init()` 的配置 SHALL 为：
+  ```python
+  modules={"models": ["models_mysql.auth", "models_mysql.product"]}
+  ```
