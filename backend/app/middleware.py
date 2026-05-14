@@ -3,12 +3,21 @@ import logging
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from jose import JWTError, jwt
+from pydantic import BaseModel
+from typing import List
 from config import settings
-from models.auth import TokenPayload
-from services.auth_service import auth_service
+from services.auth_service import mysql_user_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+class TokenPayload(BaseModel):
+    sub: str
+    username: str
+    roles: List[str] = []
+    permissions: List[str] = []
+    exp: int
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -75,7 +84,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             token_data = TokenPayload(**payload)
 
-            user = await auth_service.get_user_by_id(token_data.sub)
+            user = await mysql_user_service.get_by_id(int(token_data.sub))
             if not user:
                 from fastapi.responses import JSONResponse
                 return JSONResponse(

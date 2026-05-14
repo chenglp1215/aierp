@@ -3,17 +3,26 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from typing import Optional
 import logging
 from jose import JWTError, jwt
+from pydantic import BaseModel
+from typing import List
 
 from services.ws_manager import ws_manager
 from config import settings
-from models.auth import TokenPayload
-from services.auth_service import auth_service
+from services.auth_service import mysql_user_service
 from app.routers.auth import MOCK_ADMIN_USER
 from app.agent import agent_manager
 
 logger = logging.getLogger(__name__)
 
 ws_router = APIRouter(tags=["WebSocket"])
+
+
+class TokenPayload(BaseModel):
+    sub: str
+    username: str
+    roles: List[str] = []
+    permissions: List[str] = []
+    exp: int
 
 
 @ws_router.websocket("/chat/{agent_id}")
@@ -40,7 +49,7 @@ async def websocket_chat(
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             token_data = TokenPayload(**payload)
 
-            user = await auth_service.get_user_by_id(token_data.sub)
+            user = await mysql_user_service.get_by_id(int(token_data.sub))
             if not user:
                 await websocket.close(code=4002, reason="User not found")
                 return
@@ -132,7 +141,7 @@ async def websocket_chat(
                         })
                     except Exception as e:
                         logger.error(f"Send tool_call_end failed: {e}")
-                
+
                 async def text_callback(result: str):
                     try:
                         await websocket.send_json({
