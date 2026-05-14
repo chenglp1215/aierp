@@ -6,7 +6,6 @@ import json
 from fastapi import APIRouter, Query, Depends, Body
 from typing import Optional
 
-from models.customer import CustomerStatus
 from app.routers.prompts.customer import CREATE_CUSTOMER_PROMPT
 from app.routers.prompts.province_city import PROVINCE_CITY_DATA
 from services.customer_service_mysql import customer_service, customer_discount_service

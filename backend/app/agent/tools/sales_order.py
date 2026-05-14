@@ -3,7 +3,7 @@ import logging
 
 from app.agent.tools.base import BaseTool, ToolResult
 from services.sales_order_service import sales_order_service
-from services.inventory_service import warehouse_service
+from services.inventory_service_mysql import warehouse_service
 from models.sales_order import SalesOrderCreate, SalesOrderUpdate
 
 logger = logging.getLogger(__name__)

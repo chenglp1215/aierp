@@ -13,22 +13,6 @@ from .sales_order import (
     InvoiceInfo,
     OrderStatusInfo,
 )
-from .customer import (
-    CustomerBase,
-    CustomerType,
-    CustomerStatus,
-    CustomerDiscount,
-)
-from .inventory import (
-    Warehouse,
-    WarehouseListResponse,
-    WarehouseStatus,
-    StockStatus,
-    InboundBatch,
-    OutboundBatch,
-    Stock,
-    StockListResponse,
-)
 from .purchase_order import (
     PurchaseOrder,
     PurchaseOrderCreate,
@@ -71,19 +55,6 @@ __all__ = [
     "DeliverInfo",
     "InvoiceInfo",
     "OrderStatusInfo",
-    "CustomerBase",
-    "CustomerType",
-    "CustomerStatus",
-    "CustomerDiscount",
-    "Warehouse",
-    "WarehouseCreate",
-    "WarehouseUpdate",
-    "WarehouseListResponse",
-    "WarehouseStatus",
-    "Stock",
-    "StockListResponse",
-    "InboundBatch",
-    "OutboundBatch",
     "PurchaseOrder",
     "PurchaseOrderCreate",
     "PurchaseOrderUpdate",

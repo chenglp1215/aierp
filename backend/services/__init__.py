@@ -1,9 +1,9 @@
 from .base_service import BaseService
 from .sales_order_service import SalesOrderService, sales_order_service
 from .purchase_order_service import PurchaseOrderService, purchase_order_service
-from .customer_service import CustomerService, customer_service, customer_discount_service
+from .customer_service_mysql import customer_service, customer_discount_service
 from .auth_service import mysql_user_service, mysql_role_service, mysql_permission_service
-from .inventory_service import warehouse_service, stock_service
+from .inventory_service_mysql import warehouse_service, stock_service
 from .product_service_mysql import product_service, category_service, brand_service, product_spec_service
 from .accounts_receivable_service import accounts_receivable_service
 from .ws_manager import ws_manager
@@ -18,7 +18,6 @@ __all__ = [
     "sales_order_service",
     "PurchaseOrderService",
     "purchase_order_service",
-    "CustomerService",
     "customer_service",
     "customer_discount_service",
     "mysql_user_service",

@@ -2,8 +2,8 @@ from typing import Any, Dict, Optional
 import logging
 
 from app.agent.tools.base import BaseTool, ToolResult
-from services.customer_service import customer_service
-from models.customer import CustomerCreate, CustomerUpdate, ShippingAddressCreate, ShippingAddressUpdate, CustomerType
+from services.customer_service_mysql import customer_service
+# 注意：MySQL 版本不再使用 Pydantic 模型，后续会重新对接
 
 logger = logging.getLogger(__name__)
 
