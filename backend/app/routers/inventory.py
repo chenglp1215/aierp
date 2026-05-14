@@ -3,7 +3,7 @@
 """
 from fastapi import APIRouter, Query, Depends
 from typing import Optional, Dict, Any
-from services.inventory_service import warehouse_service, stock_service, inbound_batch_service, outbound_batch_service
+from services.inventory_service_mysql import warehouse_service, stock_service, inbound_batch_service, outbound_batch_service
 from .auth import require_permission
 from app.decorators import wrap_response
 
@@ -11,6 +11,14 @@ warehouse_router = APIRouter(prefix="/warehouses", tags=["仓库管理"])
 stock_router = APIRouter(prefix="/stocks", tags=["库存管理"])
 inbound_router = APIRouter(prefix="/inbound-batches", tags=["入库批次管理"])
 outbound_router = APIRouter(prefix="/outbound-batches", tags=["出库批次管理"])
+
+
+def to_int_id(id_str: str) -> int:
+    """将字符串 ID 转换为整数 ID"""
+    try:
+        return int(id_str)
+    except (ValueError, TypeError):
+        raise ValueError("无效的ID格式")
 
 
 # ============ 仓库管理路由 ============
@@ -57,7 +65,7 @@ async def get_warehouse(
     _: dict = Depends(require_permission("warehouse.view"))
 ):
     """获取仓库详情"""
-    warehouse = await warehouse_service.get_warehouse_by_id(warehouse_id, is_formatted=True)
+    warehouse = await warehouse_service.get_warehouse_by_id(to_int_id(warehouse_id), is_formatted=True)
     if not warehouse:
         raise ValueError("仓库不存在")
     return warehouse
@@ -71,7 +79,7 @@ async def update_warehouse(
     _: dict = Depends(require_permission("warehouse.edit"))
 ):
     """更新仓库信息"""
-    await warehouse_service.update_warehouse(warehouse_id, warehouse)
+    await warehouse_service.update_warehouse(to_int_id(warehouse_id), warehouse)
     return "仓库更新成功"
 
 
@@ -114,7 +122,7 @@ async def get_stock(
     _: dict = Depends(require_permission("stock.view"))
 ):
     """获取库存详情"""
-    stock = await stock_service.get_stock_by_id(stock_id, is_formatted=True)
+    stock = await stock_service.get_stock_by_id(to_int_id(stock_id), is_formatted=True)
     if not stock:
         raise ValueError("库存不存在")
     return stock
@@ -128,7 +136,7 @@ async def update_stock(
     _: dict = Depends(require_permission("stock.edit"))
 ):
     """更新库存信息（手动盘库）"""
-    await stock_service.update_stock(stock_id, stock)
+    await stock_service.update_stock(to_int_id(stock_id), stock)
     return "库存更新成功"
 
 
@@ -174,7 +182,7 @@ async def get_inbound_batch(
     _: dict = Depends(require_permission("inbound.view"))
 ):
     """获取入库批次详情"""
-    batch = await inbound_batch_service.get_by_id(batch_id)
+    batch = await inbound_batch_service.get_by_id(to_int_id(batch_id))
     if not batch:
         raise ValueError("入库批次不存在")
     return batch
@@ -188,7 +196,7 @@ async def update_inbound_batch(
     _: dict = Depends(require_permission("inbound.edit"))
 ):
     """更新入库批次"""
-    await inbound_batch_service.update_inbound(batch_id, inbound)
+    await inbound_batch_service.update_inbound(to_int_id(batch_id), inbound)
     return "入库批次更新成功"
 
 
@@ -234,7 +242,7 @@ async def get_outbound_batch(
     _: dict = Depends(require_permission("outbound.view"))
 ):
     """获取出库批次详情"""
-    batch = await outbound_batch_service.get_by_id(batch_id)
+    batch = await outbound_batch_service.get_by_id(to_int_id(batch_id))
     if not batch:
         raise ValueError("出库批次不存在")
     return batch
@@ -248,5 +256,5 @@ async def update_outbound_batch(
     _: dict = Depends(require_permission("outbound.edit"))
 ):
     """更新出库批次"""
-    await outbound_batch_service.update_outbound(batch_id, outbound)
+    await outbound_batch_service.update_outbound(to_int_id(batch_id), outbound)
     return "出库批次更新成功"
