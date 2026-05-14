@@ -1688,3 +1688,80 @@ export const uploadApi = {
     return apiService.delete<{ status: string; message: string }>(`/upload/file/${fileId}`)
   }
 }
+
+export const stockCheckApi = {
+  // 单个盘库
+  createSingle: (data: { stock_id: string; check_quantity: number; remarks?: string }) => {
+    return apiService.post<any>('/stock-checks/single', data)
+  },
+
+  // 批量盘库
+  createBatch: async (warehouseId: string, file: File, remarks?: string) => {
+    const formData = new FormData()
+    formData.append('warehouse_id', warehouseId)
+    formData.append('file', file)
+    if (remarks) {
+      formData.append('remarks', remarks)
+    }
+
+    const url = `${(apiService as any).baseUrl}/stock-checks/batch`
+    const headers: Record<string, string> = {}
+    const token = localStorage.getItem('token')
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: '批量盘库失败' }))
+      throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+    }
+
+    return response.json()
+  },
+
+  // 下载模板
+  downloadTemplate: async () => {
+    const url = `${(apiService as any).baseUrl}/stock-checks/template`
+    const headers: Record<string, string> = {}
+    const token = localStorage.getItem('token')
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const response = await fetch(url, { headers })
+    if (!response.ok) {
+      throw new Error('下载模板失败')
+    }
+
+    const blob = await response.blob()
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = 'stock_check_template.xlsx'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(downloadUrl)
+  },
+
+  // 获取盘库记录列表
+  listRecords: (params: { page?: number; page_size?: number; stock_id?: string; batch_id?: string; warehouse_id?: string }) => {
+    return apiService.get<any>('/stock-checks/records', params)
+  },
+
+  // 获取盘库批次列表
+  listBatches: (params: { page?: number; page_size?: number; warehouse_id?: string; check_type?: string }) => {
+    return apiService.get<any>('/stock-checks/batches', params)
+  },
+
+  // 获取批次详情
+  getBatchDetail: (batchId: string) => {
+    return apiService.get<any>(`/stock-checks/batches/${batchId}`)
+  }
+}
