@@ -73,7 +73,12 @@ async def init_mysql():
     """初始化 MySQL (Tortoise ORM) 连接"""
     # URL 编码密码中的特殊字符
     encoded_password = quote_plus(settings.MYSQL_PASSWORD)
-    db_url = f"mysql://{settings.MYSQL_USER}:{encoded_password}@{settings.MYSQL_HOST}:{settings.MYSQL_PORT}/{settings.MYSQL_DATABASE}"
+    # 连接池参数通过 URL 查询参数传递
+    db_url = (
+        f"mysql://{settings.MYSQL_USER}:{encoded_password}"
+        f"@{settings.MYSQL_HOST}:{settings.MYSQL_PORT}/{settings.MYSQL_DATABASE}"
+        f"?minsize=1&maxsize=5&pool_recycle=1800"
+    )
 
     await Tortoise.init(
         db_url=db_url,

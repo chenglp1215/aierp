@@ -65,7 +65,19 @@ settings = Settings()
 _MYSQL_ENCODED_PASSWORD = quote_plus(settings.MYSQL_PASSWORD)
 TORTOISE_ORM = {
     "connections": {
-        "default": f"mysql://{settings.MYSQL_USER}:{_MYSQL_ENCODED_PASSWORD}@{settings.MYSQL_HOST}:{settings.MYSQL_PORT}/{settings.MYSQL_DATABASE}"
+        "default": {
+            "engine": "tortoise.backends.mysql",
+            "credentials": {
+                "host": settings.MYSQL_HOST,
+                "port": settings.MYSQL_PORT,
+                "user": settings.MYSQL_USER,
+                "password": settings.MYSQL_PASSWORD,
+                "database": settings.MYSQL_DATABASE,
+                "minsize": 1,
+                "maxsize": 5,
+                "pool_recycle": 1800,  # 30分钟回收连接
+            }
+        }
     },
     "apps": {
         "models": {

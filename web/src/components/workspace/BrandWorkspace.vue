@@ -257,7 +257,7 @@ onMounted(() => {
             </template>
           </vxe-column>
           <vxe-column field="name" title="品牌名称" min-width="150" />
-          <vxe-column field="description" title="描述" min-width="200" show-overflow="tooltip">
+          <vxe-column field="description" title="描述" min-width="200">
             <template #default="{ row }">
               {{ row.description || '-' }}
             </template>
@@ -949,4 +949,5 @@ onMounted(() => {
   background-color: transparent !important;
   color: var(--text-secondary) !important;
 }
+
 </style>
