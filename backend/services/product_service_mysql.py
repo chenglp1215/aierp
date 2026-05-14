@@ -101,6 +101,11 @@ class BrandService:
         brand = await Brand.get_or_none(id=brand_id)
         return brand.name if brand else None
 
+    async def get_brand_by_ids(self, brand_ids: List[int]) -> List[Dict[str, Any]]:
+        """根据ID列表获取品牌"""
+        brands = await Brand.filter(id__in=brand_ids).all()
+        return [b.to_dict() for b in brands]
+
     async def delete_brand(self, brand_id: int) -> bool:
         """删除品牌"""
         brand = await Brand.get_or_none(id=brand_id)
@@ -302,6 +307,16 @@ class ProductSpecService:
             result[spec.product_id].append(await spec.to_dict())
         return result
 
+    async def get_spec_by_ids(self, spec_ids: List[int], is_formatted: bool = False) -> List[Dict[str, Any]]:
+        """根据ID列表获取规格"""
+        specs = await ProductSpec.filter(id__in=spec_ids).all()
+        return [await s.to_dict() for s in specs]
+
+    async def get_spec_by_codes(self, codes: List[str]) -> List[Dict[str, Any]]:
+        """根据编号列表获取规格"""
+        specs = await ProductSpec.filter(spec_code__in=codes).all()
+        return [await s.to_dict() for s in specs]
+
     async def get_spec_by_keyword(
         self, keyword: str, page: int = 1, page_size: int = 20, is_formatted: bool = False
     ) -> tuple[List[Dict[str, Any]], int]:
@@ -421,6 +436,11 @@ class ProductService:
     async def get_product_by_ids(self, product_ids: List[int]) -> List[Dict[str, Any]]:
         """根据ID列表获取商品"""
         products = await Product.filter(id__in=product_ids).all()
+        return [await p.to_dict() for p in products]
+
+    async def get_product_by_codes(self, codes: List[str]) -> List[Dict[str, Any]]:
+        """根据编号列表获取商品"""
+        products = await Product.filter(product_code__in=codes).all()
         return [await p.to_dict() for p in products]
 
     async def list_products(

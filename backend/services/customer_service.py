@@ -155,10 +155,9 @@ class CustomerService(BaseService):
 
     async def transfer_customer(self, customer_id: str, new_sales_user_id: str) -> bool:
         """转移客户给另一个销售"""
-        from services.auth_service import AuthService
+        from services.auth_service import mysql_user_service
 
-        auth_service = AuthService()
-        new_user = await auth_service.get_user_by_id(new_sales_user_id)
+        new_user = await mysql_user_service.get_by_id(int(new_sales_user_id))
         if not new_user:
             return False
         update_data = {
@@ -398,23 +397,33 @@ class CustomerDiscountService(BaseService):
 
     async def format(self, discount: Dict[str, Any]) -> Dict[str, Any]:
         """格式化折扣数据"""
-        from services.product_service import brand_service
+        from services.product_service_mysql import brand_service
         brand_id = discount.get("brand_id")
-        if brand := await brand_service.get_by_id(brand_id):
-            discount["brand_name"] = brand["name"]
-        else:
+        try:
+            if brand := await brand_service.get_brand_by_id(int(brand_id)):
+                discount["brand_name"] = brand["name"]
+            else:
+                discount["brand_name"] = None
+        except Exception:
             discount["brand_name"] = None
         return discount
 
     async def format_list(self, discounts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """格式化折扣列表"""
-        from services.product_service import brand_service
-        brand_ids = [discount.get("brand_id") for discount in discounts]
-        brand_name_map = {brand["id"]: brand["name"] for brand in await brand_service.get_by_ids(brand_ids)}
+        from services.product_service_mysql import brand_service
+        brand_ids = [discount.get("brand_id") for discount in discounts if discount.get("brand_id")]
+        if not brand_ids:
+            for discount in discounts:
+                discount["brand_name"] = None
+            return discounts
+        try:
+            brand_name_map = {brand["id"]: brand["name"] for brand in await brand_service.get_brand_by_ids([int(bid) for bid in brand_ids])}
+        except Exception:
+            brand_name_map = {}
         for discount in discounts:
             brand_id = discount.get("brand_id")
-            if brand_id in brand_name_map:
-                discount["brand_name"] = brand_name_map.get(discount["brand_id"])
+            if brand_id and int(brand_id) in brand_name_map:
+                discount["brand_name"] = brand_name_map.get(int(brand_id))
             else:
                 discount["brand_name"] = None
         return discounts

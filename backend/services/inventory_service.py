@@ -126,7 +126,7 @@ class StockService(BaseService):
         """
         格式化库存数据
         """
-        from .product_service import product_service, product_spec_service
+        from .product_service_mysql import product_service, product_spec_service
         stock_data['product_info'] = await self._safe_get_product(stock_data.get('product_id'))
         stock_data['spec_info'] = await self._safe_get_spec(stock_data.get('spec_id'))
         stock_data['warehouse_info'] = await self._safe_get_warehouse(stock_data.get('warehouse_id'))
