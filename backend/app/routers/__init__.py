@@ -10,6 +10,7 @@ from .purchase_order import purchase_order_router
 from .supplier import supplier_router
 from .accounts_receivable import accounts_receivable_router
 from .province_city import province_city_router
+from .stock_check import stock_check_router
 from .ws import ws_router
 from .upload import upload_router
 
@@ -37,5 +38,6 @@ api_router.include_router(stock_router, tags=["库存管理"])
 api_router.include_router(inbound_router, tags=["入库批次管理"])
 api_router.include_router(outbound_router, tags=["出库批次管理"])
 api_router.include_router(province_city_router, tags=["省份城市"])
+api_router.include_router(stock_check_router, tags=["盘库管理"])
 api_router.include_router(upload_router, tags=["文件上传"])
 api_router.include_router(ws_router, prefix="/ws")
