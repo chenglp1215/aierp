@@ -3,19 +3,27 @@
 全新设计的客户管理接口
 """
 import json
-from ctypes import cdll
 from fastapi import APIRouter, Query, Depends, Body
 from typing import Optional
 
 from models.customer import CustomerStatus
 from app.routers.prompts.customer import CREATE_CUSTOMER_PROMPT
 from app.routers.prompts.province_city import PROVINCE_CITY_DATA
-from services.customer_service import customer_service, customer_discount_service
+from services.customer_service_mysql import customer_service, customer_discount_service
 from .auth import get_current_active_user, require_permission
 from app.decorators import wrap_response
 
 customer_router = APIRouter(prefix="/customers", tags=["客户管理"])
 customer_discount_router = APIRouter(prefix="/customer-discounts", tags=["客户折扣管理"])
+
+
+def to_int_id(id_str: str) -> int:
+    """将字符串 ID 转换为整数 ID"""
+    try:
+        return int(id_str)
+    except (ValueError, TypeError):
+        raise ValueError("无效的ID格式")
+
 
 async def check_customer_owner(customer_id: str, current_user: dict) -> Optional[dict]:
     """检查当前用户是否是客户的负责人"""
@@ -25,7 +33,7 @@ async def check_customer_owner(customer_id: str, current_user: dict) -> Optional
     ]
     if "super_admin" in user_roles:
         return None
-    customer = await customer_service.get_by_id(customer_id)
+    customer = await customer_service.get_customer_by_id(to_int_id(customer_id))
     if not customer:
         raise ValueError("客户不存在")
     if customer.get("sales_user_id") != current_user.get("id"):
@@ -82,10 +90,11 @@ async def list_customers(
     _: dict = Depends(require_permission("customer.view")),
 ):
     """获取客户列表"""
-    # 校验用户是否有权限查看客户列表
+    # 处理 sales_user_id 转换
+    sales_user_id_int = to_int_id(sales_user_id) if sales_user_id else None
     result, total = await customer_service.list_customers(
         page=page, page_size=page_size, status=status,
-        customer_type=customer_type, sales_user_id=sales_user_id, keyword=keyword
+        customer_type=customer_type, sales_user_id=sales_user_id_int, keyword=keyword
     )
     return {
         "total": total,
@@ -121,7 +130,7 @@ async def get_customer(
     _: dict = Depends(require_permission("customer.view"))
 ):
     """获取客户详情"""
-    customer = await customer_service.get_by_id(customer_id)
+    customer = await customer_service.get_customer_by_id(to_int_id(customer_id))
     if not customer:
         raise ValueError("客户不存在")
     return customer
@@ -138,12 +147,12 @@ async def update_customer(
     owner_check = await check_customer_owner(customer_id, current_user)
     if owner_check:
         return owner_check
-    success = await customer_service.update_customer(customer_id, customer)
+    success = await customer_service.update_customer(to_int_id(customer_id), customer)
     return "客户更新成功"
 
 
 @customer_router.delete("/{customer_id}", response_model=dict)
-@wrap_response  
+@wrap_response
 async def delete_customer(
     customer_id: str,
     current_user: dict = Depends(require_permission("customer.delete"))
@@ -152,7 +161,7 @@ async def delete_customer(
     owner_check = await check_customer_owner(customer_id, current_user)
     if owner_check:
         return owner_check
-    success = await customer_service.delete_customer(customer_id)
+    success = await customer_service.delete_customer(to_int_id(customer_id))
     return "客户删除成功"
 
 
@@ -170,8 +179,9 @@ async def update_customer_status(
     status = status_data.get("status")
     if not status:
         raise ValueError("status字段为必填")
-    success = await customer_service.update_status(customer_id, CustomerStatus(status))
+    success = await customer_service.update_status(to_int_id(customer_id), status)
     return "客户状态更新成功"
+
 
 @customer_router.patch("/{customer_id}/transfer", response_model=dict)
 @wrap_response
@@ -187,9 +197,18 @@ async def transfer_customer(
     new_user_id = transfer_data.get("new_user_id")
     if not new_user_id:
         raise ValueError("new_user_id字段为必填")
-    success = await customer_service.transfer_customer(customer_id, new_user_id)
-    if not success:
-        raise ValueError("目标销售不存在或客户转移失败")
+
+    # 获取目标用户信息
+    from services.auth_service import mysql_user_service
+    new_user = await mysql_user_service.get_user_by_id(int(new_user_id))
+    if not new_user:
+        raise ValueError("目标销售不存在")
+
+    success = await customer_service.transfer_customer(
+        to_int_id(customer_id),
+        int(new_user_id),
+        new_user.get("full_name") or new_user.get("username")
+    )
     return "客户转移成功"
 
 
@@ -206,7 +225,7 @@ async def create_customer_discount(
 
 
 @customer_discount_router.get("/", response_model=dict)
-@wrap_response  
+@wrap_response
 async def list_customer_discounts(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -216,11 +235,13 @@ async def list_customer_discounts(
     _: dict = Depends(require_permission("customer_discount.view"))
 ):
     """获取客户折扣列表"""
+    customer_id_int = to_int_id(customer_id) if customer_id else None
+    brand_id_int = to_int_id(brand_id) if brand_id else None
     result, total = await customer_discount_service.list_discounts(
         page=page,
         page_size=page_size,
-        customer_id=customer_id,
-        brand_id=brand_id,
+        customer_id=customer_id_int,
+        brand_id=brand_id_int,
         is_active=is_active
     )
     return {
@@ -232,20 +253,20 @@ async def list_customer_discounts(
 
 
 @customer_discount_router.get("/{discount_id}", response_model=dict)
-@wrap_response  
+@wrap_response
 async def get_customer_discount(
     discount_id: str,
     _: dict = Depends(require_permission("customer_discount.view"))
 ):
     """获取客户折扣详情"""
-    discount = await customer_discount_service.get_by_id(discount_id)
+    discount = await customer_discount_service.get_discount_by_id(to_int_id(discount_id))
     if not discount:
         raise ValueError("客户折扣不存在")
     return discount
 
 
 @customer_discount_router.get("/customer/{customer_id}/brand/{brand_id}", response_model=dict)
-@wrap_response  
+@wrap_response
 async def get_discount_by_customer_and_brand(
     customer_id: str,
     brand_id: str,
@@ -253,7 +274,7 @@ async def get_discount_by_customer_and_brand(
 ):
     """获取指定客户和品牌的折扣"""
     discount = await customer_discount_service.get_discount_by_customer_and_brand(
-        customer_id, brand_id
+        to_int_id(customer_id), to_int_id(brand_id)
     )
     if not discount:
         raise ValueError("该客户和品牌的折扣配置不存在")
@@ -268,10 +289,10 @@ async def update_customer_discount(
     _: dict = Depends(require_permission("customer_discount.edit"))
 ):
     """更新客户折扣"""
-    existing = await customer_discount_service.get_by_id(discount_id)
+    existing = await customer_discount_service.get_discount_by_id(to_int_id(discount_id))
     if not existing:
         raise ValueError("客户折扣不存在")
-    success = await customer_discount_service.update_discount(discount_id, discount)
+    success = await customer_discount_service.update_discount(to_int_id(discount_id), discount)
     return "客户折扣更新成功"
 
 
@@ -282,10 +303,10 @@ async def delete_customer_discount(
     _: dict = Depends(require_permission("customer_discount.delete"))
 ):
     """删除客户折扣"""
-    existing = await customer_discount_service.get_by_id(discount_id)
+    existing = await customer_discount_service.get_discount_by_id(to_int_id(discount_id))
     if not existing:
         raise ValueError("客户折扣不存在")
-    success = await customer_discount_service.delete_discount(discount_id)
+    success = await customer_discount_service.delete_discount(to_int_id(discount_id))
     return "客户折扣删除成功"
 
 
@@ -297,10 +318,8 @@ async def toggle_discount_status(
     _: dict = Depends(require_permission("customer_discount.edit"))
 ):
     """切换客户折扣状态"""
-    existing = await customer_discount_service.get_by_id(discount_id)
+    existing = await customer_discount_service.get_discount_by_id(to_int_id(discount_id))
     if not existing:
         raise ValueError("客户折扣不存在")
-    success = await customer_discount_service.toggle_discount_status(discount_id, is_active)
+    success = await customer_discount_service.toggle_discount_status(to_int_id(discount_id), is_active)
     return "客户折扣状态更新成功"
-
-
