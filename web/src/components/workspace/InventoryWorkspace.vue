@@ -26,6 +26,26 @@ interface OutboundBatch {
   created_at: string
 }
 
+interface StockCheckRecord {
+  id: string
+  batch_id: string
+  stock_id: string
+  warehouse_id: string
+  product_id: string
+  product_code: string
+  product_name: string
+  spec_id: string
+  spec_code: string
+  before_quantity: number
+  check_quantity: number
+  difference: number
+  is_new_stock: boolean
+  user_id: string
+  user_name: string
+  remarks?: string
+  created_at: string
+}
+
 interface StockSpecInfo {
   id: string
   spec_code: string
@@ -117,6 +137,31 @@ const stockDetail = ref<(Stock & {
   outbound_batches?: OutboundBatch[]
 }) | null>(null)
 const detailLoading = ref(false)
+
+const showBatchCheckModal = ref(false)
+const showCheckResultModal = ref(false)
+const showSingleCheckModal = ref(false)
+const batchCheckForm = ref({
+  warehouse_id: '',
+  remarks: ''
+})
+const batchCheckFile = ref<File | null>(null)
+const batchCheckLoading = ref(false)
+const batchCheckResult = ref<{
+  batch_code: string
+  total_count: number
+  success_count: number
+  fail_count: number
+  failed_items: Array<{ row: number; reason: string }>
+} | null>(null)
+const singleCheckStock = ref<Stock | null>(null)
+const singleCheckForm = ref({
+  check_quantity: 0,
+  remarks: ''
+})
+const singleCheckLoading = ref(false)
+const checkRecords = ref<StockCheckRecord[]>([])
+const detailActiveTab = ref<'inbound' | 'outbound' | 'check'>('inbound')
 
 const showInboundModal = ref(false)
 const showOutboundModal = ref(false)
@@ -301,6 +346,9 @@ const loadStockDetail = async (stockId: string) => {
       inbound_batches: inboundRes.items || [],
       outbound_batches: outboundRes.items || []
     }
+    // 加载盘库记录
+    await loadCheckRecords(stockId)
+    detailActiveTab.value = 'inbound'
   } catch (error) {
     console.error('加载库存详情失败:', error)
   } finally {
@@ -625,6 +673,114 @@ watch(() => props.warehouseId, (newVal) => {
   }
 }, { immediate: true })
 
+const openBatchCheckModal = () => {
+  batchCheckForm.value = {
+    warehouse_id: filterWarehouse.value || '',
+    remarks: ''
+  }
+  batchCheckFile.value = null
+  showBatchCheckModal.value = true
+}
+
+const handleBatchCheckFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    batchCheckFile.value = target.files[0]
+  }
+}
+
+const handleDownloadTemplate = async () => {
+  try {
+    const { stockCheckApi } = await import('../../services/api')
+    await stockCheckApi.downloadTemplate()
+    window.showToast('模板下载成功', 'success')
+  } catch (error: any) {
+    window.showToast(error.message || '下载模板失败', 'error')
+  }
+}
+
+const handleBatchCheck = async () => {
+  if (!batchCheckForm.value.warehouse_id) {
+    window.showToast('请选择仓库', 'warning')
+    return
+  }
+  if (!batchCheckFile.value) {
+    window.showToast('请上传盘库文件', 'warning')
+    return
+  }
+
+  batchCheckLoading.value = true
+  try {
+    const { stockCheckApi } = await import('../../services/api')
+    const result = await stockCheckApi.createBatch(
+      batchCheckForm.value.warehouse_id,
+      batchCheckFile.value,
+      batchCheckForm.value.remarks
+    )
+    batchCheckResult.value = result.result || result
+    showBatchCheckModal.value = false
+    showCheckResultModal.value = true
+    loadStocks()
+  } catch (error: any) {
+    window.showToast(error.message || '批量盘库失败', 'error')
+  } finally {
+    batchCheckLoading.value = false
+  }
+}
+
+const openSingleCheckModal = (row: any) => {
+  const stock = stocks.value.find(s => s.id === row.stockId)
+  if (!stock) return
+  singleCheckStock.value = stock
+  singleCheckForm.value = {
+    check_quantity: stock.quantity,
+    remarks: ''
+  }
+  showSingleCheckModal.value = true
+}
+
+const singleCheckDifference = computed(() => {
+  if (!singleCheckStock.value) return 0
+  return singleCheckForm.value.check_quantity - singleCheckStock.value.quantity
+})
+
+const handleSingleCheck = async () => {
+  if (!singleCheckStock.value) return
+  if (singleCheckForm.value.check_quantity < 0) {
+    window.showToast('盘点数量不能为负数', 'warning')
+    return
+  }
+
+  singleCheckLoading.value = true
+  try {
+    const { stockCheckApi } = await import('../../services/api')
+    await stockCheckApi.createSingle({
+      stock_id: singleCheckStock.value.id,
+      check_quantity: singleCheckForm.value.check_quantity,
+      remarks: singleCheckForm.value.remarks
+    })
+    window.showToast('盘库成功', 'success')
+    showSingleCheckModal.value = false
+    await updateStockInList(singleCheckStock.value.id)
+    loadStocks()
+  } catch (error: any) {
+    window.showToast(error.message || '盘库失败', 'error')
+  } finally {
+    singleCheckLoading.value = false
+  }
+}
+
+const loadCheckRecords = async (stockId: string) => {
+  try {
+    const { stockCheckApi } = await import('../../services/api')
+    const res = await stockCheckApi.listRecords({ stock_id: stockId, page_size: 50 })
+    checkRecords.value = res.items || []
+  } catch (error) {
+    console.error('加载盘库记录失败:', error)
+    checkRecords.value = []
+  }
+}
+
 onMounted(() => {
   loadStocks()
   if (!props.warehouseId) {
@@ -646,6 +802,7 @@ onMounted(() => {
       </div>
       <div class="header-actions">
         <button class="primary-btn" @click="openCreateInbound">新增入库</button>
+        <button class="primary-btn" @click="openBatchCheckModal">批量盘库</button>
       </div>
     </div>
 
@@ -758,9 +915,10 @@ onMounted(() => {
             <span class="status-tag" :class="row.status_class">{{ row.status }}</span>
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="160" fixed="right" class-name="col--center">
+        <vxe-column title="操作" width="200" fixed="right" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
+              <button class="btn-link" @click="openSingleCheckModal(row)">盘库</button>
               <button class="btn-link" @click="openInboundModal(row)">入库</button>
               <button class="btn-link" @click="openOutboundModal(row)">出库</button>
               <button class="btn-link" @click="openDetailModal(row)">详情</button>
@@ -917,33 +1075,187 @@ onMounted(() => {
               </span>
             </div>
           </div>
-          <div class="detail-batches">
-            <div class="detail-batch-section">
-              <h4>入库记录 ({{ stockDetail.inbound_batches?.length || 0 }})</h4>
-              <div class="batch-scroll-list">
-                <div class="batch-scroll-item" v-for="batch in stockDetail.inbound_batches" :key="batch.id">
-                  <span class="batch-user">{{ batch.user_name || '-' }}</span>
-                  <span class="batch-qty success">+{{ batch.quantity }}</span>
-                  <span class="batch-time">{{ formatDate(batch.created_at) }}</span>
-                </div>
-                <div v-if="!stockDetail.inbound_batches?.length" class="batches-empty">暂无入库记录</div>
+          <div class="detail-tabs">
+            <button
+              class="detail-tab-btn"
+              :class="{ active: detailActiveTab === 'inbound' }"
+              @click="detailActiveTab = 'inbound'"
+            >
+              入库记录 ({{ stockDetail.inbound_batches?.length || 0 }})
+            </button>
+            <button
+              class="detail-tab-btn"
+              :class="{ active: detailActiveTab === 'outbound' }"
+              @click="detailActiveTab = 'outbound'"
+            >
+              出库记录 ({{ stockDetail.outbound_batches?.length || 0 }})
+            </button>
+            <button
+              class="detail-tab-btn"
+              :class="{ active: detailActiveTab === 'check' }"
+              @click="detailActiveTab = 'check'"
+            >
+              盘库记录 ({{ checkRecords.length }})
+            </button>
+          </div>
+          <div class="detail-tab-content">
+            <div v-show="detailActiveTab === 'inbound'" class="batch-scroll-list">
+              <div class="batch-scroll-item" v-for="batch in stockDetail.inbound_batches" :key="batch.id">
+                <span class="batch-user">{{ batch.user_name || '-' }}</span>
+                <span class="batch-qty success">+{{ batch.quantity }}</span>
+                <span class="batch-time">{{ formatDate(batch.created_at) }}</span>
               </div>
+              <div v-if="!stockDetail.inbound_batches?.length" class="batches-empty">暂无入库记录</div>
             </div>
-            <div class="detail-batch-section">
-              <h4>出库记录 ({{ stockDetail.outbound_batches?.length || 0 }})</h4>
-              <div class="batch-scroll-list">
-                <div class="batch-scroll-item" v-for="batch in stockDetail.outbound_batches" :key="batch.id">
-                  <span class="batch-user">{{ batch.user_name || '-' }}</span>
-                  <span class="batch-qty danger">-{{ batch.quantity }}</span>
-                  <span class="batch-time">{{ formatDate(batch.created_at) }}</span>
-                </div>
-                <div v-if="!stockDetail.outbound_batches?.length" class="batches-empty">暂无出库记录</div>
+            <div v-show="detailActiveTab === 'outbound'" class="batch-scroll-list">
+              <div class="batch-scroll-item" v-for="batch in stockDetail.outbound_batches" :key="batch.id">
+                <span class="batch-user">{{ batch.user_name || '-' }}</span>
+                <span class="batch-qty danger">-{{ batch.quantity }}</span>
+                <span class="batch-time">{{ formatDate(batch.created_at) }}</span>
               </div>
+              <div v-if="!stockDetail.outbound_batches?.length" class="batches-empty">暂无出库记录</div>
+            </div>
+            <div v-show="detailActiveTab === 'check'" class="batch-scroll-list">
+              <div class="batch-scroll-item check-record" v-for="record in checkRecords" :key="record.id">
+                <span class="batch-user">{{ record.user_name || '-' }}</span>
+                <span class="batch-qty" :class="record.difference >= 0 ? 'success' : 'danger'">
+                  {{ record.difference >= 0 ? '+' : '' }}{{ record.difference }}
+                </span>
+                <span class="batch-time">{{ formatDate(record.created_at) }}</span>
+              </div>
+              <div v-if="!checkRecords.length" class="batches-empty">暂无盘库记录</div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDetailModal = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 批量盘库弹窗 -->
+    <div class="modal-overlay" v-if="showBatchCheckModal" @click.self="showBatchCheckModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>批量盘库</h3>
+          <button class="modal-close" @click="showBatchCheckModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>仓库 *</label>
+            <select v-model="batchCheckForm.warehouse_id">
+              <option value="">请选择仓库</option>
+              <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>盘库文件 *</label>
+            <div class="file-upload-area">
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                @change="handleBatchCheckFileChange"
+                ref="batchCheckFileInput"
+              />
+              <div class="file-upload-hint">
+                <span v-if="batchCheckFile">{{ batchCheckFile.name }}</span>
+                <span v-else>点击上传或拖拽文件到此处（支持 .xlsx, .xls）</span>
+              </div>
+            </div>
+            <button class="btn-link template-btn" @click="handleDownloadTemplate" type="button">
+              下载盘库模板
+            </button>
+          </div>
+          <div class="form-group">
+            <label>备注</label>
+            <input type="text" v-model="batchCheckForm.remarks" placeholder="可选填写备注信息" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showBatchCheckModal = false">取消</button>
+          <button class="btn-primary" @click="handleBatchCheck" :disabled="batchCheckLoading">
+            {{ batchCheckLoading ? '处理中...' : '开始盘库' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 盘库结果弹窗 -->
+    <div class="modal-overlay" v-if="showCheckResultModal" @click.self="showCheckResultModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>盘库结果</h3>
+          <button class="modal-close" @click="showCheckResultModal = false">&times;</button>
+        </div>
+        <div class="modal-body" v-if="batchCheckResult">
+          <div class="result-summary">
+            <div class="result-item">
+              <span class="result-label">批次编号:</span>
+              <span class="result-value">{{ batchCheckResult.batch_code }}</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">总记录数:</span>
+              <span class="result-value">{{ batchCheckResult.total_count }}</span>
+            </div>
+            <div class="result-item success">
+              <span class="result-label">成功:</span>
+              <span class="result-value">{{ batchCheckResult.success_count }}</span>
+            </div>
+            <div class="result-item" :class="{ danger: batchCheckResult.fail_count > 0 }">
+              <span class="result-label">失败:</span>
+              <span class="result-value">{{ batchCheckResult.fail_count }}</span>
+            </div>
+          </div>
+          <div v-if="batchCheckResult.failed_items && batchCheckResult.failed_items.length > 0" class="failed-items">
+            <h4>失败记录:</h4>
+            <div class="failed-list">
+              <div class="failed-item" v-for="(item, index) in batchCheckResult.failed_items" :key="index">
+                <span class="failed-row">第 {{ item.row }} 行</span>
+                <span class="failed-reason">{{ item.reason }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showCheckResultModal = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 单个盘库弹窗 -->
+    <div class="modal-overlay" v-if="showSingleCheckModal" @click.self="showSingleCheckModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>盘库操作</h3>
+          <button class="modal-close" @click="showSingleCheckModal = false">&times;</button>
+        </div>
+        <div class="modal-body" v-if="singleCheckStock">
+          <div class="operate-info">
+            <p>商品: {{ singleCheckStock.product_name || singleCheckStock.product_info?.name }}</p>
+            <p>规格: {{ singleCheckStock.spec_code || singleCheckStock.spec_info?.spec_code }} ({{ singleCheckStock.spec_info?.packaging || '-' }})</p>
+            <p>仓库: {{ singleCheckStock.warehouse_info?.name }}</p>
+            <p>当前库存: <strong>{{ singleCheckStock.quantity }}</strong></p>
+          </div>
+          <div class="form-group">
+            <label>盘点数量 *</label>
+            <input type="number" v-model="singleCheckForm.check_quantity" min="0" placeholder="请输入盘点数量" />
+          </div>
+          <div class="form-group">
+            <label>差异</label>
+            <div class="difference-display" :class="singleCheckDifference >= 0 ? 'positive' : 'negative'">
+              {{ singleCheckDifference >= 0 ? '+' : '' }}{{ singleCheckDifference }}
+            </div>
+          </div>
+          <div class="form-group">
+            <label>备注</label>
+            <input type="text" v-model="singleCheckForm.remarks" placeholder="可选填写备注信息" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showSingleCheckModal = false">取消</button>
+          <button class="btn-primary" @click="handleSingleCheck" :disabled="singleCheckLoading">
+            {{ singleCheckLoading ? '处理中...' : '确认盘库' }}
+          </button>
         </div>
       </div>
     </div>
@@ -1706,5 +2018,164 @@ onMounted(() => {
   .detail-batches {
     grid-template-columns: 1fr;
   }
+}
+
+.detail-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.detail-tab-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.detail-tab-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.detail-tab-btn.active {
+  background-color: var(--accent-blue);
+  color: white;
+  border-color: var(--accent-blue);
+}
+
+.detail-tab-content {
+  min-height: 200px;
+}
+
+.file-upload-area {
+  position: relative;
+  padding: 20px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-secondary);
+  text-align: center;
+}
+
+.file-upload-area input[type="file"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-upload-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.file-upload-hint span {
+  color: var(--accent-blue);
+}
+
+.template-btn {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.result-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 16px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.result-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.result-value {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.result-item.success .result-value {
+  color: var(--accent-green);
+}
+
+.result-item.danger .result-value {
+  color: var(--accent-red);
+}
+
+.failed-items {
+  margin-top: 16px;
+}
+
+.failed-items h4 {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.failed-list {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.failed-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.failed-row {
+  font-size: 13px;
+  color: var(--accent-red);
+  font-weight: 500;
+}
+
+.failed-reason {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.difference-display {
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.difference-display.positive {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--accent-green);
+}
+
+.difference-display.negative {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--accent-red);
+}
+
+.batch-scroll-item.check-record {
+  grid-template-columns: 1fr 80px 140px;
 }
 </style>
