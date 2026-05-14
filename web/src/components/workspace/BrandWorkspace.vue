@@ -243,53 +243,68 @@ onMounted(() => {
         <p>暂无品牌数据</p>
         <button class="primary-btn" @click="openCreate">新建第一个品牌</button>
       </div>
-      <div v-else class="brand-grid">
-        <div v-for="brand in brands" :key="brand.id" class="brand-card">
-          <div class="brand-card-header">
-            <div class="brand-logo">
-              <img v-if="brand.logo_url" :src="brand.logo_url" :alt="brand.name" />
-              <div v-else class="logo-placeholder">{{ brand.name.charAt(0).toUpperCase() }}</div>
-            </div>
-            <div class="brand-status">
-              <span :class="['status-tag', brand.is_active ? 'active' : 'inactive']">
-                {{ brand.is_active ? '启用' : '停用' }}
-              </span>
-            </div>
-          </div>
-          <div class="brand-card-body">
-            <h3 class="brand-name">{{ brand.name }}</h3>
-            <p class="brand-description">{{ brand.description || '暂无描述' }}</p>
-            <div v-if="brand.purchaser_name" class="brand-purchaser">
-              采购人员: {{ brand.purchaser_name }}
-            </div>
-            <div class="brand-stats">
-              <div class="stat-item">
-                <span class="stat-label">商品数量</span>
-                <span class="stat-value">{{ brand.product_count || 0 }}</span>
+      <div v-else class="table-section">
+        <vxe-table
+          :data="brands"
+          :column-config="{ resizable: true }"
+        >
+          <vxe-column title="Logo" width="80" class-name="col--center">
+            <template #default="{ row }">
+              <div class="brand-logo-cell">
+                <img v-if="row.logo_url" :src="row.logo_url" :alt="row.name" />
+                <div v-else class="logo-placeholder">{{ row.name.charAt(0).toUpperCase() }}</div>
               </div>
-            </div>
-          </div>
-          <div class="brand-card-footer">
-            <span class="update-time">更新于 {{ formatDate(brand.updated_at) }}</span>
-            <div class="card-actions">
-              <button class="action-btn" @click="openEdit(brand)">编辑</button>
-              <button class="action-btn" @click="handleToggleActive(brand)">
-                {{ brand.is_active ? '停用' : '启用' }}
-              </button>
-              <button class="action-btn danger" @click="confirmDelete(brand)">删除</button>
-            </div>
-          </div>
-        </div>
-      </div>
+            </template>
+          </vxe-column>
+          <vxe-column field="name" title="品牌名称" min-width="150" />
+          <vxe-column field="description" title="描述" min-width="200" show-overflow="tooltip">
+            <template #default="{ row }">
+              {{ row.description || '-' }}
+            </template>
+          </vxe-column>
+          <vxe-column field="purchaser_name" title="采购人员" min-width="100">
+            <template #default="{ row }">
+              {{ row.purchaser_name || '-' }}
+            </template>
+          </vxe-column>
+          <vxe-column field="is_active" title="状态" width="80" class-name="col--center">
+            <template #default="{ row }">
+              <span :class="['status-tag', row.is_active ? 'active' : 'inactive']">
+                {{ row.is_active ? '启用' : '停用' }}
+              </span>
+            </template>
+          </vxe-column>
+          <vxe-column field="product_count" title="商品数量" width="80" class-name="col--center">
+            <template #default="{ row }">
+              {{ row.product_count || 0 }}
+            </template>
+          </vxe-column>
+          <vxe-column field="updated_at" title="更新时间" width="140">
+            <template #default="{ row }">
+              {{ formatDate(row.updated_at) }}
+            </template>
+          </vxe-column>
+          <vxe-column title="操作" width="180" fixed="right" class-name="col--center">
+            <template #default="{ row }">
+              <span class="action-btns">
+                <button class="btn-link" @click="openEdit(row)">编辑</button>
+                <button class="btn-link" @click="handleToggleActive(row)">
+                  {{ row.is_active ? '停用' : '启用' }}
+                </button>
+                <button class="btn-link danger" @click="confirmDelete(row)">删除</button>
+              </span>
+            </template>
+          </vxe-column>
+        </vxe-table>
 
-      <vxe-pager
-        v-if="total > 0"
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :total="total"
-        :layouts="['PrevPage', 'JumpNumber', 'NextPage', 'FullJump', 'Sizes', 'Total']"
-        @page-change="handlePageChange"
-      />
+        <vxe-pager
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
+          :total="total"
+          :layouts="['PrevPage', 'JumpNumber', 'NextPage', 'FullJump', 'Sizes', 'Total']"
+          @page-change="handlePageChange"
+        />
+      </div>
     </div>
 
     <div class="modal-overlay" v-if="showFormModal" @click.self="showFormModal = false">
@@ -539,50 +554,35 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
-.brand-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+.table-section {
   flex: 1;
-  overflow-y: auto;
-}
-
-.brand-card {
+  min-height: 0;
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  transition: box-shadow var(--transition-fast);
+  gap: 12px;
 }
 
-.brand-card:hover {
-  box-shadow: var(--shadow-hover);
-}
-
-.brand-card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 16px;
-  background-color: var(--bg-secondary);
-}
-
-.brand-logo {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-md);
+.brand-logo-cell {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
 }
 
-.brand-logo img {
+.brand-logo-cell img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.logo-placeholder {
+.brand-logo-cell .logo-placeholder {
   width: 100%;
   height: 100%;
   display: flex;
@@ -590,12 +590,8 @@ onMounted(() => {
   justify-content: center;
   background-color: var(--accent-blue);
   color: white;
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 600;
-}
-
-.brand-status {
-  flex-shrink: 0;
 }
 
 .status-tag {
@@ -616,101 +612,33 @@ onMounted(() => {
   color: var(--accent-red);
 }
 
-.brand-card-body {
-  padding: 16px;
-  flex: 1;
-}
-
-.brand-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 8px 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.brand-description {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin: 0 0 12px 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  line-height: 1.5;
-  min-height: 39px;
-}
-
-.brand-purchaser {
-  font-size: 12px;
-  color: var(--accent-blue);
-  margin-bottom: 12px;
-}
-
-.brand-stats {
-  display: flex;
-  gap: 16px;
-}
-
-.stat-item {
-  display: flex;
+.action-btns {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
 }
 
-.stat-label {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.stat-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--accent-blue);
-}
-
-.brand-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
-}
-
-.update-time {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.card-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.action-btn {
+.btn-link {
   background: none;
   border: none;
   color: var(--accent-blue);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
   transition: all var(--transition-fast);
 }
 
-.action-btn:hover {
+.btn-link:hover {
   background-color: rgba(0, 120, 212, 0.1);
 }
 
-.action-btn.danger {
+.btn-link.danger {
   color: var(--accent-red);
 }
 
-.action-btn.danger:hover {
+.btn-link.danger:hover {
   background-color: rgba(239, 68, 68, 0.1);
 }
 
@@ -979,13 +907,6 @@ onMounted(() => {
 .btn-danger:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.vxe-pager {
-  margin-top: 16px;
-  background-color: var(--bg-card) !important;
-  border-radius: var(--radius-lg);
-  padding: 12px 16px;
 }
 </style>
 
