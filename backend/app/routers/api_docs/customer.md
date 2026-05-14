@@ -110,7 +110,7 @@ Content-Type: application/json
   "status": "success",
   "message": "操作成功",
   "result": {
-    "id": "64a1b2c3d4e5f6a7b8c9d0e1",
+    "id": 1,
     "customer_code": "CUST202605111234",
     "name": "某医院检验科",
     "customer_type": "terminal",
@@ -185,7 +185,7 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
     "page_size": 20,
     "items": [
       {
-        "id": "64a1b2c3d4e5f6a7b8c9d0e1",
+        "id": 1,
         "customer_code": "CUST202605110001",
         "name": "某医院检验科",
         "customer_type": "terminal",
@@ -254,7 +254,7 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
   "status": "success",
   "message": "操作成功",
   "result": {
-    "id": "64a1b2c3d4e5f6a7b8c9d0e1",
+    "id": 1,
     "customer_code": "CUST202605110001",
     "name": "某医院检验科",
     "customer_type": "terminal",
@@ -264,7 +264,7 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
     "contact_email": "zhangsan@example.com",
     "invoice_infos": [
       {
-        "id": "inv001",
+        "id": 1,
         "invoice_title": "某医院",
         "invoice_type": "增值税",
         "tax_number": "91110000000000000X",
@@ -275,7 +275,7 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
     ],
     "shipping_addresses": [
       {
-        "id": "addr001",
+        "id": 1,
         "recipient_name": "张三",
         "recipient_phone": "13800138000",
         "province": "北京市",
@@ -334,7 +334,7 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
   "contact_email": "string",
   "invoice_infos": [
     {
-      "id": "inv001",
+      "id": 1,
       "invoice_title": "string",
       "invoice_type": "增值税|普通发票|增值税专用发票|不开票",
       "tax_number": "string",
@@ -345,7 +345,7 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
   ],
   "shipping_addresses": [
     {
-      "id": "addr001",
+      "id": 1,
       "recipient_name": "string",
       "recipient_phone": "string",
       "province": "string",
@@ -544,7 +544,7 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
   "status": "success",
   "message": "操作成功",
   "result": {
-    "id": "DIS001",
+    "id": 1,
     "customer_id": "64a1b2c3d4e5f6a7b8c9d0e1",
     "brand_id": "brand001",
     "brand_name": "品牌A",
@@ -600,7 +600,7 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
     "page_size": 20,
     "items": [
       {
-        "id": "DIS001",
+        "id": 1,
         "customer_id": "64a1b2c3d4e5f6a7b8c9d0e1",
         "brand_id": "brand001",
         "brand_name": "品牌A",
@@ -640,7 +640,7 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
   "status": "success",
   "message": "操作成功",
   "result": {
-    "id": "DIS001",
+    "id": 1,
     "customer_id": "64a1b2c3d4e5f6a7b8c9d0e1",
     "brand_id": "brand001",
     "brand_name": "品牌A",
@@ -688,7 +688,7 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
   "status": "success",
   "message": "操作成功",
   "result": {
-    "id": "DIS001",
+    "id": 1,
     "customer_id": "64a1b2c3d4e5f6a7b8c9d0e1",
     "brand_id": "brand001",
     "brand_name": "品牌A",
@@ -825,7 +825,7 @@ PATCH /api/v1/customer-discounts/DIS001/status?is_active=false
 
 | 字段 | 类型 | 必填 | 描述 |
 |------|------|------|------|
-| id | string | 否 | 客户ID（创建时由系统自动生成） |
+| id | integer | 否 | 客户ID（创建时由系统自动生成） |
 | customer_code | string | 是 | 客户编码（系统自动生成，格式：`CUST{日期}{4位随机数}`） |
 | name | string | 是 | 客户名称 |
 | customer_type | string | 是 | 客户类型：`terminal`(终端) / `dealer`(经销商) |
@@ -845,7 +845,7 @@ PATCH /api/v1/customer-discounts/DIS001/status?is_active=false
 
 | 字段 | 类型 | 必填 | 描述 |
 |------|------|------|------|
-| id | string | 否 | 开票信息ID（更新时需提供） |
+| id | integer | 否 | 开票信息ID（更新时需提供） |
 | invoice_title | string | 是 | 开票抬头 |
 | invoice_type | string | 是 | 开票类型：`增值税` / `普通发票` / `增值税专用发票` / `不开票` |
 | tax_number | string | 是 | 税务登记号 |
@@ -857,7 +857,7 @@ PATCH /api/v1/customer-discounts/DIS001/status?is_active=false
 
 | 字段 | 类型 | 必填 | 描述 |
 |------|------|------|------|
-| id | string | 否 | 地址ID（更新时需提供） |
+| id | integer | 否 | 地址ID（更新时需提供） |
 | recipient_name | string | 是 | 收货人姓名 |
 | recipient_phone | string | 是 | 收货人电话 |
 | province | string | 是 | 省份 |
@@ -869,7 +869,7 @@ PATCH /api/v1/customer-discounts/DIS001/status?is_active=false
 
 | 字段 | 类型 | 必填 | 描述 |
 |------|------|------|------|
-| id | string | 否 | 折扣记录ID（系统自动生成） |
+| id | integer | 否 | 折扣记录ID（系统自动生成） |
 | customer_id | string | 是 | 客户ID |
 | brand_id | string | 是 | 品牌ID |
 | brand_name | string | 否 | 品牌名称 |
