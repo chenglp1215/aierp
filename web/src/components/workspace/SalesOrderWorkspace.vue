@@ -407,7 +407,7 @@ const handleProductSearch = (index: number, keyword: string) => {
     try {
       // 只搜索规格
       const specsRes = await productApi.searchSpecs(keyword, 20)
-      specSearchResults.value = specsRes || []
+      specSearchResults.value = specsRes?.items || []
       productTree.value = []
     } catch (e) {
       console.error('搜索商品失败:', e)
