@@ -46,19 +46,21 @@ interface ProductWithSpecs {
 }
 
 interface SpecSearchResult {
-  id: string
+  id: string | number
   spec_code: string
   packaging?: string
+  sales_spec?: string
   price: number
   is_active: boolean
-  product_id: string
+  product_id: string | number
   product_name: string
   product_code: string
-  brand_name: string
+  brand_id?: string | number
+  brand_name?: string
 }
 
 interface ProductSpec {
-  id: string
+  id: string | number
   spec_code: string
   packaging?: string
   sales_spec?: string
@@ -216,27 +218,48 @@ const handleProductSearch = (index: number, keyword: string) => {
   }
   productSearchTimer = setTimeout(async () => {
     try {
-      const [productsRes, specsRes] = await Promise.all([
-        productApi.search(keyword, 20),
-        productApi.searchSpecs(keyword, 20)
-      ])
-      const products: Product[] = productsRes || []
-      const allSpecs: SpecSearchResult[] = specsRes || []
+      // 只使用 searchSpecs，它返回规格和商品信息
+      const specsRes = await productApi.searchSpecs(keyword, 20)
+      const allSpecs: SpecSearchResult[] = specsRes?.items || []
 
-      const tree: ProductWithSpecs[] = []
+      // 按 product_id 分组构建商品树
+      const productMap = new Map<string, { product: Product; specs: ProductSpec[] }>()
       const specIdsInTree = new Set<string>()
-      for (const product of products) {
-        try {
-          const specsRes = await productApi.getSpecs(product.id)
-          const specs: ProductSpec[] = specsRes?.items || []
-          specs.forEach(s => specIdsInTree.add(s.id))
-          tree.push({ product, specs, expanded: false })
-        } catch {
-          tree.push({ product, specs: [], expanded: false })
+
+      for (const spec of allSpecs) {
+        const productId = String(spec.product_id)
+        if (!productMap.has(productId)) {
+          productMap.set(productId, {
+            product: {
+              id: productId,
+              name: spec.product_name,
+              product_code: spec.product_code,
+              brand_id: spec.brand_id,
+              brand_name: spec.brand_name,
+              specs: []
+            },
+            specs: []
+          })
         }
+        const productEntry = productMap.get(productId)!
+        productEntry.specs.push({
+          id: String(spec.id),
+          spec_code: spec.spec_code,
+          packaging: spec.packaging,
+          sales_spec: spec.sales_spec,
+          price: spec.price,
+          is_active: spec.is_active
+        })
+        specIdsInTree.add(String(spec.id))
       }
 
-      specSearchResults.value = allSpecs.filter(s => !specIdsInTree.has(s.id))
+      // 转换为数组
+      const tree: ProductWithSpecs[] = []
+      for (const entry of productMap.values()) {
+        tree.push({ product: entry.product, specs: entry.specs, expanded: false })
+      }
+
+      specSearchResults.value = []
       productTree.value = tree
     } catch (e) {
       console.error('搜索商品失败:', e)
