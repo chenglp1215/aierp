@@ -18,7 +18,8 @@
 
 ```json
 {
-  "brand_id": "507f1f77bcf86cd799439011",
+  "brand_id": 1,
+  "brand_name": "某某品牌",
   "discount": 0.95,
   "is_priority": true
 }
@@ -28,7 +29,8 @@
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| brand_id | string | 品牌ID（关联品牌表） |
+| brand_id | integer | 品牌ID（关联品牌表） |
+| brand_name | string | 品牌名称（只读） |
 | discount | float | 折扣率（0-1，默认1.0） |
 | is_priority | boolean | 是否优先选择（默认false） |
 
@@ -42,66 +44,11 @@
 }
 ```
 
-#### 字段说明
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| bank_name | string | 开户行 |
-| account_name | string | 账户名 |
-| account_no | string | 账号 |
-
-### 供应商创建模型
-
-```json
-{
-  "name": "某某供应商有限公司",
-  "contact_person": "张三",
-  "contact_phone": "13800138000",
-  "contact_email": "zhangsan@example.com",
-  "address": "北京市朝阳区某某街道123号",
-  "bank_account": {
-    "bank_name": "中国工商银行",
-    "account_name": "某某供应商有限公司",
-    "account_no": "6222021234567890123"
-  },
-  "supplied_brands": [
-    {
-      "brand_id": "507f1f77bcf86cd799439011",
-      "discount": 0.95,
-      "is_priority": true
-    }
-  ],
-  "remark": "优质供应商",
-  "is_active": true
-}
-```
-
-#### 字段说明
-
-##### 必填字段
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| name | string | 供应商名称 |
-
-##### 可选字段
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| contact_person | string | 联系人 |
-| contact_phone | string | 联系电话 |
-| contact_email | string | 联系邮箱 |
-| address | string | 地址 |
-| bank_account | object | 银行账户信息 |
-| supplied_brands | array | 供货品牌列表 |
-| remark | string | 备注 |
-| is_active | boolean | 是否激活（默认true） |
-
 ### 供应商完整模型
 
 ```json
 {
-  "id": "507f1f77bcf86cd799439011",
+  "id": 1,
   "name": "某某供应商有限公司",
   "contact_person": "张三",
   "contact_phone": "13800138000",
@@ -114,17 +61,31 @@
   },
   "supplied_brands": [
     {
-      "brand_id": "507f1f77bcf86cd799439011",
+      "brand_id": 1,
+      "brand_name": "某某品牌",
       "discount": 0.95,
       "is_priority": true
     }
   ],
   "remark": "优质供应商",
   "is_active": true,
-  "created_at": "2026-05-03T10:00:00",
-  "updated_at": "2026-05-03T10:00:00"
+  "created_at": "2026-05-15T10:00:00",
+  "updated_at": "2026-05-15T10:00:00"
 }
 ```
+
+---
+
+## 重要变更说明
+
+### ID 类型变更
+
+**从 MongoDB 迁移到 MySQL 后，供应商 ID 从字符串变为整数。**
+
+- MongoDB: `id: "507f1f77bcf86cd799439011"` (24字符字符串)
+- MySQL: `id: 1` (整数)
+
+前端需要适配此变更，将 TypeScript 类型从 `string` 改为 `number`。
 
 ---
 
@@ -152,7 +113,7 @@
   },
   "supplied_brands": [
     {
-      "brand_id": "507f1f77bcf86cd799439011",
+      "brand_id": 1,
       "discount": 0.95,
       "is_priority": true
     }
@@ -169,7 +130,7 @@
   "status": "success",
   "message": "供应商创建成功",
   "result": {
-    "id": "507f1f77bcf86cd799439011",
+    "id": 1,
     "name": "某某供应商有限公司",
     "contact_person": "张三",
     "contact_phone": "13800138000",
@@ -182,15 +143,16 @@
     },
     "supplied_brands": [
       {
-        "brand_id": "507f1f77bcf86cd799439011",
+        "brand_id": 1,
+        "brand_name": "某某品牌",
         "discount": 0.95,
         "is_priority": true
       }
     ],
     "remark": "优质供应商",
     "is_active": true,
-    "created_at": "2026-05-03T10:00:00",
-    "updated_at": "2026-05-03T10:00:00"
+    "created_at": "2026-05-15T10:00:00",
+    "updated_at": "2026-05-15T10:00:00"
   }
 }
 ```
@@ -211,7 +173,7 @@
 | page_size | int | 否 | 每页数量（默认：20，最大：100） |
 | keyword | string | 否 | 搜索关键词（供应商名称） |
 | is_active | boolean | 否 | 是否激活 |
-| brand_ids | string[] | 否 | 品牌ID列表（逗号分隔或多值形式） |
+| brand_ids | int[] | 否 | 品牌ID列表 |
 
 #### 响应示例
 
@@ -225,7 +187,7 @@
     "page_size": 20,
     "items": [
       {
-        "id": "507f1f77bcf86cd799439011",
+        "id": 1,
         "name": "某某供应商有限公司",
         "contact_person": "张三",
         "contact_phone": "13800138000",
@@ -238,15 +200,16 @@
         },
         "supplied_brands": [
           {
-            "brand_id": "507f1f77bcf86cd799439011",
+            "brand_id": 1,
+            "brand_name": "某某品牌",
             "discount": 0.95,
             "is_priority": true
           }
         ],
         "remark": "优质供应商",
         "is_active": true,
-        "created_at": "2026-05-03T10:00:00",
-        "updated_at": "2026-05-03T10:00:00"
+        "created_at": "2026-05-15T10:00:00",
+        "updated_at": "2026-05-15T10:00:00"
       }
     ]
   }
@@ -265,7 +228,7 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| supplier_id | string | 是 | 供应商ID |
+| supplier_id | int | 是 | 供应商ID（整数） |
 
 #### 响应示例
 
@@ -274,7 +237,7 @@
   "status": "success",
   "message": "获取供应商详情成功",
   "result": {
-    "id": "507f1f77bcf86cd799439011",
+    "id": 1,
     "name": "某某供应商有限公司",
     "contact_person": "张三",
     "contact_phone": "13800138000",
@@ -287,15 +250,16 @@
     },
     "supplied_brands": [
       {
-        "brand_id": "507f1f77bcf86cd799439011",
+        "brand_id": 1,
+        "brand_name": "某某品牌",
         "discount": 0.95,
         "is_priority": true
       }
     ],
     "remark": "优质供应商",
     "is_active": true,
-    "created_at": "2026-05-03T10:00:00",
-    "updated_at": "2026-05-03T10:00:00"
+    "created_at": "2026-05-15T10:00:00",
+    "updated_at": "2026-05-15T10:00:00"
   }
 }
 ```
@@ -312,7 +276,7 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| supplier_id | string | 是 | 供应商ID |
+| supplier_id | int | 是 | 供应商ID（整数） |
 
 #### 请求参数
 
@@ -346,7 +310,7 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| supplier_id | string | 是 | 供应商ID |
+| supplier_id | int | 是 | 供应商ID（整数） |
 
 #### 响应示例
 
@@ -369,7 +333,7 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| supplier_id | string | 是 | 供应商ID |
+| supplier_id | int | 是 | 供应商ID（整数） |
 
 #### 查询参数
 
@@ -398,7 +362,7 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| brand_id | string | 是 | 品牌ID |
+| brand_id | int | 是 | 品牌ID（整数） |
 
 #### 响应示例
 
@@ -408,13 +372,14 @@
   "message": "获取供应商列表成功",
   "result": [
     {
-      "id": "507f1f77bcf86cd799439011",
+      "id": 1,
       "name": "某某供应商有限公司",
       "contact_person": "张三",
       "contact_phone": "13800138000",
       "supplied_brands": [
         {
-          "brand_id": "507f1f77bcf86cd799439011",
+          "brand_id": 1,
+          "brand_name": "某某品牌",
           "discount": 0.95,
           "is_priority": true
         }
@@ -472,4 +437,3 @@
   "status": "error",
   "message": "该供应商下存在 X 个采购单，无法删除"
 }
-```
