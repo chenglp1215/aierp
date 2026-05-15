@@ -21,6 +21,15 @@ logger = logging.getLogger(__name__)
 class SalesOrderService:
     """销售订单服务"""
 
+    def _parse_int_field(self, value: Any) -> Optional[int]:
+        """将字段值转换为整数或 None，处理空字符串情况"""
+        if value is None or value == "":
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+
     # ============ 订单号生成 ============
 
     async def generate_order_no(self) -> str:
@@ -136,14 +145,14 @@ class SalesOrderService:
             await SalesOrderItem.create(
                 sales_order=order,
                 row_no=item.get("row_no", idx),
-                product_id=item.get("product_id"),
+                product_id=self._parse_int_field(item.get("product_id")),
                 product_code=item.get("product_code"),
                 product_name=item.get("product_name"),
-                spec_id=item.get("spec_id"),
+                spec_id=self._parse_int_field(item.get("spec_id")),
                 spec_code=item.get("spec_code"),
-                brand_id=item.get("brand_id"),
+                brand_id=self._parse_int_field(item.get("brand_id")),
                 brand_name=item.get("brand_name"),
-                warehouse_id=item.get("warehouse_id"),
+                warehouse_id=self._parse_int_field(item.get("warehouse_id")),
                 warehouse_name=item.get("warehouse_name"),
                 qty=item.get("qty"),
                 price=item.get("price"),
@@ -253,14 +262,14 @@ class SalesOrderService:
                 await SalesOrderItem.create(
                     sales_order=order,
                     row_no=item.get("row_no", idx),
-                    product_id=item.get("product_id"),
+                    product_id=self._parse_int_field(item.get("product_id")),
                     product_code=item.get("product_code"),
                     product_name=item.get("product_name"),
-                    spec_id=item.get("spec_id"),
+                    spec_id=self._parse_int_field(item.get("spec_id")),
                     spec_code=item.get("spec_code"),
-                    brand_id=item.get("brand_id"),
+                    brand_id=self._parse_int_field(item.get("brand_id")),
                     brand_name=item.get("brand_name"),
-                    warehouse_id=item.get("warehouse_id"),
+                    warehouse_id=self._parse_int_field(item.get("warehouse_id")),
                     warehouse_name=item.get("warehouse_name"),
                     qty=item.get("qty"),
                     price=item.get("price"),
