@@ -595,18 +595,30 @@ const openCreateOrder = () => {
 }
 
 const openEditOrder = async (order: SalesOrder) => {
-  editingOrder.value = order
+  // 先获取完整订单数据（列表数据不包含明细）
+  let fullOrder = order
+  if (!order.items || order.items.length === 0) {
+    try {
+      const res = await salesOrderApi.getByOrderNo(order.order_no)
+      fullOrder = res
+    } catch (error) {
+      window.showToast('获取订单详情失败', 'error')
+      return
+    }
+  }
+
+  editingOrder.value = fullOrder
   orderForm.value = {
-    order_date: order.order_date,
-    customer_id: order.customer_id,
-    customer_name: order.customer_name || '',
-    sale_user_id: order.sale_user_id || '',
-    deliver_info: { ...order.deliver_info },
-    expect_deliver_date: order.expect_deliver_date || '',
-    settle_type: order.settle_type,
-    invoice_info: { ...order.invoice_info },
-    remark: order.remark || '',
-    items: order.items.map(item => ({
+    order_date: fullOrder.order_date,
+    customer_id: fullOrder.customer_id,
+    customer_name: fullOrder.customer_name || '',
+    sale_user_id: fullOrder.sale_user_id || '',
+    deliver_info: { ...fullOrder.deliver_info },
+    expect_deliver_date: fullOrder.expect_deliver_date || '',
+    settle_type: fullOrder.settle_type,
+    invoice_info: { ...fullOrder.invoice_info },
+    remark: fullOrder.remark || '',
+    items: (fullOrder.items || []).map(item => ({
       ...item,
       warehouse_name: item.warehouse_name || '',
       product_name: item.product_name || '',
@@ -615,7 +627,7 @@ const openEditOrder = async (order: SalesOrder) => {
       spec_code: item.spec_code || ''
     }))
   }
-  customerSearchKeyword.value = order.customer_name || ''
+  customerSearchKeyword.value = fullOrder.customer_name || ''
 
   // 补充商品的品牌信息、包装和销售规格
   const productIds = [...new Set(order.items.map(item => item.product_id).filter(Boolean))]
