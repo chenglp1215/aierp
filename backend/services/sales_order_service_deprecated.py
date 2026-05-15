@@ -17,7 +17,7 @@ from validators.sales_order_validator import (
     RECEIVE_STATUS_UPDATE_CONFIG,
     INVOICE_STATUS_UPDATE_CONFIG,
 )
-from models.sales_order import OrderStatus, DeliveryStatus, ReceiveStatus, InvoiceStatus
+from models_mysql.sales_order import OrderStatus, DeliveryStatus, ReceiveStatus, InvoiceStatus
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,4 @@
 from .base_service import BaseService
-from .sales_order_service import SalesOrderService, sales_order_service
-from .purchase_order_service import PurchaseOrderService, purchase_order_service
 from .sales_order_service_mysql import sales_order_service_mysql
 from .purchase_order_service_mysql import purchase_order_service_mysql
 from .customer_service_mysql import customer_service, customer_discount_service
@@ -16,10 +14,6 @@ from .ai_service import (
 
 __all__ = [
     "BaseService",
-    "SalesOrderService",
-    "sales_order_service",
-    "PurchaseOrderService",
-    "purchase_order_service",
     "sales_order_service_mysql",
     "purchase_order_service_mysql",
     "customer_service",
