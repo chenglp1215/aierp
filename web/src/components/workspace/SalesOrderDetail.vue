@@ -187,8 +187,7 @@ const handlePushPurchase = async () => {
   if (!order.value) return
   actionLoading.value = true
   try {
-    const orderRes = await salesOrderApi.getByOrderNo(order.value.order_no)
-    const fullOrder = orderRes.result
+    const fullOrder = await salesOrderApi.getByOrderNo(order.value.order_no)
     const items = fullOrder.items || []
 
     const productIds: string[] = [...new Set(items.map((item: any) => item.product_id).filter(Boolean) as string[])]
@@ -197,9 +196,9 @@ const handlePushPurchase = async () => {
     for (const pid of productIds) {
       try {
         const prodRes = await productApi.getById(pid)
-        if (prodRes.result) {
-          brandMap[pid] = prodRes.result.brand_name || ''
-          brandIdMap[pid] = prodRes.result.brand_id || ''
+        if (prodRes) {
+          brandMap[pid] = prodRes.brand_name || ''
+          brandIdMap[pid] = prodRes.brand_id || ''
         }
       } catch {}
     }
