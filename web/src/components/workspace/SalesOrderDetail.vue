@@ -84,12 +84,12 @@ const loadOrder = async () => {
   if (!props.orderNo) return
   loading.value = true
   try {
-    const [orderRes, flowsRes] = await Promise.all([
+    const [orderData, flowsData] = await Promise.all([
       salesOrderApi.getByOrderNo(props.orderNo),
       salesOrderApi.getStatusFlows(props.orderNo)
     ])
-    order.value = orderRes.result
-    flows.value = flowsRes.result || []
+    order.value = orderData
+    flows.value = flowsData || []
     await Promise.all([loadPurchaseOrders(), loadReceivables()])
   } catch (e) {
     console.error('加载订单详情失败:', e)

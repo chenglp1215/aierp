@@ -290,7 +290,7 @@ const handleStorageChange = async (event: StorageEvent) => {
 <style scoped>
 .sidebar {
   width: var(--sidebar-width);
-  min-height: 100vh;
+  height: 100vh;
   background-color: var(--bg-primary);
   display: flex;
   flex-direction: column;
