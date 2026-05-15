@@ -5,7 +5,9 @@ from fastapi import APIRouter, Query, Depends, Body
 from typing import Optional, List, Dict, Any
 
 from services.sales_order_service_mysql import sales_order_service_mysql as sales_order_service
+from services.purchase_order_service_mysql import purchase_order_service_mysql as purchase_order_service
 from services.order_status_flow_service import order_status_flow_service
+from models_mysql.sales_order import SalesOrder, SalesOrderItem
 from .auth import require_permission
 from app.decorators import wrap_response
 
@@ -138,3 +140,40 @@ async def delete_sales_order(
 ):
     await sales_order_service.delete_order(order_no)
     return "订单删除成功"
+
+
+@sales_order_router.post("/{order_no}/push-to-purchase", response_model=dict, description="下推采购")
+@wrap_response
+async def push_to_purchase(
+    order_no: str,
+    data: Dict[str, Any] = Body(...),
+    current_user: dict = Depends(require_permission("order.edit"))
+):
+    """下推采购：将选中的销售订单明细生成采购单"""
+    # 获取销售订单
+    order = await SalesOrder.filter(order_no=order_no).prefetch_related("items").first()
+    if not order:
+        raise ValueError(f"销售订单不存在: {order_no}")
+
+    # 获取选中的明细行号
+    items_data = data.get("items", [])
+    selected_row_nos = [item.get("row_no") for item in items_data if item.get("row_no")]
+
+    # 筛选选中的明细
+    selected_items = [item for item in order.items if item.row_no in selected_row_nos]
+
+    if not selected_items:
+        raise ValueError("请选择要下推采购的商品明细")
+
+    # 调用采购单服务创建采购单
+    operator = current_user.get("username", current_user.get("full_name", "system"))
+    generated_orders = await purchase_order_service.create_from_sales_order(
+        order, selected_items, current_user
+    )
+
+    # 更新销售订单的下推状态
+    await sales_order_service.update_push_status(
+        order_no, selected_row_nos, operator
+    )
+
+    return generated_orders

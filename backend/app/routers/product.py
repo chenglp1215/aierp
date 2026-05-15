@@ -271,6 +271,34 @@ async def get_purchaser_candidates(
     return candidates
 
 
+### 批量获取品牌采购员
+@brand_router.post("/batch-purchasers", response_model=dict)
+@wrap_response
+async def batch_get_purchasers(
+    brand_ids: list = [],
+    _: dict = Depends(require_permission("brand.view"))
+):
+    """批量获取品牌采购员信息"""
+    # 将字符串 ID 转换为整数
+    int_ids = [to_int_id(id) for id in brand_ids if id]
+
+    # 获取品牌列表
+    brands = await brand_service.get_brand_by_ids(int_ids)
+
+    # 构建返回结果：brand_id -> purchaser_info
+    result = {}
+    for brand in brands:
+        brand_id = str(brand.get("id"))
+        purchaser_id = brand.get("purchaser_id")
+        purchaser_name = brand.get("purchaser_name")
+        result[brand_id] = {
+            "purchaser_id": purchaser_id,
+            "purchaser_name": purchaser_name
+        }
+
+    return result
+
+
 @brand_router.post("/", response_model=dict)
 @wrap_response
 async def create_brand(
