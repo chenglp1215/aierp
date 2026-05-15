@@ -137,6 +137,13 @@ class SalesOrderItem(Model):
         unique_together = ("sales_order", "row_no")
 
     def to_dict(self):
+        # 发货方式中文映射
+        shipping_method_map = {
+            ShippingMethod.DIRECT: "直运",
+            ShippingMethod.WAREHOUSE: "仓库发货",
+        }
+        shipping_method_cn = shipping_method_map.get(self.shipping_method) if self.shipping_method else None
+
         return {
             "id": self.id,
             "sales_order_id": self.sales_order_id,
@@ -155,7 +162,7 @@ class SalesOrderItem(Model):
             "discount": float(self.discount),
             "discounted_price": float(self.discounted_price) if self.discounted_price else None,
             "amt": float(self.amt) if self.amt else None,
-            "shipping_method": self.shipping_method.value if self.shipping_method else None,
+            "shipping_method": shipping_method_cn,
             "pushed": self.pushed,
             "out_qty": self.out_qty,
             "return_qty": self.return_qty,

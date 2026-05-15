@@ -602,12 +602,18 @@ const handleSaveOrder = async () => {
       remark: orderForm.value.remark,
       items: orderForm.value.items.map(item => ({
         row_no: item.row_no,
+        product_id: item.product_id,
         product_code: item.product_code || item.product_id,
+        product_name: item.product_name,
+        spec_id: item.spec_id,
         spec_code: item.spec_code || item.spec_id,
+        brand_id: item.brand_id,
+        brand_name: item.brand_name,
+        warehouse_id: item.warehouse_id || '',
+        warehouse_name: item.warehouse_name,
         qty: item.qty,
         price: item.price,
         discount: item.discount,
-        warehouse_id: item.warehouse_id || '',
         shipping_method: item.shipping_method
       }))
     }

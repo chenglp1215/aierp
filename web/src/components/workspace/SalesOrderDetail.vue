@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
-import { salesOrderApi, purchaseOrderApi, receivableApi, productApi, brandApi } from '../../services/api'
+import { salesOrderApi, purchaseOrderApi, receivableApi, brandApi } from '../../services/api'
 import PushPurchaseItemSelectModal from './PushPurchaseItemSelectModal.vue'
 
 interface Props {
@@ -190,38 +190,23 @@ const handlePushPurchase = async () => {
     const fullOrder = await salesOrderApi.getByOrderNo(order.value.order_no)
     const items = fullOrder.items || []
 
-    const productIds: string[] = [...new Set(items.map((item: any) => item.product_id).filter(Boolean) as string[])]
-    const brandMap: Record<string, string> = {}
-    const brandIdMap: Record<string, string> = {}
-    for (const pid of productIds) {
+    // 批量获取品牌的采购人信息
+    const uniqueBrandIds = [...new Set(items.map((item: any) => item.brand_id).filter(Boolean))] as string[]
+    const purchaserMap: Record<string, { purchaser_id: string; purchaser_name: string }> = {}
+
+    if (uniqueBrandIds.length > 0) {
       try {
-        const prodRes = await productApi.getById(pid)
-        if (prodRes) {
-          brandMap[pid] = prodRes.brand_name || ''
-          brandIdMap[pid] = prodRes.brand_id || ''
-        }
+        const purchaserRes = await brandApi.batchGetPurchasers(uniqueBrandIds)
+        Object.assign(purchaserMap, purchaserRes.result || {})
       } catch {}
     }
 
     const enrichedItems = items.map((item: any) => ({
       ...item,
-      brand_name: item.brand_name || brandMap[item.product_id] || '',
-      brand_id: item.brand_id || brandIdMap[item.product_id] || ''
+      purchaser_name: item.brand_id && purchaserMap[item.brand_id]
+        ? purchaserMap[item.brand_id].purchaser_name
+        : ''
     }))
-
-    // 批量获取品牌的采购人信息
-    const uniqueBrandIds = [...new Set(enrichedItems.map((item: any) => item.brand_id).filter(Boolean))] as string[]
-    if (uniqueBrandIds.length > 0) {
-      try {
-        const purchaserRes = await brandApi.batchGetPurchasers(uniqueBrandIds)
-        const purchaserMap: Record<string, { purchaser_id: string; purchaser_name: string }> = purchaserRes.result || {}
-        enrichedItems.forEach((item: any) => {
-          if (item.brand_id && purchaserMap[item.brand_id]) {
-            item.purchaser_name = purchaserMap[item.brand_id].purchaser_name || ''
-          }
-        })
-      } catch {}
-    }
 
     pushableItems.value = enrichedItems
     showPushItemSelect.value = true
@@ -455,6 +440,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
                 <th>商品</th>
                 <th>品牌</th>
                 <th>规格</th>
+                <th>仓库</th>
                 <th class="col-num">数量</th>
                 <th class="col-num">库存</th>
                 <th>库存状态</th>
@@ -470,6 +456,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
                 <td>{{ item.product_name || item.product_id }}</td>
                 <td>{{ item.brand_name || '-' }}</td>
                 <td>{{ item.spec_code || '-' }}</td>
+                <td>{{ item.shipping_method === '直运' ? '--' : (item.warehouse_name || '-') }}</td>
                 <td class="col-num">{{ item.qty }}</td>
                 <td class="col-num">{{ item.stock_quantity ?? '-' }}</td>
                 <td>
