@@ -228,6 +228,7 @@ const warehousesLoading = ref(false)
 const customerSearchKeyword = ref('')
 const showCustomerDropdown = ref(false)
 const showProductDropdown = ref<number | null>(null)
+const productSearchKeywords = ref<Record<number, string>>({})
 
 const { loadProvinceCityData, getProvinces, getCities } = useProvinceCity()
 
@@ -392,7 +393,10 @@ const loadCustomers = async (keyword?: string) => {
 
 // 商品搜索（服务端模糊匹配规格编号）
 let productSearchTimer: ReturnType<typeof setTimeout> | null = null
-const handleProductSearch = (keyword: string) => {
+const handleProductSearch = (index: number, keyword: string) => {
+  // 保存搜索关键字
+  productSearchKeywords.value[index] = keyword
+
   if (productSearchTimer) clearTimeout(productSearchTimer)
   if (!keyword || keyword.length < 1) {
     productTree.value = []
@@ -418,6 +422,7 @@ const selectSpecFromSearch = async (specResult: SpecSearchResult) => {
   const itemIndex = showProductDropdown.value ?? 0
   showProductDropdown.value = null
   specSearchResults.value = []
+  productSearchKeywords.value[itemIndex] = ''
 
   // 获取商品详情以获取品牌信息用于折扣计算
   let discount = 1
@@ -1616,9 +1621,9 @@ onBeforeUnmount(() => {
                       <div class="search-select">
                         <input
                           type="text"
-                          :value="item.product_name ? (item.brand_name ? '[' + item.brand_name + '] ' + item.product_name : item.product_name) : ''"
+                          :value="productSearchKeywords[index] ?? (item.product_name ? (item.brand_name ? '[' + item.brand_name + '] ' + item.product_name : item.product_name) : '')"
                           @focus="showProductDropdown = index; productTree = []"
-                          @input="handleProductSearch(($event.target as HTMLInputElement).value)"
+                          @input="handleProductSearch(index, ($event.target as HTMLInputElement).value)"
                           placeholder="输入规格编号搜索"
                         />
                         <div class="search-dropdown product-tree-dropdown" v-if="showProductDropdown === index">
