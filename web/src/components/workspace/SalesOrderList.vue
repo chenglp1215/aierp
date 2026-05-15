@@ -62,18 +62,18 @@ interface Warehouse {
 // Constants
 const statusMap: Record<string, { label: string; class: string }> = {
   draft: { label: '草稿', class: 'draft' },
-  pending: { label: '待确认', class: 'pending' },
-  confirmed: { label: '已确认', class: 'confirmed' },
-  processing: { label: '处理中', class: 'processing' },
-  shipped: { label: '已发货', class: 'shipped' },
-  completed: { label: '已完成', class: 'completed' },
+  pending: { label: '待审核', class: 'pending' },
+  audited: { label: '已审核', class: 'audited' },
+  partially_pushed_to_purchase: { label: '部分下推采购', class: 'partial-pushed' },
+  pushed_to_purchase: { label: '已下推采购', class: 'pushed' },
+  closed: { label: '已关闭', class: 'closed' },
   cancelled: { label: '已取消', class: 'cancelled' }
 }
 
-const paymentStatusMap: Record<string, { label: string; class: string }> = {
-  unpaid: { label: '未付款', class: 'unpaid' },
-  partial: { label: '部分付款', class: 'partial' },
-  paid: { label: '已付款', class: 'paid' }
+const deliveryStatusMap: Record<string, { label: string; class: string }> = {
+  none: { label: '未发货', class: 'none' },
+  partial: { label: '部分发货', class: 'partial' },
+  full: { label: '全部发货', class: 'full' }
 }
 
 const deliveryTypes = [
@@ -616,7 +616,6 @@ const formatAmount = (amount: number) => {
 }
 
 const getStatusInfo = (status: string) => statusMap[status] || { label: status, class: '' }
-const getPaymentStatusInfo = (status: string) => paymentStatusMap[status] || { label: status, class: '' }
 
 // Watch
 watch(() => orderForm.value.discount_ratio, (newVal) => {
@@ -687,17 +686,16 @@ onMounted(() => {
             <th style="width: 100px">发货方式</th>
             <th style="width: 100px; text-align: right">订单金额</th>
             <th style="width: 80px">订单状态</th>
-            <th style="width: 80px">付款状态</th>
             <th style="width: 100px">下单日期</th>
             <th style="width: 200px">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="8" class="loading-cell">加载中...</td>
+            <td colspan="7" class="loading-cell">加载中...</td>
           </tr>
           <tr v-else-if="orders.length === 0">
-            <td colspan="8" class="empty-cell">暂无数据</td>
+            <td colspan="7" class="empty-cell">暂无数据</td>
           </tr>
           <tr v-else v-for="order in orders" :key="order.order_no">
             <td>{{ order.order_no }}</td>
@@ -711,22 +709,17 @@ onMounted(() => {
             </td>
             <td style="text-align: right">{{ formatAmount(order.final_amount) }}</td>
             <td>
-              <span class="status-tag" :class="getStatusInfo(order.status).class">
-                {{ getStatusInfo(order.status).label }}
-              </span>
-            </td>
-            <td>
-              <span class="status-tag" :class="getPaymentStatusInfo(order.payment_status).class">
-                {{ getPaymentStatusInfo(order.payment_status).label }}
+              <span class="status-tag" :class="getStatusInfo(order.order_status).class">
+                {{ getStatusInfo(order.order_status).label }}
               </span>
             </td>
             <td>{{ formatDate(order.order_date) }}</td>
             <td>
               <div class="action-buttons">
                 <button class="btn-link" @click="openDetail(order)">详情</button>
-                <button class="btn-link" @click="openEditOrder(order)" v-if="order.status === 'draft'">编辑</button>
-                <button class="btn-link highlight" @click="handleConfirmOrder(order.order_no)" v-if="order.status === 'pending'">确认</button>
-                <button class="btn-link danger" @click="confirmDelete(order.order_no)" v-if="order.status === 'draft'">删除</button>
+                <button class="btn-link" @click="openEditOrder(order)" v-if="order.order_status === 'draft'">编辑</button>
+                <button class="btn-link highlight" @click="handleConfirmOrder(order.order_no)" v-if="order.order_status === 'pending'">确认</button>
+                <button class="btn-link danger" @click="confirmDelete(order.order_no)" v-if="order.order_status === 'draft'">删除</button>
               </div>
             </td>
           </tr>
@@ -1359,14 +1352,14 @@ onMounted(() => {
 
 .status-tag.draft { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
 .status-tag.pending { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
-.status-tag.confirmed { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
-.status-tag.processing { background-color: rgba(139, 92, 246, 0.1); color: var(--accent-purple); }
-.status-tag.shipped { background-color: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
-.status-tag.completed { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+.status-tag.audited { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
+.status-tag.partial-pushed { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.status-tag.pushed { background-color: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.status-tag.closed { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .status-tag.cancelled { background-color: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
-.status-tag.unpaid { background-color: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
+.status-tag.none { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
 .status-tag.partial { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
-.status-tag.paid { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+.status-tag.full { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 
 .action-buttons {
   display: flex;
