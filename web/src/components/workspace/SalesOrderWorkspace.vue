@@ -630,7 +630,7 @@ const openEditOrder = async (order: SalesOrder) => {
   customerSearchKeyword.value = fullOrder.customer_name || ''
 
   // 补充商品的品牌信息、包装和销售规格
-  const productIds = [...new Set(order.items.map(item => item.product_id).filter(Boolean))]
+  const productIds = [...new Set(fullOrder.items?.map(item => item.product_id).filter(Boolean) || [])]
   const brandMap: Record<string, string> = {}
   const specMap: Record<string, { packaging: string; sales_spec: string }> = {}
   await Promise.all(productIds.map(async (pid: string) => {
