@@ -107,6 +107,7 @@ const customerSearchKeyword = ref('')
 const showCustomerDropdown = ref(false)
 const showProductDropdown = ref<number | null>(null)
 const showWarehouseDropdown = ref<number | null>(null)
+const productSearchKeywords = ref<Record<number, string>>({})
 
 // Province/City state
 interface ProvinceItem {
@@ -203,7 +204,10 @@ const loadCustomers = async (keyword?: string) => {
 
 // 商品搜索
 let productSearchTimer: ReturnType<typeof setTimeout> | null = null
-const handleProductSearch = (keyword: string) => {
+const handleProductSearch = (index: number, keyword: string) => {
+  // 保存搜索关键字
+  productSearchKeywords.value[index] = keyword
+
   if (productSearchTimer) clearTimeout(productSearchTimer)
   if (!keyword || keyword.length < 1) {
     productTree.value = []
@@ -224,7 +228,7 @@ const handleProductSearch = (keyword: string) => {
       for (const product of products) {
         try {
           const specsRes = await productApi.getSpecs(product.id)
-          const specs: ProductSpec[] = specsRes.result?.items || []
+          const specs: ProductSpec[] = specsRes?.items || []
           specs.forEach(s => specIdsInTree.add(s.id))
           tree.push({ product, specs, expanded: false })
         } catch {
@@ -254,6 +258,7 @@ const selectSpec = async (treeIndex: number, spec: ProductSpec) => {
   const itemIndex = showProductDropdown.value ?? 0
   showProductDropdown.value = null
   specSearchResults.value = []
+  productSearchKeywords.value[itemIndex] = ''
 
   let discount = 1
   if (orderForm.value.customer_id && product.brand_id) {
@@ -263,7 +268,7 @@ const selectSpec = async (treeIndex: number, spec: ProductSpec) => {
         brand_id: product.brand_id,
         is_active: true
       })
-      const discountItem = discountRes.result?.items?.[0]
+      const discountItem = discountRes?.items?.[0]
       if (discountItem) discount = discountItem.discount_value
     } catch (e) {
       console.error('获取客户折扣失败:', e)
@@ -291,19 +296,20 @@ const selectSpecFromSearch = async (specResult: SpecSearchResult) => {
   const itemIndex = showProductDropdown.value ?? 0
   showProductDropdown.value = null
   specSearchResults.value = []
+  productSearchKeywords.value[itemIndex] = ''
 
   let discount = 1
   if (orderForm.value.customer_id && specResult.product_id) {
     try {
       const productRes = await productApi.getById(specResult.product_id)
-      const productDetail = productRes.result
+      const productDetail = productRes
       if (productDetail?.brand_id) {
         const discountRes = await customerDiscountApi.list({
           customer_id: orderForm.value.customer_id,
           brand_id: productDetail.brand_id,
           is_active: true
         })
-        const discountItem = discountRes.result?.items?.[0]
+        const discountItem = discountRes?.items?.[0]
         if (discountItem) discount = discountItem.discount_value
       }
     } catch (e) {
@@ -750,10 +756,10 @@ onBeforeUnmount(() => {
                   <div class="search-select">
                     <input
                       type="text"
-                      :value="item.product_name ? (item.brand_name ? '[' + item.brand_name + '] ' + item.product_name : item.product_name) : ''"
-                      @click="if(item.product_id) { item.product_id = ''; item.product_name = ''; item.product_code = ''; item.brand_name = ''; item.spec_id = ''; item.spec_code = '' }"
+                      :value="productSearchKeywords[index] ?? (item.product_name ? (item.brand_name ? '[' + item.brand_name + '] ' + item.product_name : item.product_name) : '')"
+                      @click="if(item.product_id) { item.product_id = ''; item.product_name = ''; item.product_code = ''; item.brand_name = ''; item.spec_id = ''; item.spec_code = ''; productSearchKeywords[index] = '' }"
                       @focus="showProductDropdown = index; productTree = []"
-                      @input="handleProductSearch(($event.target as HTMLInputElement).value)"
+                      @input="handleProductSearch(index, ($event.target as HTMLInputElement).value)"
                       placeholder="输入商品名称/编码/规格编号搜索"
                     />
                     <div class="search-dropdown product-tree-dropdown" v-if="showProductDropdown === index">
