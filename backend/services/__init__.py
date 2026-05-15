@@ -1,6 +1,8 @@
 from .base_service import BaseService
 from .sales_order_service import SalesOrderService, sales_order_service
 from .purchase_order_service import PurchaseOrderService, purchase_order_service
+from .sales_order_service_mysql import sales_order_service_mysql
+from .purchase_order_service_mysql import purchase_order_service_mysql
 from .customer_service_mysql import customer_service, customer_discount_service
 from .auth_service import mysql_user_service, mysql_role_service, mysql_permission_service
 from .inventory_service_mysql import warehouse_service, stock_service
@@ -18,6 +20,8 @@ __all__ = [
     "sales_order_service",
     "PurchaseOrderService",
     "purchase_order_service",
+    "sales_order_service_mysql",
+    "purchase_order_service_mysql",
     "customer_service",
     "customer_discount_service",
     "mysql_user_service",

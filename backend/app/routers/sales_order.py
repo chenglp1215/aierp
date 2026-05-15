@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Query, Depends, Body
 from typing import Optional, List, Dict, Any
 
-from services.sales_order_service import sales_order_service
+from services.sales_order_service_mysql import sales_order_service_mysql as sales_order_service
 from services.order_status_flow_service import order_status_flow_service
 from .auth import require_permission
 from app.decorators import wrap_response
@@ -28,8 +28,41 @@ async def create_and_submit_sales_order(
     data: Dict[str, Any],
     current_user: dict = Depends(require_permission("order.create"))
 ):
-    result = await sales_order_service.create_sales_order(data, current_user, submit=True)
+    result = await sales_order_service.create_order(data, current_user, auto_approve=True)
     return result
+
+
+@sales_order_router.post("/{order_no}/submit", response_model=dict, description="提交审核")
+@wrap_response
+async def submit_order(
+    order_no: str,
+    current_user: dict = Depends(require_permission("order.edit"))
+):
+    operator = current_user.get("username", current_user.get("full_name", "system"))
+    await sales_order_service.submit_order(order_no, operator)
+    return "订单已提交审核"
+
+
+@sales_order_router.post("/{order_no}/approve", response_model=dict, description="审核通过")
+@wrap_response
+async def approve_order(
+    order_no: str,
+    current_user: dict = Depends(require_permission("order.edit"))
+):
+    operator = current_user.get("username", current_user.get("full_name", "system"))
+    await sales_order_service.approve_order(order_no, operator)
+    return "订单审核通过"
+
+
+@sales_order_router.post("/{order_no}/reject", response_model=dict, description="驳回订单")
+@wrap_response
+async def reject_order(
+    order_no: str,
+    current_user: dict = Depends(require_permission("order.edit"))
+):
+    operator = current_user.get("username", current_user.get("full_name", "system"))
+    await sales_order_service.reject_order(order_no, operator)
+    return "订单已驳回"
 
 
 @sales_order_router.get("/", response_model=dict, description="获取销售订单列表")

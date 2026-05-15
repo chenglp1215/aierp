@@ -16,7 +16,7 @@ from models.purchase_order import (
     InStatusUpdate,
     PayStatusUpdate,
 )
-from services.purchase_order_service import purchase_order_service
+from services.purchase_order_service_mysql import purchase_order_service_mysql as purchase_order_service
 from services.order_status_flow_service import order_status_flow_service
 from app.decorators import success_response, error_response, validation_error
 from .auth import get_current_active_user, require_permission

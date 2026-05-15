@@ -82,7 +82,16 @@ async def init_mysql():
 
     await Tortoise.init(
         db_url=db_url,
-        modules={"models": ["models_mysql.auth", "models_mysql.product", "models_mysql.customer", "models_mysql.warehouse", "models_mysql.stock_check"]},
+        modules={"models": [
+            "models_mysql.auth",
+            "models_mysql.product",
+            "models_mysql.customer",
+            "models_mysql.warehouse",
+            "models_mysql.stock_check",
+            "models_mysql.sales_order",
+            "models_mysql.purchase_order",
+            "models_mysql.order_status_flow",
+            ]},
     )
     await Tortoise.generate_schemas()
     print("[OK] MySQL (Tortoise ORM) 连接成功")

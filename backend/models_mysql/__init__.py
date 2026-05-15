@@ -6,6 +6,15 @@ from .product import Brand, Category, Product, ProductSpec
 from .customer import Customer, InvoiceInfo, ShippingAddress, CustomerDiscount
 from .stock_check import StockCheckBatch, StockCheckRecord
 from .warehouse import Warehouse, Stock, InboundBatch, OutboundBatch
+from .sales_order import (
+    SalesOrder, SalesOrderItem, SalesDeliverInfo,
+    OrderStatus, DeliveryStatus, ReceiveStatus, InvoiceStatus, ShippingMethod
+)
+from .purchase_order import (
+    PurchaseOrder, PurchaseOrderItem,
+    PurchaseType, PurchaseStatus, InStatus, PayStatus
+)
+from .order_status_flow import OrderStatusFlow
 
 __all__ = [
     "User",
@@ -28,4 +37,22 @@ __all__ = [
     "Stock",
     "InboundBatch",
     "OutboundBatch",
+    # 销售订单
+    "SalesOrder",
+    "SalesOrderItem",
+    "SalesDeliverInfo",
+    "OrderStatus",
+    "DeliveryStatus",
+    "ReceiveStatus",
+    "InvoiceStatus",
+    "ShippingMethod",
+    # 采购单
+    "PurchaseOrder",
+    "PurchaseOrderItem",
+    "PurchaseType",
+    "PurchaseStatus",
+    "InStatus",
+    "PayStatus",
+    # 状态流转
+    "OrderStatusFlow",
 ]
