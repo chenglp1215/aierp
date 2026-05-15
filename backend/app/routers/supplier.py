@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Query, Depends
 from typing import Optional, Dict, Any, List
 
-from services.supplier_service import supplier_service
+from services.supplier_service_mysql import supplier_service
 from .auth import require_permission
 from app.decorators import wrap_response
 
@@ -31,7 +31,7 @@ async def list_suppliers(
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     is_active: Optional[bool] = Query(None, description="是否激活"),
-    brand_ids: Optional[List[str]] = Query(None, description="品牌ID列表"),
+    brand_ids: Optional[List[int]] = Query(None, description="品牌ID列表"),
     _: dict = Depends(require_permission("supplier.view"))
 ):
     """获取供应商列表"""
@@ -57,7 +57,7 @@ async def get_all_suppliers(
 @supplier_router.get("/{supplier_id}", response_model=dict)
 @wrap_response
 async def get_supplier(
-    supplier_id: str,
+    supplier_id: int,
     _: dict = Depends(require_permission("supplier.view"))
 ):
     """获取供应商详情"""
@@ -67,7 +67,7 @@ async def get_supplier(
 @supplier_router.put("/{supplier_id}", response_model=dict)
 @wrap_response
 async def update_supplier(
-    supplier_id: str,
+    supplier_id: int,
     supplier_data: Dict[str, Any],
     _: dict = Depends(require_permission("supplier.edit"))
 ):
@@ -83,7 +83,7 @@ async def update_supplier(
 @supplier_router.delete("/{supplier_id}", response_model=dict)
 @wrap_response
 async def delete_supplier(
-    supplier_id: str,
+    supplier_id: int,
     _: dict = Depends(require_permission("supplier.delete"))
 ):
     """删除供应商"""
@@ -94,7 +94,7 @@ async def delete_supplier(
 @supplier_router.patch("/{supplier_id}/toggle-active", response_model=dict)
 @wrap_response
 async def toggle_supplier_active(
-    supplier_id: str,
+    supplier_id: int,
     is_active: bool = Query(..., description="是否激活"),
     _: dict = Depends(require_permission("supplier.edit"))
 ):
@@ -106,7 +106,7 @@ async def toggle_supplier_active(
 @supplier_router.get("/by-brand/{brand_id}", response_model=dict)
 @wrap_response
 async def get_suppliers_by_brand(
-    brand_id: str,
+    brand_id: int,
     _: dict = Depends(require_permission("supplier.view"))
 ):
     """根据品牌ID获取供应商列表"""
