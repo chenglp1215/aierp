@@ -3,7 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { supplierApi, brandApi, type Brand } from '../../services/api'
 
 interface SupplierBrand {
-  brand_id: string
+  brand_id: number
+  brand_name?: string
   discount: number
   is_priority: boolean
 }
@@ -15,7 +16,7 @@ interface BankAccount {
 }
 
 interface Supplier {
-  id: string
+  id: number
   name: string
   contact_person?: string
   contact_phone?: string
