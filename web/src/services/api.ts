@@ -986,7 +986,7 @@ export const brandApi = {
 }
 
 export const supplierApi = {
-  list: (params: { page?: number; page_size?: number; keyword?: string; is_active?: boolean; brand_ids?: string[] }) => {
+  list: (params: { page?: number; page_size?: number; keyword?: string; is_active?: boolean; brand_ids?: number[] }) => {
     return apiService.get<any>('/suppliers/', params)
   },
 
@@ -994,7 +994,7 @@ export const supplierApi = {
     return apiService.get<any>('/suppliers/all', params)
   },
 
-  getById: (id: string) => {
+  getById: (id: number) => {
     return apiService.get<any>(`/suppliers/${id}`)
   },
 
@@ -1002,19 +1002,19 @@ export const supplierApi = {
     return apiService.post<any>('/suppliers/', data)
   },
 
-  update: (id: string, data: any) => {
+  update: (id: number, data: any) => {
     return apiService.put<any>(`/suppliers/${id}`, data)
   },
 
-  delete: (id: string) => {
+  delete: (id: number) => {
     return apiService.delete<any>(`/suppliers/${id}`)
   },
 
-  toggleActive: (id: string, isActive: boolean) => {
+  toggleActive: (id: number, isActive: boolean) => {
     return apiService.patch<any>(`/suppliers/${id}/toggle-active?is_active=${isActive}`)
   },
 
-  getByBrandId: (brandId: string) => {
+  getByBrandId: (brandId: number) => {
     return apiService.get<any>(`/suppliers/by-brand/${brandId}`)
   }
 }
