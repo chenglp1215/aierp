@@ -146,6 +146,9 @@ class SupplierService:
                 "account_name": bank_accounts[0].account_name,
                 "account_no": bank_accounts[0].account_no,
             }
+        else:
+            # 确保返回 bank_account 字段（即使为 None）
+            result["bank_account"] = None
 
         # 获取品牌关联
         brand_relations = await SupplierBrand.filter(supplier_id=supplier_id).all()
@@ -197,6 +200,16 @@ class SupplierService:
         items = []
         for supplier in suppliers:
             item = supplier.to_dict()
+            # 获取银行账户
+            bank_accounts = await SupplierBankAccount.filter(supplier_id=supplier.id).all()
+            if bank_accounts:
+                item["bank_account"] = {
+                    "bank_name": bank_accounts[0].bank_name,
+                    "account_name": bank_accounts[0].account_name,
+                    "account_no": bank_accounts[0].account_no,
+                }
+            else:
+                item["bank_account"] = None
             # 获取品牌关联
             brand_relations = await SupplierBrand.filter(supplier_id=supplier.id).all()
             supplied_brands = []
