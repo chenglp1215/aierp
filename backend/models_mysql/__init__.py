@@ -15,6 +15,7 @@ from .purchase_order import (
     PurchaseType, PurchaseStatus, InStatus, PayStatus
 )
 from .order_status_flow import OrderStatusFlow
+from .supplier import Supplier, SupplierBankAccount, SupplierBrand
 
 __all__ = [
     "User",
@@ -55,4 +56,8 @@ __all__ = [
     "PayStatus",
     # 状态流转
     "OrderStatusFlow",
+    # 供应商
+    "Supplier",
+    "SupplierBankAccount",
+    "SupplierBrand",
 ]
