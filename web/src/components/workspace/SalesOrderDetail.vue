@@ -27,6 +27,7 @@ const activeRelatedTab = ref<'purchase' | 'receivable'>('purchase')
 // ============ 状态映射 ============
 const orderStatusMap: Record<string, { label: string; class: string }> = {
   draft: { label: '草稿', class: 'draft' },
+  pending: { label: '待审核', class: 'pending' },
   audited: { label: '已审核', class: 'audited' },
   partially_pushed_to_purchase: { label: '部分下推采购', class: 'partial-pushed' },
   pushed_to_purchase: { label: '已下推采购', class: 'pushed' },
@@ -119,6 +120,20 @@ const loadReceivables = async () => {
 }
 
 // ============ 状态操作 ============
+const handleSubmit = async () => {
+  if (!order.value) return
+  actionLoading.value = true
+  try {
+    await salesOrderApi.submit(order.value.order_no)
+    window.showToast('订单已提交审核', 'success')
+    await loadOrder()
+  } catch (error: any) {
+    window.showToast(error.message || '提交失败', 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
 const handleAudit = async () => {
   if (!order.value) return
   actionLoading.value = true
@@ -128,6 +143,20 @@ const handleAudit = async () => {
     await loadOrder()
   } catch (error: any) {
     window.showToast(error.message || '审核失败', 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const handleReject = async () => {
+  if (!order.value) return
+  actionLoading.value = true
+  try {
+    await salesOrderApi.reject(order.value.order_no)
+    window.showToast('订单已驳回', 'success')
+    await loadOrder()
+  } catch (error: any) {
+    window.showToast(error.message || '驳回失败', 'error')
   } finally {
     actionLoading.value = false
   }
@@ -276,10 +305,12 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
           </span>
         </div>
         <div class="header-actions">
-          <button v-if="order.order_status === 'draft'" class="btn-primary" @click="handleAudit" :disabled="actionLoading">审核通过</button>
+          <button v-if="order.order_status === 'draft'" class="btn-primary" @click="handleSubmit" :disabled="actionLoading">提交审核</button>
+          <button v-if="order.order_status === 'pending'" class="btn-primary" @click="handleAudit" :disabled="actionLoading">审核通过</button>
+          <button v-if="order.order_status === 'pending'" class="btn-warning" @click="handleReject" :disabled="actionLoading">驳回</button>
           <button v-if="canPushPurchase" class="btn-primary" @click="handlePushPurchase" :disabled="actionLoading">下推采购</button>
           <button v-if="order.order_status === 'audited'" class="btn-warning" @click="handleClose" :disabled="actionLoading">关闭订单</button>
-          <button v-if="order.order_status === 'draft' || order.order_status === 'audited'" class="btn-danger" @click="handleCancel" :disabled="actionLoading">取消订单</button>
+          <button v-if="order.order_status === 'draft' || order.order_status === 'pending' || order.order_status === 'audited'" class="btn-danger" @click="handleCancel" :disabled="actionLoading">取消订单</button>
         </div>
       </div>
 
@@ -732,6 +763,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
 }
 
 .status-tag.draft { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
+.status-tag.pending { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.audited { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
 .status-tag.partial-pushed { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
 .status-tag.pushed { background-color: rgba(139, 92, 246, 0.1); color: #8b5cf6; }

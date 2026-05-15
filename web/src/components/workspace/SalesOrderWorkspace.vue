@@ -136,6 +136,7 @@ interface Warehouse {
 // Constants
 const orderStatusMap: Record<string, { label: string; class: string }> = {
   draft: { label: '草稿', class: 'draft' },
+  pending: { label: '待审核', class: 'pending' },
   audited: { label: '已审核', class: 'audited' },
   partially_pushed_to_purchase: { label: '部分下推采购', class: 'partial-pushed' },
   pushed_to_purchase: { label: '已下推采购', class: 'pushed' },
@@ -191,6 +192,7 @@ const showDeleteConfirm = ref(false)
 const showAuditConfirm = ref(false)
 const showCloseConfirm = ref(false)
 const showCancelConfirm = ref(false)
+const showRejectConfirm = ref(false)
 const showPushItemSelect = ref(false)
 const pushableItems = ref<any[]>([])
 const editingOrder = ref<SalesOrder | null>(null)
@@ -1218,6 +1220,47 @@ const handleCancelOrder = async () => {
   }
 }
 
+// 提交审核
+const handleSubmitOrder = async (orderNo: string) => {
+  actionLoading.value = true
+  try {
+    await salesOrderApi.submit(orderNo)
+    window.showToast('订单已提交审核', 'success')
+    loadOrders()
+  } catch (error: any) {
+    window.showToast(error.message || '提交失败', 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+// 驳回确认
+const confirmReject = (orderNo: string) => {
+  actionTargetOrderNo.value = orderNo
+  showRejectConfirm.value = true
+}
+
+// 驳回订单
+const handleRejectOrder = async () => {
+  if (!actionTargetOrderNo.value) return
+  actionLoading.value = true
+  try {
+    await salesOrderApi.reject(actionTargetOrderNo.value)
+    window.showToast('订单已驳回', 'success')
+    showRejectConfirm.value = false
+    loadOrders()
+    if (selectedOrder.value?.order_no === actionTargetOrderNo.value) {
+      selectedOrder.value = { ...selectedOrder.value, order_status: 'draft' }
+      await refreshFlows(actionTargetOrderNo.value)
+    }
+  } catch (error: any) {
+    window.showToast(error.message || '驳回失败', 'error')
+  } finally {
+    actionLoading.value = false
+    actionTargetOrderNo.value = null
+  }
+}
+
 const refreshFlows = async (orderNo: string) => {
   try {
     const flowRes = await salesOrderApi.getStatusFlows(orderNo)
@@ -1415,10 +1458,12 @@ onBeforeUnmount(() => {
             <span class="action-btns">
               <button class="btn-link" @click="emit('navigate', 'sales-order-detail', { orderNo: row.order_no })">详情</button>
               <button class="btn-link" @click="openEditOrder(row)" v-if="row.order_status === 'draft'">编辑</button>
-              <button class="btn-link success" @click="confirmAudit(row.order_no)" v-if="row.order_status === 'draft'">审核</button>
+              <button class="btn-link success" @click="handleSubmitOrder(row.order_no)" v-if="row.order_status === 'draft'">提交审核</button>
+              <button class="btn-link success" @click="confirmAudit(row.order_no)" v-if="row.order_status === 'pending'">审核通过</button>
+              <button class="btn-link warning" @click="confirmReject(row.order_no)" v-if="row.order_status === 'pending'">驳回</button>
               <button class="btn-link primary" @click="confirmPushPurchase(row.order_no)" v-if="row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase'">下推采购</button>
               <button class="btn-link warning" @click="confirmClose(row.order_no)" v-if="row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase'">关闭</button>
-              <button class="btn-link danger" @click="confirmCancel(row.order_no)" v-if="row.order_status === 'draft' || row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase'">取消</button>
+              <button class="btn-link danger" @click="confirmCancel(row.order_no)" v-if="['draft', 'pending', 'audited', 'partially_pushed_to_purchase'].includes(row.order_status)">取消</button>
               <button class="btn-link danger" @click="confirmDelete(row.order_no)" v-if="row.order_status === 'draft'">删除</button>
             </span>
           </template>
@@ -2084,6 +2129,24 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <!-- Reject Confirm Modal -->
+    <div class="modal-overlay" v-if="showRejectConfirm">
+      <div class="modal confirm-modal">
+        <div class="modal-header">
+          <h3>确认驳回</h3>
+        </div>
+        <div class="modal-body">
+          <p>确定要驳回该订单吗？驳回后订单将返回草稿状态。</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showRejectConfirm = false">取消</button>
+          <button class="btn-warning" @click="handleRejectOrder" :disabled="actionLoading">
+            {{ actionLoading ? '驳回中...' : '确认驳回' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Push Purchase Item Select Modal -->
     <PushPurchaseItemSelectModal
       :visible="showPushItemSelect"
@@ -2232,6 +2295,7 @@ onBeforeUnmount(() => {
 }
 
 .status-tag.draft { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
+.status-tag.pending { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.audited { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
 .status-tag.pushed { background-color: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
 .status-tag.partial-pushed { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }

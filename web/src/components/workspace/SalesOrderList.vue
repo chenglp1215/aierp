@@ -113,7 +113,6 @@ const deleteTargetOrderNo = ref<string | null>(null)
 const formLoading = ref(false)
 const deleteLoading = ref(false)
 const detailLoading = ref(false)
-const confirmLoading = ref(false)
 
 // Customer/Product/Warehouse lists for dropdowns
 const customerList = ref<Customer[]>([])
@@ -564,26 +563,6 @@ const handleSaveOrder = async () => {
   }
 }
 
-const handleConfirmOrder = async (orderNo: string) => {
-  if (!confirm('确认该订单？确认后将执行库存扣减或生成采购单。')) {
-    return
-  }
-  confirmLoading.value = true
-  try {
-    await salesOrderApi.approve(orderNo)
-    window.showToast('订单确认成功', 'success')
-    // 直接更新列表项状态，不整体刷新
-    const index = orders.value.findIndex(o => o.order_no === orderNo)
-    if (index !== -1) {
-      orders.value[index] = { ...orders.value[index], order_status: 'audited' }
-    }
-  } catch (error: any) {
-    window.showToast(error.message || '确认失败', 'error')
-  } finally {
-    confirmLoading.value = false
-  }
-}
-
 const handleUpdateStatus = async (orderNo: string, status: string) => {
   try {
     // 根据状态调用不同的 API
@@ -610,6 +589,45 @@ const handleUpdateStatus = async (orderNo: string, status: string) => {
     }
   } catch (error: any) {
     window.showToast(error.message || '状态更新失败', 'error')
+  }
+}
+
+// 提交审核
+const handleSubmitOrder = async (orderNo: string) => {
+  try {
+    await salesOrderApi.submit(orderNo)
+    window.showToast('订单已提交审核', 'success')
+    loadOrders()
+  } catch (error: any) {
+    window.showToast(error.message || '提交失败', 'error')
+  }
+}
+
+// 审核通过
+const handleApproveOrder = async (orderNo: string) => {
+  try {
+    await salesOrderApi.approve(orderNo)
+    window.showToast('订单审核通过', 'success')
+    const index = orders.value.findIndex(o => o.order_no === orderNo)
+    if (index !== -1) {
+      orders.value[index] = { ...orders.value[index], order_status: 'audited' }
+    }
+  } catch (error: any) {
+    window.showToast(error.message || '审核失败', 'error')
+  }
+}
+
+// 驳回
+const handleRejectOrder = async (orderNo: string) => {
+  try {
+    await salesOrderApi.reject(orderNo)
+    window.showToast('订单已驳回', 'success')
+    const index = orders.value.findIndex(o => o.order_no === orderNo)
+    if (index !== -1) {
+      orders.value[index] = { ...orders.value[index], order_status: 'draft' }
+    }
+  } catch (error: any) {
+    window.showToast(error.message || '驳回失败', 'error')
   }
 }
 
@@ -725,7 +743,9 @@ onMounted(() => {
               <div class="action-buttons">
                 <button class="btn-link" @click="openDetail(order)">详情</button>
                 <button class="btn-link" @click="openEditOrder(order)" v-if="order.order_status === 'draft'">编辑</button>
-                <button class="btn-link highlight" @click="handleConfirmOrder(order.order_no)" v-if="order.order_status === 'pending'">确认</button>
+                <button class="btn-link highlight" @click="handleSubmitOrder(order.order_no)" v-if="order.order_status === 'draft'">提交审核</button>
+                <button class="btn-link success" @click="handleApproveOrder(order.order_no)" v-if="order.order_status === 'pending'">审核通过</button>
+                <button class="btn-link warning" @click="handleRejectOrder(order.order_no)" v-if="order.order_status === 'pending'">驳回</button>
                 <button class="btn-link danger" @click="confirmDelete(order.order_no)" v-if="order.order_status === 'draft'">删除</button>
               </div>
             </td>
@@ -1379,6 +1399,22 @@ onMounted(() => {
 .btn-link.highlight {
   color: var(--accent-green);
   font-weight: 500;
+}
+
+.btn-link.success {
+  color: var(--accent-green);
+}
+
+.btn-link.success:hover {
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.btn-link.warning {
+  color: var(--accent-yellow);
+}
+
+.btn-link.warning:hover {
+  background-color: rgba(245, 158, 11, 0.1);
 }
 
 .btn-link.danger {
