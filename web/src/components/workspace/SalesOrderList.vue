@@ -33,8 +33,10 @@ interface SalesOrder {
   total_amount: number
   discount_amount: number
   final_amount: number
-  status: string
-  payment_status: string
+  order_status: string
+  delivery_status?: string
+  receive_status?: string
+  invoice_status?: string
   procurement_order_id?: string
   order_date: string
   expected_delivery_date?: string
@@ -68,12 +70,6 @@ const statusMap: Record<string, { label: string; class: string }> = {
   pushed_to_purchase: { label: '已下推采购', class: 'pushed' },
   closed: { label: '已关闭', class: 'closed' },
   cancelled: { label: '已取消', class: 'cancelled' }
-}
-
-const deliveryStatusMap: Record<string, { label: string; class: string }> = {
-  none: { label: '未发货', class: 'none' },
-  partial: { label: '部分发货', class: 'partial' },
-  full: { label: '全部发货', class: 'full' }
 }
 
 const deliveryTypes = [
@@ -579,7 +575,7 @@ const handleConfirmOrder = async (orderNo: string) => {
     // 直接更新列表项状态，不整体刷新
     const index = orders.value.findIndex(o => o.order_no === orderNo)
     if (index !== -1) {
-      orders.value[index] = { ...orders.value[index], status: 'confirmed' }
+      orders.value[index] = { ...orders.value[index], order_status: 'audited' }
     }
   } catch (error: any) {
     window.showToast(error.message || '确认失败', 'error')
@@ -595,11 +591,11 @@ const handleUpdateStatus = async (orderNo: string, status: string) => {
     // 直接更新列表项状态，不整体刷新
     const index = orders.value.findIndex(o => o.order_no === orderNo)
     if (index !== -1) {
-      orders.value[index] = { ...orders.value[index], status }
+      orders.value[index] = { ...orders.value[index], order_status: status }
     }
     // 更新详情弹窗中的订单状态
     if (selectedOrder.value?.order_no === orderNo) {
-      selectedOrder.value = { ...selectedOrder.value, status }
+      selectedOrder.value = { ...selectedOrder.value, order_status: status }
     }
   } catch (error: any) {
     window.showToast(error.message || '状态更新失败', 'error')
@@ -961,14 +957,8 @@ onMounted(() => {
                 </div>
                 <div class="detail-item">
                   <label>订单状态</label>
-                  <span class="status-tag" :class="getStatusInfo(selectedOrder.status).class">
-                    {{ getStatusInfo(selectedOrder.status).label }}
-                  </span>
-                </div>
-                <div class="detail-item">
-                  <label>付款状态</label>
-                  <span class="status-tag" :class="getPaymentStatusInfo(selectedOrder.payment_status).class">
-                    {{ getPaymentStatusInfo(selectedOrder.payment_status).label }}
+                  <span class="status-tag" :class="getStatusInfo(selectedOrder.order_status).class">
+                    {{ getStatusInfo(selectedOrder.order_status).label }}
                   </span>
                 </div>
                 <div class="detail-item">
@@ -1091,34 +1081,27 @@ onMounted(() => {
               <p class="remarks-text">{{ selectedOrder.remarks }}</p>
             </div>
 
-            <div class="detail-section" v-if="selectedOrder.status !== 'draft'">
+            <div class="detail-section" v-if="selectedOrder.order_status !== 'draft'">
               <h4>状态更新</h4>
               <div class="status-actions">
                 <button
                   class="btn-primary"
-                  @click="handleUpdateStatus(selectedOrder.order_no, 'processing')"
-                  v-if="selectedOrder.status === 'confirmed'"
+                  @click="handleUpdateStatus(selectedOrder.order_no, 'audited')"
+                  v-if="selectedOrder.order_status === 'pending'"
                 >
-                  开始处理
+                  审核通过
                 </button>
                 <button
                   class="btn-primary"
-                  @click="handleUpdateStatus(selectedOrder.order_no, 'shipped')"
-                  v-if="selectedOrder.status === 'processing'"
+                  @click="handleUpdateStatus(selectedOrder.order_no, 'closed')"
+                  v-if="selectedOrder.order_status === 'audited'"
                 >
-                  已发货
-                </button>
-                <button
-                  class="btn-primary"
-                  @click="handleUpdateStatus(selectedOrder.order_no, 'completed')"
-                  v-if="selectedOrder.status === 'shipped'"
-                >
-                  完成订单
+                  关闭订单
                 </button>
                 <button
                   class="btn-danger"
                   @click="handleUpdateStatus(selectedOrder.order_no, 'cancelled')"
-                  v-if="['pending', 'confirmed'].includes(selectedOrder.status)"
+                  v-if="['draft', 'pending', 'audited'].includes(selectedOrder.order_status)"
                 >
                   取消订单
                 </button>
