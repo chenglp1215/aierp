@@ -256,7 +256,7 @@ export const permissionApi = {
 
 export const salesOrderApi = {
   // 获取订单列表
-  list: (params: { page?: number; page_size?: number; status?: string; customer_id?: string; order_no?: string; keyword?: string }) => {
+  list: (params: { page?: number; page_size?: number; status?: string; customer_id?: string | number; order_no?: string; keyword?: string }) => {
     return apiService.get<any>('/sales-orders/', params)
   },
 
@@ -268,84 +268,9 @@ export const salesOrderApi = {
   // 创建订单
   create: (data: {
     order_date: string
-    customer_id: string
-    sale_user_id?: string
-    deliver_info?: {
-      addr: string
-      province: string
-      city: string
-      person_name: string
-      person_tel: string
-    }
-    expect_deliver_date?: string
-    settle_type: string
-    invoice_info?: {
-      invoice_title: string
-      invoice_type?: string
-      tax_number: string
-      bank_name: string
-      bank_account: string
-    }
-    remark?: string
-    items: Array<{
-      row_no: number
-      product_code: string
-      spec_code: string
-      brand_id?: string
-      brand_name?: string
-      qty: number
-      price: number
-      discount: number
-      warehouse_id: string
-      shipping_method: string
-    }>
-  }) => {
-    return apiService.post<any>('/sales-orders/', data)
-  },
-
-  // 创建并提交订单（直接审核通过）
-  createAndSubmit: (data: {
-    order_date: string
-    customer_id: string
-    sale_user_id?: string
-    deliver_info?: {
-      addr: string
-      province: string
-      city: string
-      person_name: string
-      person_tel: string
-    }
-    expect_deliver_date?: string
-    settle_type: string
-    invoice_info?: {
-      invoice_title: string
-      invoice_type?: string
-      tax_number: string
-      bank_name: string
-      bank_account: string
-    }
-    remark?: string
-    items: Array<{
-      row_no: number
-      product_code: string
-      spec_code: string
-      brand_id?: string
-      brand_name?: string
-      qty: number
-      price: number
-      discount: number
-      warehouse_id: string
-      shipping_method: string
-    }>
-  }) => {
-    return apiService.post<any>('/sales-orders/create-and-submit', data)
-  },
-
-  // 更新订单
-  update: (orderNo: string, data: {
-    order_date?: string
-    customer_id?: string
-    sale_user_id?: string
+    customer_id: string | number
+    customer_name?: string
+    sale_user_id?: string | number
     deliver_info?: {
       addr: string
       province: string
@@ -355,14 +280,74 @@ export const salesOrderApi = {
     }
     expect_deliver_date?: string
     settle_type?: string
-    invoice_info?: {
-      invoice_title: string
-      invoice_type?: string
-      tax_number: string
-      bank_name: string
-      bank_account: string
-    }
+    tax_rate?: number
     remark?: string
+    items: Array<{
+      row_no: number
+      spec_id?: number
+      product_code?: string
+      spec_code?: string
+      warehouse_id?: number
+      qty: number
+      price: number
+      discount?: number
+      shipping_method: 'direct' | 'warehouse'
+    }>
+  }) => {
+    return apiService.post<any>('/sales-orders/', data)
+  },
+
+  // 创建并提交订单（直接审核通过）
+  createAndSubmit: (data: {
+    order_date: string
+    customer_id: string | number
+    customer_name?: string
+    sale_user_id?: string | number
+    deliver_info?: {
+      addr: string
+      province: string
+      city: string
+      person_name: string
+      person_tel: string
+    }
+    expect_deliver_date?: string
+    settle_type?: string
+    tax_rate?: number
+    remark?: string
+    items: Array<{
+      row_no: number
+      spec_id?: number
+      product_code?: string
+      spec_code?: string
+      warehouse_id?: number
+      qty: number
+      price: number
+      discount?: number
+      shipping_method: 'direct' | 'warehouse'
+    }>
+  }) => {
+    return apiService.post<any>('/sales-orders/create-and-submit', data)
+  },
+
+  // 更新订单
+  update: (orderNo: string, data: {
+    order_date?: string
+    customer_id?: string | number
+    customer_name?: string
+    expect_deliver_date?: string
+    settle_type?: string
+    remark?: string
+    items?: Array<{
+      row_no: number
+      spec_id?: number
+      product_code?: string
+      spec_code?: string
+      warehouse_id?: number
+      qty: number
+      price: number
+      discount?: number
+      shipping_method: 'direct' | 'warehouse'
+    }>
   }) => {
     return apiService.put<any>(`/sales-orders/${orderNo}`, data)
   },
@@ -372,34 +357,24 @@ export const salesOrderApi = {
     return apiService.delete<any>(`/sales-orders/${orderNo}`)
   },
 
-  // 更新订单状态
-  updateOrderStatus: (orderNo: string, status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/order_status`, { status })
+  // 提交审核（draft → pending）
+  submit: (orderNo: string) => {
+    return apiService.post<any>(`/sales-orders/${orderNo}/submit`)
   },
 
-  // 确认订单
-  confirm: (orderNo: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/order_status`, { status: 'confirmed' })
+  // 审核通过（pending → audited）
+  approve: (orderNo: string) => {
+    return apiService.post<any>(`/sales-orders/${orderNo}/approve`)
   },
 
-  // 更新状态（别名）
-  updateStatus: (orderNo: string, status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/order_status`, { status })
+  // 驳回（pending → draft）
+  reject: (orderNo: string) => {
+    return apiService.post<any>(`/sales-orders/${orderNo}/reject`)
   },
 
-  // 更新发货状态
-  updateDeliveryStatus: (orderNo: string, delivery_status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/delivery_status`, { status: delivery_status })
-  },
-
-  // 更新收货状态
-  updateReceiveStatus: (orderNo: string, receive_status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/receive_status`, { status: receive_status })
-  },
-
-  // 更新开票状态
-  updateInvoiceStatus: (orderNo: string, invoice_status: string) => {
-    return apiService.patch<any>(`/sales-orders/${orderNo}/invoice_status`, { status: invoice_status })
+  // 取消订单
+  cancel: (orderNo: string) => {
+    return apiService.post<any>(`/sales-orders/${orderNo}/cancel`)
   },
 
   // 获取订单状态流转记录

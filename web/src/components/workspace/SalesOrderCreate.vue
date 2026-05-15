@@ -15,16 +15,16 @@ interface SalesOrderItem {
   product_code?: string
   brand_id?: string
   brand_name?: string
-  spec_id: string
+  spec_id: string | number
   spec_code?: string
   qty: number
   price: number
   discount: number
   discounted_price: number
   amt: number
-  warehouse_id: string
+  warehouse_id: string | number
   warehouse_name?: string
-  shipping_method: string
+  shipping_method: 'direct' | 'warehouse'
   out_qty: number
   return_qty: number
   remain_out_qty: number
@@ -34,7 +34,7 @@ interface Product {
   id: string
   name: string
   product_code?: string
-  brand_id?: string
+  brand_id?: string | number
   brand_name?: string
   specs?: ProductSpec[]
 }
@@ -81,10 +81,8 @@ const settleTypeOptions = [
 ]
 
 const shippingMethodOptions = [
-  { value: '直运', label: '直运' },
-  { value: '物流', label: '物流' },
-  { value: '自提', label: '自提' },
-  { value: '送货', label: '送货' }
+  { value: 'direct', label: '直运' },
+  { value: 'warehouse', label: '仓库发货' }
 ]
 
 // Form state
@@ -288,7 +286,7 @@ const selectSpec = async (treeIndex: number, spec: ProductSpec) => {
     try {
       const discountRes = await customerDiscountApi.list({
         customer_id: orderForm.value.customer_id,
-        brand_id: product.brand_id,
+        brand_id: String(product.brand_id),
         is_active: true
       })
       const discountItem = discountRes?.items?.[0]
@@ -324,7 +322,7 @@ const selectSpecFromSearch = async (specResult: SpecSearchResult) => {
   let discount = 1
   if (orderForm.value.customer_id && specResult.product_id) {
     try {
-      const productRes = await productApi.getById(specResult.product_id)
+      const productRes = await productApi.getById(String(specResult.product_id))
       const productDetail = productRes
       if (productDetail?.brand_id) {
         const discountRes = await customerDiscountApi.list({
@@ -343,7 +341,7 @@ const selectSpecFromSearch = async (specResult: SpecSearchResult) => {
   const discountedPrice = +(specResult.price * discount).toFixed(2)
   orderForm.value.items[itemIndex] = {
     ...orderForm.value.items[itemIndex],
-    product_id: specResult.product_id,
+    product_id: String(specResult.product_id),
     product_name: specResult.product_name,
     product_code: specResult.product_code || '',
     brand_name: specResult.brand_name || '',
@@ -375,21 +373,21 @@ const handleWarehouseSearch = (keyword: string) => {
   }, 300)
 }
 
-const loadSpecStock = async (specId: string) => {
-  if (!specId || specStockMap.value[specId]) return
+const loadSpecStock = async (specId: string | number) => {
+  if (!specId || specStockMap.value[String(specId)]) return
   try {
-    const res = await productApi.getSpecStockDetail(specId)
-    specStockMap.value[specId] = res?.items || []
+    const res = await productApi.getSpecStockDetail(String(specId))
+    specStockMap.value[String(specId)] = res?.items || []
   } catch (e) {
     console.error('加载库存失败:', e)
-    specStockMap.value[specId] = []
+    specStockMap.value[String(specId)] = []
   }
 }
 
-const getStockQty = (specId: string, warehouseId: string): number | null => {
-  const stocks = specStockMap.value[specId]
+const getStockQty = (specId: string | number, warehouseId: string | number): number | null => {
+  const stocks = specStockMap.value[String(specId)]
   if (!stocks) return null
-  const stock = stocks.find((s: any) => s.warehouse_id === warehouseId)
+  const stock = stocks.find((s: any) => s.warehouse_id === String(warehouseId))
   return stock ? stock.quantity : 0
 }
 
@@ -397,8 +395,8 @@ const applyHeaderShippingMethod = () => {
   if (!headerShippingMethod.value) return
   orderForm.value.items.forEach(item => {
     if (item.product_id) {
-      item.shipping_method = headerShippingMethod.value
-      if (headerShippingMethod.value === '直运') {
+      item.shipping_method = headerShippingMethod.value as 'direct' | 'warehouse'
+      if (headerShippingMethod.value === 'direct') {
         item.warehouse_id = ''
         item.warehouse_name = ''
       }
@@ -409,7 +407,7 @@ const applyHeaderShippingMethod = () => {
 const applyHeaderWarehouse = () => {
   if (!headerWarehouseId.value) return
   orderForm.value.items.forEach(item => {
-    if (item.product_id && item.shipping_method !== '直运') {
+    if (item.product_id && item.shipping_method !== 'direct') {
       item.warehouse_id = headerWarehouseId.value
       item.warehouse_name = headerWarehouseName.value
     }
@@ -548,7 +546,7 @@ const addOrderItem = () => {
     discounted_price: 0,
     amt: 0,
     warehouse_id: '',
-    shipping_method: '直运',
+    shipping_method: 'direct',
     out_qty: 0,
     return_qty: 0,
     remain_out_qty: 0
@@ -598,19 +596,13 @@ const handleSaveOrder = async () => {
       deliver_info: orderForm.value.deliver_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
       settle_type: orderForm.value.settle_type,
-      invoice_info: orderForm.value.invoice_info,
       remark: orderForm.value.remark,
       items: orderForm.value.items.map(item => ({
         row_no: item.row_no,
-        product_id: item.product_id,
-        product_code: item.product_code || item.product_id,
-        product_name: item.product_name,
-        spec_id: item.spec_id,
-        spec_code: item.spec_code || item.spec_id,
-        brand_id: item.brand_id,
-        brand_name: item.brand_name,
-        warehouse_id: item.warehouse_id || '',
-        warehouse_name: item.warehouse_name,
+        spec_id: item.spec_id ? Number(item.spec_id) : undefined,
+        product_code: item.product_code || undefined,
+        spec_code: item.spec_code || undefined,
+        warehouse_id: item.warehouse_id ? Number(item.warehouse_id) : undefined,
         qty: item.qty,
         price: item.price,
         discount: item.discount,
@@ -845,11 +837,11 @@ onBeforeUnmount(() => {
                 <td>{{ formatAmount(item.discounted_price) }}</td>
                 <td>{{ formatAmount(item.amt) }}</td>
                 <td>
-                  <select v-model="item.shipping_method" @change="if(item.shipping_method === '直运') { item.warehouse_id = ''; item.warehouse_name = '' }">
+                  <select v-model="item.shipping_method" @change="if(item.shipping_method === 'direct') { item.warehouse_id = ''; item.warehouse_name = '' }">
                     <option v-for="s in shippingMethodOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
                   </select>
                 </td>
-                <td v-if="item.shipping_method !== '直运'">
+                <td v-if="item.shipping_method !== 'direct'">
                   <div class="search-select">
                     <input
                       type="text"

@@ -570,7 +570,7 @@ const handleConfirmOrder = async (orderNo: string) => {
   }
   confirmLoading.value = true
   try {
-    await salesOrderApi.confirm(orderNo)
+    await salesOrderApi.approve(orderNo)
     window.showToast('订单确认成功', 'success')
     // 直接更新列表项状态，不整体刷新
     const index = orders.value.findIndex(o => o.order_no === orderNo)
@@ -586,7 +586,18 @@ const handleConfirmOrder = async (orderNo: string) => {
 
 const handleUpdateStatus = async (orderNo: string, status: string) => {
   try {
-    await salesOrderApi.updateStatus(orderNo, status)
+    // 根据状态调用不同的 API
+    if (status === 'audited') {
+      await salesOrderApi.approve(orderNo)
+    } else if (status === 'cancelled') {
+      await salesOrderApi.cancel(orderNo)
+    } else if (status === 'draft') {
+      await salesOrderApi.reject(orderNo)
+    } else {
+      // 其他状态暂不支持直接更新
+      window.showToast('该状态暂不支持直接更新', 'warning')
+      return
+    }
     window.showToast('状态更新成功', 'success')
     // 直接更新列表项状态，不整体刷新
     const index = orders.value.findIndex(o => o.order_no === orderNo)

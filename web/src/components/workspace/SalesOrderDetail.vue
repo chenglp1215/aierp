@@ -119,69 +119,35 @@ const loadReceivables = async () => {
 }
 
 // ============ 状态操作 ============
-const handleUpdateOrderStatus = async (status: string) => {
-  if (!order.value) return
-  try {
-    await salesOrderApi.updateOrderStatus(order.value.order_no, status)
-    window.showToast('订单状态更新成功', 'success')
-    order.value = { ...order.value, order_status: status }
-    const flowsRes = await salesOrderApi.getStatusFlows(order.value.order_no)
-    flows.value = flowsRes.result || []
-  } catch (error: any) {
-    window.showToast(error.message || '状态更新失败', 'error')
-    loadOrder()
-  }
-}
-
-const handleUpdateDeliveryStatus = async (status: string) => {
-  if (!order.value) return
-  try {
-    await salesOrderApi.updateDeliveryStatus(order.value.order_no, status)
-    window.showToast('发货状态更新成功', 'success')
-    order.value = { ...order.value, delivery_status: status }
-  } catch (error: any) {
-    window.showToast(error.message || '状态更新失败', 'error')
-  }
-}
-
-const handleUpdateReceiveStatus = async (status: string) => {
-  if (!order.value) return
-  try {
-    await salesOrderApi.updateReceiveStatus(order.value.order_no, status)
-    window.showToast('收货状态更新成功', 'success')
-    order.value = { ...order.value, receive_status: status }
-  } catch (error: any) {
-    window.showToast(error.message || '状态更新失败', 'error')
-  }
-}
-
-const handleUpdateInvoiceStatus = async (status: string) => {
-  if (!order.value) return
-  try {
-    await salesOrderApi.updateInvoiceStatus(order.value.order_no, status)
-    window.showToast('开票状态更新成功', 'success')
-    order.value = { ...order.value, invoice_status: status }
-  } catch (error: any) {
-    window.showToast(error.message || '状态更新失败', 'error')
-  }
-}
-
-// ============ 业务操作 ============
 const handleAudit = async () => {
   if (!order.value) return
   actionLoading.value = true
   try {
-    await salesOrderApi.updateOrderStatus(order.value.order_no, 'audited')
+    await salesOrderApi.approve(order.value.order_no)
     window.showToast('订单审核成功', 'success')
-    order.value = { ...order.value, order_status: 'audited' }
-    const flowsRes = await salesOrderApi.getStatusFlows(order.value.order_no)
-    flows.value = flowsRes.result || []
+    await loadOrder()
   } catch (error: any) {
     window.showToast(error.message || '审核失败', 'error')
   } finally {
     actionLoading.value = false
   }
 }
+
+const handleCancel = async () => {
+  if (!order.value) return
+  actionLoading.value = true
+  try {
+    await salesOrderApi.cancel(order.value.order_no)
+    window.showToast('订单取消成功', 'success')
+    await loadOrder()
+  } catch (error: any) {
+    window.showToast(error.message || '取消失败', 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+// ============ 业务操作 ============
 
 const handlePushPurchase = async () => {
   if (!order.value) return
@@ -223,14 +189,11 @@ const handleSubmitPushPurchase = async (selectedRowNos: number[]) => {
   try {
     const items = selectedRowNos.map(row_no => ({ row_no }))
     const result = await salesOrderApi.pushToPurchase(order.value.order_no, items)
-    const count = result.result?.purchase_orders?.length || 0
+    const count = result?.purchase_orders?.length || 0
     window.showToast(`下推采购成功，共生成${count}张采购单`, 'success')
     showPushItemSelect.value = false
     pushableItems.value = []
-    const orderRes = await salesOrderApi.getByOrderNo(order.value.order_no)
-    order.value = orderRes.result
-    const flowsRes = await salesOrderApi.getStatusFlows(order.value.order_no)
-    flows.value = flowsRes.result || []
+    await loadOrder()
     await loadPurchaseOrders()
   } catch (error: any) {
     window.showToast(error.message || '下推采购失败', 'error')
@@ -248,29 +211,12 @@ const handleClose = async () => {
   if (!order.value) return
   actionLoading.value = true
   try {
-    await salesOrderApi.updateOrderStatus(order.value.order_no, 'closed')
+    // 使用 cancel 接口关闭订单（后端会根据状态判断）
+    await salesOrderApi.cancel(order.value.order_no)
     window.showToast('订单关闭成功', 'success')
-    order.value = { ...order.value, order_status: 'closed' }
-    const flowsRes = await salesOrderApi.getStatusFlows(order.value.order_no)
-    flows.value = flowsRes.result || []
+    await loadOrder()
   } catch (error: any) {
     window.showToast(error.message || '关闭失败', 'error')
-  } finally {
-    actionLoading.value = false
-  }
-}
-
-const handleCancel = async () => {
-  if (!order.value) return
-  actionLoading.value = true
-  try {
-    await salesOrderApi.updateOrderStatus(order.value.order_no, 'cancelled')
-    window.showToast('订单取消成功', 'success')
-    order.value = { ...order.value, order_status: 'cancelled' }
-    const flowsRes = await salesOrderApi.getStatusFlows(order.value.order_no)
-    flows.value = flowsRes.result || []
-  } catch (error: any) {
-    window.showToast(error.message || '取消失败', 'error')
   } finally {
     actionLoading.value = false
   }
@@ -360,47 +306,24 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
                 <label>订单状态</label>
                 <div class="status-control">
                   <span class="status-tag" :class="getStatusClass(orderStatusMap, order.order_status)">{{ getStatusLabel(orderStatusMap, order.order_status) }}</span>
-                  <select :value="order.order_status" @change="handleUpdateOrderStatus(($event.target as HTMLSelectElement).value)" class="status-select">
-                    <option value="draft">草稿</option>
-                    <option value="audited">已审核</option>
-                    <option value="partially_pushed_to_purchase">部分下推采购</option>
-                    <option value="pushed_to_purchase">已下推采购</option>
-                    <option value="closed">已关闭</option>
-                    <option value="cancelled">已取消</option>
-                  </select>
                 </div>
               </div>
               <div class="status-row">
                 <label>发货状态</label>
                 <div class="status-control">
                   <span class="status-tag" :class="getStatusClass(deliveryStatusMap, order.delivery_status)">{{ getStatusLabel(deliveryStatusMap, order.delivery_status) }}</span>
-                  <select :value="order.delivery_status" @change="handleUpdateDeliveryStatus(($event.target as HTMLSelectElement).value)" class="status-select">
-                    <option value="none">未发货</option>
-                    <option value="partial">部分发货</option>
-                    <option value="full">全部发货</option>
-                  </select>
                 </div>
               </div>
               <div class="status-row">
                 <label>收货状态</label>
                 <div class="status-control">
                   <span class="status-tag" :class="getStatusClass(receiveStatusMap, order.receive_status)">{{ getStatusLabel(receiveStatusMap, order.receive_status) }}</span>
-                  <select :value="order.receive_status" @change="handleUpdateReceiveStatus(($event.target as HTMLSelectElement).value)" class="status-select">
-                    <option value="none">未收货</option>
-                    <option value="partial">部分收货</option>
-                    <option value="full">全部收货</option>
-                  </select>
                 </div>
               </div>
               <div class="status-row">
                 <label>开票状态</label>
                 <div class="status-control">
                   <span class="status-tag" :class="getStatusClass(invoiceStatusMap, order.invoice_status)">{{ getStatusLabel(invoiceStatusMap, order.invoice_status) }}</span>
-                  <select :value="order.invoice_status" @change="handleUpdateInvoiceStatus(($event.target as HTMLSelectElement).value)" class="status-select">
-                    <option value="none">未开票</option>
-                    <option value="partial">部分开票</option>
-                    <option value="full">全部开票</option>
-                  </select>
                 </div>
               </div>
             </div>

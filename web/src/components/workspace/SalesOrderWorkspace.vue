@@ -16,7 +16,7 @@ interface SalesOrderItem {
   product_code?: string
   brand_id?: string
   brand_name?: string
-  spec_id: string
+  spec_id: string | number
   spec_code?: string
   packaging?: string
   sales_spec?: string
@@ -25,9 +25,9 @@ interface SalesOrderItem {
   discount: number
   discounted_price: number
   amt: number
-  warehouse_id: string
+  warehouse_id: string | number
   warehouse_name?: string
-  shipping_method: string
+  shipping_method: 'direct' | 'warehouse'
   out_qty: number
   return_qty: number
   remain_out_qty: number
@@ -168,16 +168,11 @@ const settleTypeOptions = [
 ]
 
 const shippingMethodOptions = [
-  { value: '直运', label: '直运' },
-  { value: '物流', label: '物流' },
-  { value: '自提', label: '自提' },
-  { value: '送货', label: '送货' }
+  { value: 'direct', label: '直运' },
+  { value: 'warehouse', label: '仓库发货' }
 ]
 
 const orderStatusOptions = Object.entries(orderStatusMap).map(([value, { label }]) => ({ value, label }))
-const deliveryStatusOptions = Object.entries(deliveryStatusMap).map(([value, { label }]) => ({ value, label }))
-const receiveStatusOptions = Object.entries(receiveStatusMap).map(([value, { label }]) => ({ value, label }))
-const invoiceStatusOptions = Object.entries(invoiceStatusMap).map(([value, { label }]) => ({ value, label }))
 
 // State
 const loading = ref(false)
@@ -476,22 +471,22 @@ const loadWarehouses = async () => {
 }
 
 // 加载规格的库存数据
-const loadSpecStock = async (specId: string) => {
-  if (!specId || specStockMap.value[specId]) return
+const loadSpecStock = async (specId: string | number) => {
+  if (!specId || specStockMap.value[String(specId)]) return
   try {
-    const res = await productApi.getSpecStockDetail(specId)
-    specStockMap.value[specId] = res?.items || []
+    const res = await productApi.getSpecStockDetail(String(specId))
+    specStockMap.value[String(specId)] = res?.items || []
   } catch (e) {
     console.error('加载库存失败:', e)
-    specStockMap.value[specId] = []
+    specStockMap.value[String(specId)] = []
   }
 }
 
 // 获取仓库中某规格的库存数量
-const getStockQty = (specId: string, warehouseId: string): number | null => {
-  const stocks = specStockMap.value[specId]
+const getStockQty = (specId: string | number, warehouseId: string | number): number | null => {
+  const stocks = specStockMap.value[String(specId)]
   if (!stocks) return null
-  const stock = stocks.find((s: any) => s.warehouse_id === warehouseId)
+  const stock = stocks.find((s: any) => s.warehouse_id === String(warehouseId))
   return stock ? stock.quantity : 0
 }
 
@@ -500,8 +495,8 @@ const applyHeaderShippingMethod = () => {
   if (!headerShippingMethod.value) return
   orderForm.value.items.forEach(item => {
     if (item.product_id) {
-      item.shipping_method = headerShippingMethod.value
-      if (headerShippingMethod.value === '直运') {
+      item.shipping_method = headerShippingMethod.value as 'direct' | 'warehouse'
+      if (headerShippingMethod.value === 'direct') {
         item.warehouse_id = ''
         item.warehouse_name = ''
       }
@@ -514,7 +509,7 @@ const applyHeaderWarehouse = () => {
   if (!headerWarehouseId.value) return
   const warehouse = warehouseList.value.find((w: Warehouse) => w.id === headerWarehouseId.value)
   orderForm.value.items.forEach(item => {
-    if (item.product_id && item.shipping_method !== '直运') {
+    if (item.product_id && item.shipping_method !== 'direct') {
       item.warehouse_id = headerWarehouseId.value
       item.warehouse_name = warehouse?.name || ''
     }
@@ -897,7 +892,7 @@ const addOrderItem = () => {
     discounted_price: 0,
     amt: 0,
     warehouse_id: '',
-    shipping_method: '直运',
+    shipping_method: 'direct',
     out_qty: 0,
     return_qty: 0,
     remain_out_qty: 0
@@ -960,7 +955,7 @@ const handleSaveOrder = async () => {
       window.showToast(`第${i + 1}行商品数量必须大于0`, 'warning')
       return
     }
-    if (item.shipping_method !== '直运' && !item.warehouse_id) {
+    if (item.shipping_method !== 'direct' && !item.warehouse_id) {
       window.showToast(`第${i + 1}行请选择仓库`, 'warning')
       return
     }
@@ -976,18 +971,16 @@ const handleSaveOrder = async () => {
       deliver_info: orderForm.value.deliver_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
       settle_type: orderForm.value.settle_type,
-      invoice_info: orderForm.value.invoice_info,
       remark: orderForm.value.remark,
       items: orderForm.value.items.map(item => ({
         row_no: item.row_no,
-        product_code: item.product_code || item.product_id,
-        spec_code: item.spec_code || item.spec_id,
-        packaging: item.packaging,
-        sales_spec: item.sales_spec,
+        spec_id: item.spec_id ? Number(item.spec_id) : undefined,
+        product_code: item.product_code || undefined,
+        spec_code: item.spec_code || undefined,
+        warehouse_id: item.warehouse_id ? Number(item.warehouse_id) : undefined,
         qty: item.qty,
         price: item.price,
         discount: item.discount,
-        warehouse_id: item.warehouse_id,
         shipping_method: item.shipping_method
       }))
     }
@@ -1041,18 +1034,16 @@ const handleSaveAndSubmit = async () => {
       deliver_info: orderForm.value.deliver_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
       settle_type: orderForm.value.settle_type,
-      invoice_info: orderForm.value.invoice_info,
       remark: orderForm.value.remark,
       items: orderForm.value.items.map(item => ({
         row_no: item.row_no,
-        product_code: item.product_code || item.product_id,
-        spec_code: item.spec_code || item.spec_id,
-        packaging: item.packaging,
-        sales_spec: item.sales_spec,
+        spec_id: item.spec_id ? Number(item.spec_id) : undefined,
+        product_code: item.product_code || undefined,
+        spec_code: item.spec_code || undefined,
+        warehouse_id: item.warehouse_id ? Number(item.warehouse_id) : undefined,
         qty: item.qty,
         price: item.price,
         discount: item.discount,
-        warehouse_id: item.warehouse_id,
         shipping_method: item.shipping_method
       }))
     }
@@ -1060,7 +1051,7 @@ const handleSaveAndSubmit = async () => {
     if (editingOrder.value) {
       // 编辑模式：先保存再审核
       await salesOrderApi.update(editingOrder.value.order_no, submitData)
-      await salesOrderApi.updateOrderStatus(editingOrder.value.order_no, 'audited')
+      await salesOrderApi.approve(editingOrder.value.order_no)
       window.showToast('订单更新并提交成功', 'success')
     } else {
       // 新建模式：使用 createAndSubmit
@@ -1086,7 +1077,7 @@ const handleAuditOrder = async () => {
   if (!actionTargetOrderNo.value) return
   actionLoading.value = true
   try {
-    await salesOrderApi.updateOrderStatus(actionTargetOrderNo.value, 'audited')
+    await salesOrderApi.approve(actionTargetOrderNo.value)
     window.showToast('订单审核成功', 'success')
     showAuditConfirm.value = false
     loadOrders()
@@ -1112,7 +1103,7 @@ const handleCloseOrder = async () => {
   if (!actionTargetOrderNo.value) return
   actionLoading.value = true
   try {
-    await salesOrderApi.updateOrderStatus(actionTargetOrderNo.value, 'closed')
+    await salesOrderApi.cancel(actionTargetOrderNo.value)
     window.showToast('订单关闭成功', 'success')
     showCloseConfirm.value = false
     loadOrders()
@@ -1189,7 +1180,7 @@ const handlePushPurchase = async (selectedRowNos: number[]) => {
   try {
     const items = selectedRowNos.map(row_no => ({ row_no }))
     const result = await salesOrderApi.pushToPurchase(actionTargetOrderNo.value, items)
-    const purchaseCount = result.result?.purchase_orders?.length || 0
+    const purchaseCount = result?.purchase_orders?.length || 0
     window.showToast(`下推采购成功，共生成${purchaseCount}张采购单`, 'success')
     showPushItemSelect.value = false
     pushableItems.value = []
@@ -1211,7 +1202,7 @@ const handleCancelOrder = async () => {
   if (!actionTargetOrderNo.value) return
   actionLoading.value = true
   try {
-    await salesOrderApi.updateOrderStatus(actionTargetOrderNo.value, 'cancelled')
+    await salesOrderApi.cancel(actionTargetOrderNo.value)
     window.showToast('订单取消成功', 'success')
     showCancelConfirm.value = false
     loadOrders()
@@ -1230,61 +1221,9 @@ const handleCancelOrder = async () => {
 const refreshFlows = async (orderNo: string) => {
   try {
     const flowRes = await salesOrderApi.getStatusFlows(orderNo)
-    selectedOrderFlows.value = flowRes.result || []
+    selectedOrderFlows.value = flowRes || []
   } catch (e) {
     console.error('刷新流转记录失败:', e)
-  }
-}
-
-const handleUpdateOrderStatus = async (orderNo: string, status: string) => {
-  try {
-    await salesOrderApi.updateOrderStatus(orderNo, status)
-    window.showToast('订单状态更新成功', 'success')
-    loadOrders()
-    if (selectedOrder.value?.order_no === orderNo) {
-      selectedOrder.value = { ...selectedOrder.value, order_status: status }
-    }
-  } catch (error: any) {
-    window.showToast(error.message || '状态更新失败', 'error')
-  }
-}
-
-const handleUpdateDeliveryStatus = async (orderNo: string, delivery_status: string) => {
-  try {
-    await salesOrderApi.updateDeliveryStatus(orderNo, delivery_status)
-    window.showToast('发货状态更新成功', 'success')
-    loadOrders()
-    if (selectedOrder.value?.order_no === orderNo) {
-      selectedOrder.value = { ...selectedOrder.value, delivery_status }
-    }
-  } catch (error: any) {
-    window.showToast(error.message || '状态更新失败', 'error')
-  }
-}
-
-const handleUpdateReceiveStatus = async (orderNo: string, receive_status: string) => {
-  try {
-    await salesOrderApi.updateReceiveStatus(orderNo, receive_status)
-    window.showToast('收货状态更新成功', 'success')
-    loadOrders()
-    if (selectedOrder.value?.order_no === orderNo) {
-      selectedOrder.value = { ...selectedOrder.value, receive_status }
-    }
-  } catch (error: any) {
-    window.showToast(error.message || '状态更新失败', 'error')
-  }
-}
-
-const handleUpdateInvoiceStatus = async (orderNo: string, invoice_status: string) => {
-  try {
-    await salesOrderApi.updateInvoiceStatus(orderNo, invoice_status)
-    window.showToast('开票状态更新成功', 'success')
-    loadOrders()
-    if (selectedOrder.value?.order_no === orderNo) {
-      selectedOrder.value = { ...selectedOrder.value, invoice_status }
-    }
-  } catch (error: any) {
-    window.showToast(error.message || '状态更新失败', 'error')
   }
 }
 
@@ -1665,11 +1604,11 @@ onBeforeUnmount(() => {
                     </td>
                     <td>{{ formatAmount(item.amt) }}</td>
                     <td>
-                      <select v-model="item.shipping_method" @change="if(item.shipping_method === '直运') { item.warehouse_id = ''; item.warehouse_name = '' }">
+                      <select v-model="item.shipping_method" @change="if(item.shipping_method === 'direct') { item.warehouse_id = ''; item.warehouse_name = '' }">
                         <option v-for="s in shippingMethodOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
                       </select>
                     </td>
-                    <td v-if="item.shipping_method !== '直运'">
+                    <td v-if="item.shipping_method !== 'direct'">
                       <select
                         :value="item.warehouse_id"
                         @focus="loadSpecStock(item.spec_id)"
@@ -1896,44 +1835,23 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="detail-section">
-              <div class="section-title">状态更新</div>
-              <div class="status-actions">
-                <div class="status-group">
+              <div class="section-title">状态信息</div>
+              <div class="status-info-grid">
+                <div class="status-info-item">
                   <label>订单状态：</label>
-                  <select
-                    v-model="selectedOrder.order_status"
-                    @change="handleUpdateOrderStatus(selectedOrder.order_no, selectedOrder.order_status)"
-                    :disabled="selectedOrder.order_status === 'closed' || selectedOrder.order_status === 'cancelled'"
-                  >
-                    <option v-for="s in orderStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-                  </select>
+                  <span class="status-tag" :class="getOrderStatusInfo(selectedOrder.order_status).class">{{ getOrderStatusInfo(selectedOrder.order_status).label }}</span>
                 </div>
-                <div class="status-group">
+                <div class="status-info-item">
                   <label>发货状态：</label>
-                  <select
-                    v-model="selectedOrder.delivery_status"
-                    @change="handleUpdateDeliveryStatus(selectedOrder.order_no, selectedOrder.delivery_status)"
-                  >
-                    <option v-for="s in deliveryStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-                  </select>
+                  <span class="status-tag" :class="getDeliveryStatusInfo(selectedOrder.delivery_status).class">{{ getDeliveryStatusInfo(selectedOrder.delivery_status).label }}</span>
                 </div>
-                <div class="status-group">
+                <div class="status-info-item">
                   <label>收货状态：</label>
-                  <select
-                    v-model="selectedOrder.receive_status"
-                    @change="handleUpdateReceiveStatus(selectedOrder.order_no, selectedOrder.receive_status)"
-                  >
-                    <option v-for="s in receiveStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-                  </select>
+                  <span class="status-tag" :class="getReceiveStatusInfo(selectedOrder.receive_status).class">{{ getReceiveStatusInfo(selectedOrder.receive_status).label }}</span>
                 </div>
-                <div class="status-group">
+                <div class="status-info-item">
                   <label>开票状态：</label>
-                  <select
-                    v-model="selectedOrder.invoice_status"
-                    @change="handleUpdateInvoiceStatus(selectedOrder.order_no, selectedOrder.invoice_status)"
-                  >
-                    <option v-for="s in invoiceStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-                  </select>
+                  <span class="status-tag" :class="getInvoiceStatusInfo(selectedOrder.invoice_status).class">{{ getInvoiceStatusInfo(selectedOrder.invoice_status).label }}</span>
                 </div>
               </div>
             </div>
