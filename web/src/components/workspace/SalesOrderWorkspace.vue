@@ -390,7 +390,7 @@ const loadCustomers = async (keyword?: string) => {
   }
 }
 
-// 商品搜索（服务端模糊匹配，加载商品及其规格，同时支持规格编号搜索）
+// 商品搜索（服务端模糊匹配规格编号）
 let productSearchTimer: ReturnType<typeof setTimeout> | null = null
 const handleProductSearch = (keyword: string) => {
   if (productSearchTimer) clearTimeout(productSearchTimer)
@@ -401,89 +401,16 @@ const handleProductSearch = (keyword: string) => {
   }
   productSearchTimer = setTimeout(async () => {
     try {
-      // 并行搜索商品和规格
-      const [productsRes, specsRes] = await Promise.all([
-        productApi.search(keyword, 20),
-        productApi.searchSpecs(keyword, 20)
-      ])
-      const products: Product[] = productsRes || []
-      const allSpecs: SpecSearchResult[] = specsRes || []
-
-      // 预加载每个商品的规格
-      const tree: ProductWithSpecs[] = []
-      const specIdsInTree = new Set<string>()
-      for (const product of products) {
-        try {
-          const specsRes = await productApi.getSpecs(product.id)
-          const specs: ProductSpec[] = specsRes.result?.items || []
-          specs.forEach(s => specIdsInTree.add(s.id))
-          tree.push({ product, specs, expanded: false })
-        } catch {
-          tree.push({ product, specs: [], expanded: false })
-        }
-      }
-
-      // 过滤掉已在商品树中展示的规格，剩余的作为独立规格结果
-      specSearchResults.value = allSpecs.filter(s => !specIdsInTree.has(s.id))
-
-      productTree.value = tree
+      // 只搜索规格
+      const specsRes = await productApi.searchSpecs(keyword, 20)
+      specSearchResults.value = specsRes || []
+      productTree.value = []
     } catch (e) {
       console.error('搜索商品失败:', e)
       productTree.value = []
       specSearchResults.value = []
     }
   }, 300)
-}
-
-// 展开/收起商品规格
-const toggleProductExpand = async (index: number) => {
-  const item = productTree.value[index]
-  item.expanded = !item.expanded
-}
-
-// 选择规格（填充到订单行）
-const selectSpec = async (treeIndex: number, spec: ProductSpec) => {
-  const treeItem = productTree.value[treeIndex]
-  const product = treeItem.product
-  const itemIndex = showProductDropdown.value ?? 0
-  showProductDropdown.value = null
-  specSearchResults.value = []
-
-  // 获取客户对该商品品牌的折扣
-  let discount = 1
-  if (orderForm.value.customer_id && product.brand_id) {
-    try {
-      const discountRes = await customerDiscountApi.list({
-        customer_id: orderForm.value.customer_id,
-        brand_id: product.brand_id,
-        is_active: true
-      })
-      const discountItem = discountRes.result?.items?.[0]
-      if (discountItem) {
-        discount = discountItem.discount_value
-      }
-    } catch (e) {
-      console.error('获取客户折扣失败:', e)
-    }
-  }
-
-  const discountedPrice = +(spec.price * discount).toFixed(2)
-
-  orderForm.value.items[itemIndex] = {
-    ...orderForm.value.items[itemIndex],
-    product_id: product.id,
-    product_name: product.name,
-    product_code: product.product_code || '',
-    brand_name: product.brand_name || '',
-    spec_id: spec.id,
-    spec_code: spec.spec_code,
-    packaging: spec.packaging || '',
-    sales_spec: spec.sales_spec || '',
-    price: spec.price,
-    discount: discount,
-    discounted_price: discountedPrice,
-    amt: +(orderForm.value.items[itemIndex].qty * discountedPrice).toFixed(2)
-  }
 }
 
 // 从规格搜索结果中选择规格（直接匹配规格编号）
@@ -1692,41 +1619,11 @@ onBeforeUnmount(() => {
                           :value="item.product_name ? (item.brand_name ? '[' + item.brand_name + '] ' + item.product_name : item.product_name) : ''"
                           @focus="showProductDropdown = index; productTree = []"
                           @input="handleProductSearch(($event.target as HTMLInputElement).value)"
-                          placeholder="输入商品名称/编码/规格编号搜索"
+                          placeholder="输入规格编号搜索"
                         />
                         <div class="search-dropdown product-tree-dropdown" v-if="showProductDropdown === index">
-                          <template v-for="(treeItem, treeIdx) in productTree" :key="treeItem.product.id">
-                            <div
-                              class="search-option product-tree-item"
-                              @click.stop="toggleProductExpand(treeIdx)"
-                            >
-                              <span class="expand-icon" :class="{ expanded: treeItem.expanded }">▶</span>
-                              <span class="brand-name" v-if="treeItem.product.brand_name">[{{ treeItem.product.brand_name }}]</span>
-                              <span class="product-name">{{ treeItem.product.name }}</span>
-                              <span class="product-code">({{ treeItem.product.product_code || '无编码' }})</span>
-                              <span class="spec-count" v-if="treeItem.specs.length > 0">{{ treeItem.specs.length }}个规格</span>
-                            </div>
-                            <div class="spec-list" v-if="treeItem.expanded">
-                              <div
-                                v-for="spec in treeItem.specs"
-                                :key="spec.id"
-                                class="search-option spec-item"
-                                :class="{ 'inactive': !spec.is_active }"
-                                @click="selectSpec(treeIdx, spec)"
-                              >
-                                <span class="spec-code">{{ spec.spec_code }}</span>
-                                <span class="spec-info" v-if="spec.packaging || spec.sales_spec">{{ [spec.packaging, spec.sales_spec].filter(Boolean).join(' - ') }}</span>
-                                <span class="spec-price">¥{{ spec.price.toFixed(2) }}</span>
-                                <span class="spec-status" v-if="!spec.is_active">停用</span>
-                              </div>
-                              <div v-if="treeItem.specs.length === 0" class="search-option disabled">
-                                暂无规格
-                              </div>
-                            </div>
-                          </template>
-                          <!-- 规格编号直接匹配结果 -->
+                          <!-- 规格搜索结果 -->
                           <template v-if="specSearchResults.length > 0">
-                            <div class="search-option disabled spec-search-header">— 规格编号匹配 —</div>
                             <div
                               v-for="specResult in specSearchResults"
                               :key="specResult.id"
@@ -1742,8 +1639,8 @@ onBeforeUnmount(() => {
                               <span class="spec-status" v-if="!specResult.is_active">停用</span>
                             </div>
                           </template>
-                          <div v-if="productTree.length === 0 && specSearchResults.length === 0" class="search-option disabled">
-                            输入关键字搜索商品或规格编号
+                          <div v-if="specSearchResults.length === 0" class="search-option disabled">
+                            输入关键字搜索规格编号
                           </div>
                         </div>
                       </div>
