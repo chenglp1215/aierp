@@ -1137,8 +1137,7 @@ const confirmPushPurchase = async (orderNo: string) => {
   actionTargetOrderNo.value = orderNo
   actionLoading.value = true
   try {
-    const orderRes = await salesOrderApi.getByOrderNo(orderNo)
-    const fullOrder = orderRes.result
+    const fullOrder = await salesOrderApi.getByOrderNo(orderNo)
     const items = fullOrder.items || []
 
     // 补充 brand_name 和 brand_id
@@ -1148,9 +1147,9 @@ const confirmPushPurchase = async (orderNo: string) => {
     for (const pid of productIds) {
       try {
         const prodRes = await productApi.getById(pid)
-        if (prodRes.result) {
-          brandMap[pid] = prodRes.result.brand_name || ''
-          brandIdMap[pid] = prodRes.result.brand_id || ''
+        if (prodRes) {
+          brandMap[pid] = prodRes.brand_name || ''
+          brandIdMap[pid] = prodRes.brand_id || ''
         }
       } catch {}
     }
