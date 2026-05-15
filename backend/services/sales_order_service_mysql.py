@@ -30,6 +30,19 @@ class SalesOrderService:
         except (ValueError, TypeError):
             return None
 
+    def _parse_shipping_method(self, value: Any) -> ShippingMethod:
+        """将发货方式转换为枚举值，支持中文和英文"""
+        if value is None:
+            return ShippingMethod.WAREHOUSE
+        # 中文映射
+        shipping_map = {
+            "直运": ShippingMethod.DIRECT,
+            "direct": ShippingMethod.DIRECT,
+            "仓库发货": ShippingMethod.WAREHOUSE,
+            "warehouse": ShippingMethod.WAREHOUSE,
+        }
+        return shipping_map.get(value, ShippingMethod.WAREHOUSE)
+
     # ============ 订单号生成 ============
 
     async def generate_order_no(self) -> str:
@@ -159,7 +172,7 @@ class SalesOrderService:
                 discount=item.get("discount", 1.0),
                 discounted_price=item.get("discounted_price"),
                 amt=item.get("amt"),
-                shipping_method=item.get("shipping_method", ShippingMethod.WAREHOUSE),
+                shipping_method=self._parse_shipping_method(item.get("shipping_method")),
             )
 
         # 创建发货信息
@@ -276,7 +289,7 @@ class SalesOrderService:
                     discount=item.get("discount", 1.0),
                     discounted_price=calc["discounted_price"],
                     amt=calc["amt"],
-                    shipping_method=item.get("shipping_method", ShippingMethod.WAREHOUSE),
+                    shipping_method=self._parse_shipping_method(item.get("shipping_method")),
                 )
 
         logger.info(f"销售订单更新成功: {order_no}")
