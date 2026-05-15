@@ -272,8 +272,8 @@ const loadOrders = async () => {
       supplier_id: filterSupplierId.value || undefined,
       purchase_no: filterPurchaseNo.value || undefined,
     })
-    orders.value = res.result?.items || []
-    total.value = res.result?.total || 0
+    orders.value = res?.items || []
+    total.value = res?.total || 0
   } catch (error: any) {
     window.showToast(error.message || '加载采购单列表失败', 'error')
   } finally {
@@ -284,7 +284,7 @@ const loadOrders = async () => {
 const loadBrands = async () => {
   try {
     const res = await brandApi.getAll()
-    brandList.value = res.result || []
+    brandList.value = res || []
   } catch (error) {
     console.error('加载品牌列表失败:', error)
   }
@@ -293,7 +293,7 @@ const loadBrands = async () => {
 const loadWarehouses = async () => {
   try {
     const res = await warehouseApi.list({ page: 1, page_size: 100 })
-    warehouseList.value = res.result?.items || []
+    warehouseList.value = res?.items || []
   } catch (error) {
     console.error('加载仓库列表失败:', error)
   }
@@ -306,7 +306,7 @@ const loadSuppliersByBrand = async (brandId: string) => {
   }
   try {
     const res = await supplierApi.getByBrandId(brandId)
-    supplierList.value = res.result || []
+    supplierList.value = res || []
     // 如果只有一个供应商，自动选择
     if (supplierList.value.length === 1) {
       form.value.supplier_id = supplierList.value[0].id
@@ -663,7 +663,7 @@ const handleProductSearch = (keyword: string) => {
   productSearchTimer = setTimeout(async () => {
     try {
       const res = await productApi.searchSpecs(keyword, 20)
-      specSearchResults.value = res.result || []
+      specSearchResults.value = res || []
     } catch (error) {
       console.error('搜索商品失败:', error)
     }

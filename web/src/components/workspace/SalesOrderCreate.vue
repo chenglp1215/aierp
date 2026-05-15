@@ -193,7 +193,7 @@ const loadCustomers = async (keyword?: string) => {
     const params: any = { page_size: 50 }
     if (keyword) params.keyword = keyword
     const res = await customerApi.list(params)
-    customerList.value = res.result?.items || []
+    customerList.value = res?.items || []
   } catch (error) {
     console.error('加载客户列表失败:', error)
   } finally {
@@ -338,7 +338,7 @@ const handleWarehouseSearch = (keyword: string) => {
   warehouseSearchTimer = setTimeout(async () => {
     try {
       const res = await warehouseApi.list({ keyword, page_size: 20 })
-      warehouseList.value = res.result?.items || []
+      warehouseList.value = res?.items || []
     } catch (e) {
       console.error('搜索仓库失败:', e)
       warehouseList.value = []
@@ -350,7 +350,7 @@ const loadSpecStock = async (specId: string) => {
   if (!specId || specStockMap.value[specId]) return
   try {
     const res = await productApi.getSpecStockDetail(specId)
-    specStockMap.value[specId] = res.result?.items || []
+    specStockMap.value[specId] = res?.items || []
   } catch (e) {
     console.error('加载库存失败:', e)
     specStockMap.value[specId] = []
@@ -399,7 +399,7 @@ const handleHeaderWarehouseSearch = (keyword: string) => {
   headerWarehouseSearchTimer = setTimeout(async () => {
     try {
       const res = await warehouseApi.list({ keyword, page_size: 20 })
-      headerWarehouseList.value = res.result?.items || []
+      headerWarehouseList.value = res?.items || []
     } catch (e) {
       headerWarehouseList.value = []
     }
@@ -432,7 +432,7 @@ const selectCustomer = async (customer: any) => {
 
   try {
     const res = await customerApi.getById(customer.id)
-    const detail = res.result
+    const detail = res
 
     customerInvoiceInfos.value = detail?.invoice_infos || []
     customerShippingAddresses.value = detail?.shipping_addresses || []

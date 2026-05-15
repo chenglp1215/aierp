@@ -66,7 +66,7 @@ const loadSupplierOptions = async () => {
   if (!order.value?.brand_id) return
   try {
     const res = await supplierApi.getByBrandId(order.value.brand_id)
-    supplierOptions.value = res.result || []
+    supplierOptions.value = res || []
   } catch (e) {
     console.error('加载供应商列表失败:', e)
     supplierOptions.value = []

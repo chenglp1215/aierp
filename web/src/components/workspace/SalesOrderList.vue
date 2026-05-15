@@ -210,7 +210,7 @@ const loadCustomers = async () => {
 const loadProducts = async () => {
   try {
     const res = await productApi.list({ page_size: 100 })
-    productList.value = (res.result?.items || []).map((p: any) => ({
+    productList.value = (res?.items || []).map((p: any) => ({
       id: p.id,
       name: p.name,
       code: p.product_code,
@@ -237,7 +237,7 @@ const searchCustomers = async (keyword: string) => {
   }
   try {
     const res: any = await customerApi.search(keyword, 10)
-    customerSearchResults.value = res.result || []
+    customerSearchResults.value = res || []
   } catch (error) {
     console.error('搜索客户失败:', error)
     customerSearchResults.value = []
@@ -251,7 +251,7 @@ const searchProducts = async (keyword: string) => {
   }
   try {
     const res: any = await productApi.search(keyword, 10)
-    productSearchResults.value = res.result || []
+    productSearchResults.value = res || []
   } catch (error) {
     console.error('搜索商品失败:', error)
     productSearchResults.value = []

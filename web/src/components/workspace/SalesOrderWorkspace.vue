@@ -366,8 +366,8 @@ const loadOrders = async () => {
     if (filterKeyword.value) params.keyword = filterKeyword.value
     
     const res = await salesOrderApi.list(params)
-    orders.value = res.result?.items || []
-    total.value = res.result?.total || 0
+    orders.value = res?.items || []
+    total.value = res?.total || 0
   } catch (error) {
     console.error('加载订单列表失败:', error)
     window.showToast('加载订单列表失败', 'error')
@@ -382,7 +382,7 @@ const loadCustomers = async (keyword?: string) => {
     const params: any = { page_size: 50 }
     if (keyword) params.keyword = keyword
     const res = await customerApi.list(params)
-    customerList.value = res.result?.items || []
+    customerList.value = res?.items || []
   } catch (error) {
     console.error('加载客户列表失败:', error)
   } finally {
@@ -537,7 +537,7 @@ const loadWarehouses = async () => {
   warehousesLoading.value = true
   try {
     const res = await warehouseApi.list({ page_size: 100 })
-    warehouseList.value = res.result?.items || []
+    warehouseList.value = res?.items || []
   } catch (error) {
     console.error('加载仓库列表失败:', error)
   } finally {
@@ -550,7 +550,7 @@ const loadSpecStock = async (specId: string) => {
   if (!specId || specStockMap.value[specId]) return
   try {
     const res = await productApi.getSpecStockDetail(specId)
-    specStockMap.value[specId] = res.result?.items || []
+    specStockMap.value[specId] = res?.items || []
   } catch (e) {
     console.error('加载库存失败:', e)
     specStockMap.value[specId] = []
@@ -719,7 +719,7 @@ const openEditOrder = async (order: SalesOrder) => {
   // 加载客户收货地址和开票信息用于下拉
   try {
     const res = await customerApi.getById(order.customer_id)
-    const detail = res.result
+    const detail = res
     customerInvoiceInfos.value = detail?.invoice_infos || []
     customerShippingAddresses.value = detail?.shipping_addresses || []
 
@@ -781,7 +781,7 @@ const selectCustomer = async (customer: any) => {
   try {
     // 获取客户详情（包含开票信息和收货地址）
     const res = await customerApi.getById(customer.id)
-    const detail = res.result
+    const detail = res
 
     // 存储所有开票信息和收货地址
     customerInvoiceInfos.value = detail?.invoice_infos || []

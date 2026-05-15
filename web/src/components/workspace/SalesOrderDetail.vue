@@ -102,7 +102,7 @@ const loadPurchaseOrders = async () => {
   if (!props.orderNo) return
   try {
     const res = await purchaseOrderApi.list({ source_sale_order_no: props.orderNo, page_size: 100 })
-    purchaseOrders.value = res.result?.items || []
+    purchaseOrders.value = res?.items || []
   } catch (e) {
     console.error('加载关联采购单失败:', e)
   }
@@ -112,7 +112,7 @@ const loadReceivables = async () => {
   if (!props.orderNo) return
   try {
     const res = await receivableApi.list({ sales_order_no: props.orderNo, page_size: 100 })
-    receivables.value = res.result?.items || []
+    receivables.value = res?.items || []
   } catch (e) {
     console.error('加载关联收款单失败:', e)
   }
