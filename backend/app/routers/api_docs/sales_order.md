@@ -41,9 +41,12 @@
 - [7.7.4 获取销售订单详情](#774-获取销售订单详情)
 - [7.7.5 更新销售订单](#775-更新销售订单)
 - [7.7.6 删除销售订单](#776-删除销售订单)
-- [7.7.7 更新订单状态](#777-更新订单状态统一接口)
-- [7.7.8 获取状态流转记录](#778-获取状态流转记录)
-- [7.7.9 下推采购](#779-下推采购)
+- [7.7.7 提交审核](#777-提交审核)
+- [7.7.8 审核通过](#778-审核通过)
+- [7.7.9 驳回订单](#779-驳回订单)
+- [7.7.10 取消订单](#7710-取消订单)
+- [7.7.11 获取状态流转记录](#7711-获取状态流转记录)
+- [7.7.12 下推采购](#7712-下推采购)
 - [数据模型](#数据模型)
 - [业务规则](#业务规则)
 - [权限说明](#权限说明)
@@ -346,11 +349,11 @@
 
 ## 状态管理
 
-### 7.7.7 更新订单状态（统一接口）
+### 7.7.7 提交审核
 
 | 属性 | 值 |
 |------|-----|
-| **URL** | `PATCH /api/v1/sales-orders/{order_no}/{status_key}` |
+| **URL** | `POST /api/v1/sales-orders/{order_no}/submit` |
 | **权限** | `order.edit` |
 
 **路径参数**
@@ -358,50 +361,103 @@
 | 参数 | 类型 | 描述 |
 |------|------|------|
 | order_no | string | 订单号 |
-| status_key | string | 状态字段名：`order_status` / `delivery_status` / `receive_status` / `invoice_status` |
-
-**请求体**
-
-```json
-{
-  "status": "新状态值"
-}
-```
-
-| 字段 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| status | string | 是 | 新状态值（见下方枚举） |
-
-**接口示例**
-
-| 操作 | URL | 请求体 |
-|------|-----|--------|
-| 更新订单状态 | `PATCH /api/v1/sales-orders/SO001/order_status` | `{"status": "audited"}` |
-| 更新发货状态 | `PATCH /api/v1/sales-orders/SO001/delivery_status` | `{"status": "partial"}` |
-| 更新收货状态 | `PATCH /api/v1/sales-orders/SO001/receive_status` | `{"status": "full"}` |
-| 更新开票状态 | `PATCH /api/v1/sales-orders/SO001/invoice_status` | `{"status": "partial"}` |
 
 **成功响应**
 
 ```json
 {
   "status": "success",
-  "message": "订单状态更新成功",
+  "message": "订单已提交审核",
   "result": null
 }
 ```
 
-**错误响应**
-
-| 场景 | message |
-|------|---------|
-| 订单不存在 | `"订单不存在"` |
-| 无效状态字段 | `"无效的状态字段: xxx"` |
-| 状态流转不允许 | `"订单状态不允许从 xxx 变更为 yyy"` |
+> 将订单状态从 draft 变更为 pending
 
 ---
 
-### 7.7.8 获取状态流转记录
+### 7.7.8 审核通过
+
+| 属性 | 值 |
+|------|-----|
+| **URL** | `POST /api/v1/sales-orders/{order_no}/approve` |
+| **权限** | `order.edit` |
+
+**路径参数**
+
+| 参数 | 类型 | 描述 |
+|------|------|------|
+| order_no | string | 订单号 |
+
+**成功响应**
+
+```json
+{
+  "status": "success",
+  "message": "订单审核通过",
+  "result": null
+}
+```
+
+> 将订单状态从 pending 变更为 audited
+
+---
+
+### 7.7.9 驳回订单
+
+| 属性 | 值 |
+|------|-----|
+| **URL** | `POST /api/v1/sales-orders/{order_no}/reject` |
+| **权限** | `order.edit` |
+
+**路径参数**
+
+| 参数 | 类型 | 描述 |
+|------|------|------|
+| order_no | string | 订单号 |
+
+**成功响应**
+
+```json
+{
+  "status": "success",
+  "message": "订单已驳回",
+  "result": null
+}
+```
+
+> 将订单状态从 pending 变更为 draft
+
+---
+
+### 7.7.10 取消订单
+
+| 属性 | 值 |
+|------|-----|
+| **URL** | `POST /api/v1/sales-orders/{order_no}/cancel` |
+| **权限** | `order.edit` |
+
+**路径参数**
+
+| 参数 | 类型 | 描述 |
+|------|------|------|
+| order_no | string | 订单号 |
+
+**成功响应**
+
+```json
+{
+  "status": "success",
+  "message": "订单已取消",
+  "result": null
+}
+```
+
+> 将订单状态变更为 cancelled（仅特定状态可取消）
+
+---
+
+### 7.7.11 获取状态流转记录
 
 | 属性 | 值 |
 |------|-----|
@@ -437,7 +493,7 @@
 
 ## 采购下推
 
-### 7.7.9 下推采购
+### 7.7.12 下推采购
 
 | 属性 | 值 |
 |------|-----|
@@ -490,53 +546,69 @@
 
 | 字段 | 类型 | 描述 |
 |------|------|------|
-| id | string | 订单ID |
-| order_no | string | 订单号（系统自动生成） |
+| id | int | 订单ID（MySQL 自增主键） |
+| order_no | string | 订单号（系统自动生成，格式 SO{YYYYMMDD}{4位序号}） |
 | order_date | string | 订单日期 |
-| customer_id | string | 客户ID |
+| customer_id | int | 客户ID |
 | customer_name | string | 客户名称 |
-| sale_user_id | string | 销售人员ID |
+| sale_user_id | int | 销售人员ID |
 | sale_user_name | string | 销售人员名称 |
-| deliver_info | object | 发货信息 |
-| expect_deliver_date | string | 期望交货日 |
-| settle_type | string | 结算方式 |
+| order_status | string | 订单状态（draft/pending/audited/...） |
+| delivery_status | string | 发货状态（none/partial/full） |
+| receive_status | string | 收货状态（none/partial/full） |
+| invoice_status | string | 开票状态（none/partial/full） |
 | total_amt | float | 商品总金额（未税） |
 | tax_rate | float | 税率 |
 | tax_amt | float | 税额 |
 | total_tax_amt | float | 含税总金额 |
 | total_discount_amt | float | 整单折扣金额 |
-| status | OrderStatusInfo | 订单状态信息 |
-| invoice_info | object | 开票信息 |
-| creator_id | string | 创建人ID |
-| creator_name | string | 创建人名称 |
-| create_time | string | 创建时间 |
+| expect_deliver_date | string | 期望交货日 |
+| settle_type | string | 结算方式 |
 | remark | string | 备注 |
+| creator_id | int | 创建人ID |
+| creator_name | string | 创建人名称 |
+| created_at | string | 创建时间 |
+| updated_at | string | 更新时间 |
 | items | SalesOrderItem[] | 商品明细 |
-| cost_details | CostDetail[] | 成本明细 |
+| deliver_info | SalesDeliverInfo | 发货信息 |
 
 ### SalesOrderItem（商品明细）
 
 | 字段 | 类型 | 描述 |
 |------|------|------|
+| id | int | 明细ID |
+| sales_order_id | int | 关联订单ID |
 | row_no | int | 行号 |
+| product_id | int | 商品ID |
 | product_code | string | 商品编码 |
-| product_name | string | 商品名称（系统自动富化） |
-| brand_id | string | 品牌ID |
-| brand_name | string | 品牌名称（系统自动富化） |
+| product_name | string | 商品名称 |
+| spec_id | int | 规格ID |
 | spec_code | string | 规格编码 |
-| spec_name | string | 规格名称（系统自动富化） |
+| brand_id | int | 品牌ID |
+| brand_name | string | 品牌名称 |
+| warehouse_id | int | 仓库ID |
+| warehouse_name | string | 仓库名称 |
 | qty | int | 订购数量 |
 | price | float | 原始单价 |
 | discount | float | 折扣率 |
-| discounted_price | float | 折后单价（系统自动计算） |
-| amt | float | 行金额（系统自动计算） |
-| warehouse_id | string | 仓库ID |
-| warehouse_name | string | 仓库名称 |
-| shipping_method | string | 发货方式 |
+| discounted_price | float | 折后单价 |
+| amt | float | 行金额 |
+| shipping_method | string | 发货方式（direct/warehouse） |
+| pushed | boolean | 是否已下推采购 |
 | out_qty | int | 已发货数量 |
 | return_qty | int | 已退货数量 |
-| remain_out_qty | int | 剩余可发数量 |
-| pushed | boolean | 是否已下推采购 |
+
+### SalesDeliverInfo（发货信息）
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| id | int | 发货信息ID |
+| sales_order_id | int | 关联订单ID |
+| addr | string | 详细地址 |
+| province | string | 省 |
+| city | string | 市 |
+| person_name | string | 收货人 |
+| person_tel | string | 联系电话 |
 
 ---
 
@@ -545,14 +617,15 @@
 ### 订单状态流转
 
 ```
-draft → audited → partially_pushed_to_purchase → pushed_to_purchase → closed
-  ↓           ↓                ↓                        ↓
-cancelled  cancelled         cancelled               cancelled
+draft → pending → audited → partially_pushed_to_purchase → pushed_to_purchase → closed
+  ↓        ↓         ↓                  ↓                        ↓
+cancelled cancelled  cancelled          cancelled               cancelled
 ```
 
 | 当前状态 | 可变更为 |
 |----------|----------|
-| draft（草稿） | audited, cancelled |
+| draft（草稿） | pending, cancelled |
+| pending（待审核） | audited, draft |
 | audited（已审核） | partially_pushed_to_purchase, pushed_to_purchase, closed, cancelled |
 | partially_pushed_to_purchase（部分下推） | pushed_to_purchase, closed, cancelled |
 | pushed_to_purchase（已下推） | closed, cancelled |
@@ -579,6 +652,7 @@ cancelled  cancelled         cancelled               cancelled
 | 值 | 说明 |
 |------|------|
 | draft | 草稿 |
+| pending | 待审核 |
 | audited | 已审核 |
 | partially_pushed_to_purchase | 部分下推采购 |
 | pushed_to_purchase | 已下推采购 |
