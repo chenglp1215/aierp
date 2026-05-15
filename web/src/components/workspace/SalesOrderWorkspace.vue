@@ -74,12 +74,10 @@ interface SalesOrder {
   tax_amt: number
   total_tax_amt: number
   total_discount_amt: number
-  status: {
-    order_status: string
-    delivery_status: string
-    receive_status: string
-    invoice_status: string
-  }
+  order_status: string
+  delivery_status: string
+  receive_status: string
+  invoice_status: string
   invoice_info: InvoiceInfo
   creator_id: string
   creator_name?: string
@@ -1094,7 +1092,7 @@ const handleAuditOrder = async () => {
     loadOrders()
     // 更新详情弹窗状态
     if (selectedOrder.value?.order_no === actionTargetOrderNo.value) {
-      selectedOrder.value = { ...selectedOrder.value, status: { ...selectedOrder.value.status, order_status: 'audited' } }
+      selectedOrder.value = { ...selectedOrder.value, order_status: 'audited' }
       await refreshFlows(actionTargetOrderNo.value)
     }
   } catch (error: any) {
@@ -1119,7 +1117,7 @@ const handleCloseOrder = async () => {
     showCloseConfirm.value = false
     loadOrders()
     if (selectedOrder.value?.order_no === actionTargetOrderNo.value) {
-      selectedOrder.value = { ...selectedOrder.value, status: { ...selectedOrder.value.status, order_status: 'closed' } }
+      selectedOrder.value = { ...selectedOrder.value, order_status: 'closed' }
       await refreshFlows(actionTargetOrderNo.value)
     }
   } catch (error: any) {
@@ -1219,7 +1217,7 @@ const handleCancelOrder = async () => {
     showCancelConfirm.value = false
     loadOrders()
     if (selectedOrder.value?.order_no === actionTargetOrderNo.value) {
-      selectedOrder.value = { ...selectedOrder.value, status: { ...selectedOrder.value.status, order_status: 'cancelled' } }
+      selectedOrder.value = { ...selectedOrder.value, order_status: 'cancelled' }
       await refreshFlows(actionTargetOrderNo.value)
     }
   } catch (error: any) {
@@ -1245,7 +1243,7 @@ const handleUpdateOrderStatus = async (orderNo: string, status: string) => {
     window.showToast('订单状态更新成功', 'success')
     loadOrders()
     if (selectedOrder.value?.order_no === orderNo) {
-      selectedOrder.value = { ...selectedOrder.value, status: { ...selectedOrder.value.status, order_status: status } }
+      selectedOrder.value = { ...selectedOrder.value, order_status: status }
     }
   } catch (error: any) {
     window.showToast(error.message || '状态更新失败', 'error')
@@ -1258,7 +1256,7 @@ const handleUpdateDeliveryStatus = async (orderNo: string, delivery_status: stri
     window.showToast('发货状态更新成功', 'success')
     loadOrders()
     if (selectedOrder.value?.order_no === orderNo) {
-      selectedOrder.value = { ...selectedOrder.value, status: { ...selectedOrder.value.status, delivery_status } }
+      selectedOrder.value = { ...selectedOrder.value, delivery_status }
     }
   } catch (error: any) {
     window.showToast(error.message || '状态更新失败', 'error')
@@ -1271,7 +1269,7 @@ const handleUpdateReceiveStatus = async (orderNo: string, receive_status: string
     window.showToast('收货状态更新成功', 'success')
     loadOrders()
     if (selectedOrder.value?.order_no === orderNo) {
-      selectedOrder.value = { ...selectedOrder.value, status: { ...selectedOrder.value.status, receive_status } }
+      selectedOrder.value = { ...selectedOrder.value, receive_status }
     }
   } catch (error: any) {
     window.showToast(error.message || '状态更新失败', 'error')
@@ -1284,7 +1282,7 @@ const handleUpdateInvoiceStatus = async (orderNo: string, invoice_status: string
     window.showToast('开票状态更新成功', 'success')
     loadOrders()
     if (selectedOrder.value?.order_no === orderNo) {
-      selectedOrder.value = { ...selectedOrder.value, status: { ...selectedOrder.value.status, invoice_status } }
+      selectedOrder.value = { ...selectedOrder.value, invoice_status }
     }
   } catch (error: any) {
     window.showToast(error.message || '状态更新失败', 'error')
@@ -1445,31 +1443,31 @@ onBeforeUnmount(() => {
             {{ formatAmount(row.total_tax_amt) }}
           </template>
         </vxe-column>
-        <vxe-column field="status.order_status" title="订单状态" width="100" class-name="col--center">
+        <vxe-column field="order_status" title="订单状态" width="100" class-name="col--center">
           <template #default="{ row }">
-            <span class="status-tag" :class="getOrderStatusInfo(row.status?.order_status).class">
-              {{ getOrderStatusInfo(row.status?.order_status).label }}
+            <span class="status-tag" :class="getOrderStatusInfo(row.order_status).class">
+              {{ getOrderStatusInfo(row.order_status).label }}
             </span>
           </template>
         </vxe-column>
-        <vxe-column field="status.delivery_status" title="发货状态" width="100" class-name="col--center">
+        <vxe-column field="delivery_status" title="发货状态" width="100" class-name="col--center">
           <template #default="{ row }">
-            <span class="status-tag" :class="getDeliveryStatusInfo(row.status?.delivery_status).class">
-              {{ getDeliveryStatusInfo(row.status?.delivery_status).label }}
+            <span class="status-tag" :class="getDeliveryStatusInfo(row.delivery_status).class">
+              {{ getDeliveryStatusInfo(row.delivery_status).label }}
             </span>
           </template>
         </vxe-column>
-        <vxe-column field="status.receive_status" title="收货状态" width="100" class-name="col--center">
+        <vxe-column field="receive_status" title="收货状态" width="100" class-name="col--center">
           <template #default="{ row }">
-            <span class="status-tag" :class="getReceiveStatusInfo(row.status?.receive_status).class">
-              {{ getReceiveStatusInfo(row.status?.receive_status).label }}
+            <span class="status-tag" :class="getReceiveStatusInfo(row.receive_status).class">
+              {{ getReceiveStatusInfo(row.receive_status).label }}
             </span>
           </template>
         </vxe-column>
-        <vxe-column field="status.invoice_status" title="开票状态" width="100" class-name="col--center">
+        <vxe-column field="invoice_status" title="开票状态" width="100" class-name="col--center">
           <template #default="{ row }">
-            <span class="status-tag" :class="getInvoiceStatusInfo(row.status?.invoice_status).class">
-              {{ getInvoiceStatusInfo(row.status?.invoice_status).label }}
+            <span class="status-tag" :class="getInvoiceStatusInfo(row.invoice_status).class">
+              {{ getInvoiceStatusInfo(row.invoice_status).label }}
             </span>
           </template>
         </vxe-column>
@@ -1478,12 +1476,12 @@ onBeforeUnmount(() => {
           <template #default="{ row }">
             <span class="action-btns">
               <button class="btn-link" @click="emit('navigate', 'sales-order-detail', { orderNo: row.order_no })">详情</button>
-              <button class="btn-link" @click="openEditOrder(row)" v-if="row.status?.order_status === 'draft'">编辑</button>
-              <button class="btn-link success" @click="confirmAudit(row.order_no)" v-if="row.status?.order_status === 'draft'">审核</button>
-              <button class="btn-link primary" @click="confirmPushPurchase(row.order_no)" v-if="row.status?.order_status === 'audited' || row.status?.order_status === 'partially_pushed_to_purchase'">下推采购</button>
-              <button class="btn-link warning" @click="confirmClose(row.order_no)" v-if="row.status?.order_status === 'audited' || row.status?.order_status === 'partially_pushed_to_purchase'">关闭</button>
-              <button class="btn-link danger" @click="confirmCancel(row.order_no)" v-if="row.status?.order_status === 'draft' || row.status?.order_status === 'audited' || row.status?.order_status === 'partially_pushed_to_purchase'">取消</button>
-              <button class="btn-link danger" @click="confirmDelete(row.order_no)" v-if="row.status?.order_status === 'draft'">删除</button>
+              <button class="btn-link" @click="openEditOrder(row)" v-if="row.order_status === 'draft'">编辑</button>
+              <button class="btn-link success" @click="confirmAudit(row.order_no)" v-if="row.order_status === 'draft'">审核</button>
+              <button class="btn-link primary" @click="confirmPushPurchase(row.order_no)" v-if="row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase'">下推采购</button>
+              <button class="btn-link warning" @click="confirmClose(row.order_no)" v-if="row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase'">关闭</button>
+              <button class="btn-link danger" @click="confirmCancel(row.order_no)" v-if="row.order_status === 'draft' || row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase'">取消</button>
+              <button class="btn-link danger" @click="confirmDelete(row.order_no)" v-if="row.order_status === 'draft'">删除</button>
             </span>
           </template>
         </vxe-column>
@@ -1775,26 +1773,26 @@ onBeforeUnmount(() => {
               <div class="detail-grid">
                 <div class="detail-item">
                   <label>订单状态</label>
-                  <span class="status-tag" :class="getOrderStatusInfo(selectedOrder.status?.order_status).class">
-                    {{ getOrderStatusInfo(selectedOrder.status?.order_status).label }}
+                  <span class="status-tag" :class="getOrderStatusInfo(selectedOrder.order_status).class">
+                    {{ getOrderStatusInfo(selectedOrder.order_status).label }}
                   </span>
                 </div>
                 <div class="detail-item">
                   <label>发货状态</label>
-                  <span class="status-tag" :class="getDeliveryStatusInfo(selectedOrder.status?.delivery_status).class">
-                    {{ getDeliveryStatusInfo(selectedOrder.status?.delivery_status).label }}
+                  <span class="status-tag" :class="getDeliveryStatusInfo(selectedOrder.delivery_status).class">
+                    {{ getDeliveryStatusInfo(selectedOrder.delivery_status).label }}
                   </span>
                 </div>
                 <div class="detail-item">
                   <label>收货状态</label>
-                  <span class="status-tag" :class="getReceiveStatusInfo(selectedOrder.status?.receive_status).class">
-                    {{ getReceiveStatusInfo(selectedOrder.status?.receive_status).label }}
+                  <span class="status-tag" :class="getReceiveStatusInfo(selectedOrder.receive_status).class">
+                    {{ getReceiveStatusInfo(selectedOrder.receive_status).label }}
                   </span>
                 </div>
                 <div class="detail-item">
                   <label>开票状态</label>
-                  <span class="status-tag" :class="getInvoiceStatusInfo(selectedOrder.status?.invoice_status).class">
-                    {{ getInvoiceStatusInfo(selectedOrder.status?.invoice_status).label }}
+                  <span class="status-tag" :class="getInvoiceStatusInfo(selectedOrder.invoice_status).class">
+                    {{ getInvoiceStatusInfo(selectedOrder.invoice_status).label }}
                   </span>
                 </div>
               </div>
@@ -1904,36 +1902,36 @@ onBeforeUnmount(() => {
                 <div class="status-group">
                   <label>订单状态：</label>
                   <select
-                    v-model="selectedOrder.status.order_status"
-                    @change="handleUpdateOrderStatus(selectedOrder.order_no, selectedOrder.status.order_status)"
-                    :disabled="selectedOrder.status.order_status === 'closed' || selectedOrder.status.order_status === 'cancelled'"
+                    v-model="selectedOrder.order_status"
+                    @change="handleUpdateOrderStatus(selectedOrder.order_no, selectedOrder.order_status)"
+                    :disabled="selectedOrder.order_status === 'closed' || selectedOrder.order_status === 'cancelled'"
                   >
                     <option v-for="s in orderStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
                   </select>
                 </div>
                 <div class="status-group">
                   <label>发货状态：</label>
-                  <select 
-                    v-model="selectedOrder.status.delivery_status"
-                    @change="handleUpdateDeliveryStatus(selectedOrder.order_no, selectedOrder.status.delivery_status)"
+                  <select
+                    v-model="selectedOrder.delivery_status"
+                    @change="handleUpdateDeliveryStatus(selectedOrder.order_no, selectedOrder.delivery_status)"
                   >
                     <option v-for="s in deliveryStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
                   </select>
                 </div>
                 <div class="status-group">
                   <label>收货状态：</label>
-                  <select 
-                    v-model="selectedOrder.status.receive_status"
-                    @change="handleUpdateReceiveStatus(selectedOrder.order_no, selectedOrder.status.receive_status)"
+                  <select
+                    v-model="selectedOrder.receive_status"
+                    @change="handleUpdateReceiveStatus(selectedOrder.order_no, selectedOrder.receive_status)"
                   >
                     <option v-for="s in receiveStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
                   </select>
                 </div>
                 <div class="status-group">
                   <label>开票状态：</label>
-                  <select 
-                    v-model="selectedOrder.status.invoice_status"
-                    @change="handleUpdateInvoiceStatus(selectedOrder.order_no, selectedOrder.status.invoice_status)"
+                  <select
+                    v-model="selectedOrder.invoice_status"
+                    @change="handleUpdateInvoiceStatus(selectedOrder.order_no, selectedOrder.invoice_status)"
                   >
                     <option v-for="s in invoiceStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
                   </select>
@@ -1970,35 +1968,35 @@ onBeforeUnmount(() => {
         <div class="modal-footer" v-if="selectedOrder">
           <button
             class="btn-primary"
-            v-if="selectedOrder.status?.order_status === 'draft'"
+            v-if="selectedOrder.order_status === 'draft'"
             @click="openEditOrder(selectedOrder); showDetailModal = false"
           >
             编辑
           </button>
           <button
             class="btn-success"
-            v-if="selectedOrder.status?.order_status === 'draft'"
+            v-if="selectedOrder.order_status === 'draft'"
             @click="confirmAudit(selectedOrder.order_no)"
           >
             审核通过
           </button>
           <button
             class="btn-warning"
-            v-if="selectedOrder.status?.order_status === 'audited' || selectedOrder.status?.order_status === 'partially_pushed_to_purchase'"
+            v-if="selectedOrder.order_status === 'audited' || selectedOrder.order_status === 'partially_pushed_to_purchase'"
             @click="confirmClose(selectedOrder.order_no)"
           >
             关闭订单
           </button>
           <button
             class="btn-primary"
-            v-if="selectedOrder.status?.order_status === 'audited' || selectedOrder.status?.order_status === 'partially_pushed_to_purchase'"
+            v-if="selectedOrder.order_status === 'audited' || selectedOrder.order_status === 'partially_pushed_to_purchase'"
             @click="confirmPushPurchase(selectedOrder.order_no)"
           >
             下推采购
           </button>
           <button
             class="btn-danger"
-            v-if="selectedOrder.status?.order_status === 'draft' || selectedOrder.status?.order_status === 'audited' || selectedOrder.status?.order_status === 'partially_pushed_to_purchase'"
+            v-if="selectedOrder.order_status === 'draft' || selectedOrder.order_status === 'audited' || selectedOrder.order_status === 'partially_pushed_to_purchase'"
             @click="confirmCancel(selectedOrder.order_no)"
           >
             取消订单
