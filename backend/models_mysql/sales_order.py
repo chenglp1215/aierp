@@ -243,3 +243,31 @@ class SalesDeliverInfo(Model):
             "person_name": self.person_name,
             "person_tel": self.person_tel,
         }
+
+
+class SalesInvoiceInfo(Model):
+    """开票信息"""
+    id = fields.IntField(pk=True, description="开票信息ID")
+    sales_order = fields.ForeignKeyField("models.SalesOrder", related_name="invoice_infos", on_delete=fields.CASCADE)
+    invoice_title = fields.CharField(max_length=200, null=True, description="发票抬头")
+    invoice_type = fields.CharField(max_length=50, null=True, description="发票类型")
+    tax_number = fields.CharField(max_length=50, null=True, description="税号")
+    bank_name = fields.CharField(max_length=100, null=True, description="开户银行")
+    bank_account = fields.CharField(max_length=50, null=True, description="银行账号")
+    address = fields.CharField(max_length=200, null=True, description="注册地址")
+    phone = fields.CharField(max_length=20, null=True, description="注册电话")
+
+    class Meta:
+        table = "sales_invoice_infos"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "invoice_title": self.invoice_title,
+            "invoice_type": self.invoice_type,
+            "tax_number": self.tax_number,
+            "bank_name": self.bank_name,
+            "bank_account": self.bank_account,
+            "address": self.address,
+            "phone": self.phone,
+        }

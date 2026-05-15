@@ -47,6 +47,8 @@ interface InvoiceInfo {
   tax_number: string
   bank_name: string
   bank_account: string
+  address?: string
+  phone?: string
 }
 
 interface StatusFlowRecord {
@@ -339,7 +341,9 @@ const orderForm = ref({
     invoice_type: '',
     tax_number: '',
     bank_name: '',
-    bank_account: ''
+    bank_account: '',
+    address: '',
+    phone: ''
   },
   remark: '',
   items: [] as SalesOrderItem[]
@@ -570,7 +574,9 @@ const resetOrderForm = () => {
       invoice_type: '',
       tax_number: '',
       bank_name: '',
-      bank_account: ''
+      bank_account: '',
+      address: '',
+      phone: ''
     },
     remark: '',
     items: []
@@ -623,7 +629,7 @@ const openEditOrder = async (order: SalesOrder) => {
     deliver_info: fullOrder.deliver_info ? { ...fullOrder.deliver_info } : { addr: '', province: '', city: '', person_name: '', person_tel: '' },
     expect_deliver_date: fullOrder.expect_deliver_date || '',
     settle_type: fullOrder.settle_type,
-    invoice_info: fullOrder.invoice_info ? { ...fullOrder.invoice_info } : { invoice_title: '', tax_number: '', invoice_type: '', bank_name: '', bank_account: '' },
+    invoice_info: fullOrder.invoice_info ? { ...fullOrder.invoice_info, address: fullOrder.invoice_info.address || '', phone: fullOrder.invoice_info.phone || '' } : { invoice_title: '', tax_number: '', invoice_type: '', bank_name: '', bank_account: '', address: '', phone: '' },
     remark: fullOrder.remark || '',
     items: (fullOrder.items || []).map(item => ({
       ...item,
@@ -749,7 +755,9 @@ const selectCustomer = async (customer: any) => {
           invoice_type: defaultInvoice.invoice_type,
           tax_number: defaultInvoice.tax_number,
           bank_name: defaultInvoice.bank_name,
-          bank_account: defaultInvoice.bank_account
+          bank_account: defaultInvoice.bank_account,
+          address: defaultInvoice.address || '',
+          phone: defaultInvoice.phone || ''
         }
       }
     } else {
@@ -811,7 +819,9 @@ const onInvoiceInfoChange = (invoiceId: string) => {
       invoice_type: inv.invoice_type,
       tax_number: inv.tax_number,
       bank_name: inv.bank_name,
-      bank_account: inv.bank_account
+      bank_account: inv.bank_account,
+      address: inv.address,
+      phone: inv.phone
     }
   }
 }
@@ -996,6 +1006,7 @@ const handleSaveOrder = async () => {
       customer_name: orderForm.value.customer_name,
       sale_user_id: orderForm.value.sale_user_id || undefined,
       deliver_info: orderForm.value.deliver_info,
+      invoice_info: orderForm.value.invoice_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
       settle_type: orderForm.value.settle_type,
       remark: orderForm.value.remark,
@@ -1019,7 +1030,7 @@ const handleSaveOrder = async () => {
       await salesOrderApi.create(submitData)
       window.showToast('订单创建成功', 'success')
     }
-    
+
     loadOrders()
     showOrderModal.value = false
   } catch (error: any) {
@@ -1059,6 +1070,7 @@ const handleSaveAndSubmit = async () => {
       customer_name: orderForm.value.customer_name,
       sale_user_id: orderForm.value.sale_user_id || undefined,
       deliver_info: orderForm.value.deliver_info,
+      invoice_info: orderForm.value.invoice_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
       settle_type: orderForm.value.settle_type,
       remark: orderForm.value.remark,

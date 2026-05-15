@@ -10,7 +10,7 @@ from tortoise.expressions import Q
 from tortoise.functions import Count
 
 from models_mysql.sales_order import (
-    SalesOrder, SalesOrderItem, SalesDeliverInfo,
+    SalesOrder, SalesOrderItem, SalesDeliverInfo, SalesInvoiceInfo,
     OrderStatus, DeliveryStatus, ReceiveStatus, InvoiceStatus, ShippingMethod
 )
 from models_mysql.order_status_flow import OrderStatusFlow
@@ -182,6 +182,20 @@ class SalesOrderService:
                 person_tel=deliver_info.get("person_tel"),
             )
 
+        # 创建开票信息
+        invoice_info = data.get("invoice_info", {})
+        if invoice_info:
+            await SalesInvoiceInfo.create(
+                sales_order=order,
+                invoice_title=invoice_info.get("invoice_title"),
+                invoice_type=invoice_info.get("invoice_type"),
+                tax_number=invoice_info.get("tax_number"),
+                bank_name=invoice_info.get("bank_name"),
+                bank_account=invoice_info.get("bank_account"),
+                address=invoice_info.get("address"),
+                phone=invoice_info.get("phone"),
+            )
+
         # 记录状态流转
         await OrderStatusFlow.create(
             order_no=order_no,
@@ -202,7 +216,8 @@ class SalesOrderService:
         """根据订单号获取订单详情"""
         order = await SalesOrder.filter(order_no=order_no).prefetch_related(
             "items",
-            "deliver_infos"
+            "deliver_infos",
+            "invoice_infos"
         ).first()
         if not order:
             return None
@@ -224,6 +239,8 @@ class SalesOrderService:
         result["items"] = items_data
         # deliver_infos 已通过 prefetch_related 预加载
         result["deliver_info"] = order.deliver_infos[0].to_dict() if order.deliver_infos else {}
+        # invoice_infos 已通过 prefetch_related 预加载
+        result["invoice_info"] = order.invoice_infos[0].to_dict() if order.invoice_infos else {}
         return result
 
     async def list_orders(
@@ -297,6 +314,40 @@ class SalesOrderService:
                     discounted_price=calc["discounted_price"],
                     amt=calc["amt"],
                     shipping_method=self._parse_shipping_method(item.get("shipping_method")),
+                )
+
+        # 更新发货信息
+        if "deliver_info" in data:
+            deliver_info = data["deliver_info"]
+            # 删除旧发货信息
+            await SalesDeliverInfo.filter(sales_order=order).delete()
+            # 创建新发货信息
+            if deliver_info:
+                await SalesDeliverInfo.create(
+                    sales_order=order,
+                    addr=deliver_info.get("addr"),
+                    province=deliver_info.get("province"),
+                    city=deliver_info.get("city"),
+                    person_name=deliver_info.get("person_name"),
+                    person_tel=deliver_info.get("person_tel"),
+                )
+
+        # 更新开票信息
+        if "invoice_info" in data:
+            invoice_info = data["invoice_info"]
+            # 删除旧开票信息
+            await SalesInvoiceInfo.filter(sales_order=order).delete()
+            # 创建新开票信息
+            if invoice_info:
+                await SalesInvoiceInfo.create(
+                    sales_order=order,
+                    invoice_title=invoice_info.get("invoice_title"),
+                    invoice_type=invoice_info.get("invoice_type"),
+                    tax_number=invoice_info.get("tax_number"),
+                    bank_name=invoice_info.get("bank_name"),
+                    bank_account=invoice_info.get("bank_account"),
+                    address=invoice_info.get("address"),
+                    phone=invoice_info.get("phone"),
                 )
 
         logger.info(f"销售订单更新成功: {order_no}")

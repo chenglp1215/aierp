@@ -1,4 +1,4 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: 销售订单列表页状态显示
 销售订单列表页 SHALL 正确显示订单状态字段，使用后端返回的 `order_status` 字段，并支持 `pending` 状态的操作按钮。
@@ -58,24 +58,3 @@
 #### Scenario: 待审核状态样式
 - **WHEN** 订单状态为 `pending`
 - **THEN** 状态标签 SHALL 使用黄色/橙色样式
-
-#### Scenario: 发货状态映射
-- **WHEN** 后端返回发货状态值
-- **THEN** 前端 SHALL 正确映射为中文标签：
-  - `none` → 未发货
-  - `partial` → 部分发货
-  - `full` → 全部发货
-
-#### Scenario: 收货状态映射
-- **WHEN** 后端返回收货状态值
-- **THEN** 前端 SHALL 正确映射为中文标签：
-  - `none` → 未收货
-  - `partial` → 部分收货
-  - `full` → 全部收货
-
-#### Scenario: 开票状态映射
-- **WHEN** 后端返回开票状态值
-- **THEN** 前端 SHALL 正确映射为中文标签：
-  - `none` → 未开票
-  - `partial` → 部分开票
-  - `full` → 全部开票

@@ -166,3 +166,4 @@ MYSQL_DATABASE=erp_test
 - 默认权限（36 条）
 - 超级管理员角色
 - 管理员账号（admin/admin123）
+
