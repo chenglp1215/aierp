@@ -81,6 +81,27 @@ async def delete_spec(
     return "规格删除成功"
 
 
+@product_router.get("/specs/{spec_id}/stock-detail", response_model=dict)
+@wrap_response
+async def get_spec_stock_detail(
+    spec_id: str,
+    _: dict = Depends(require_permission("product.view"))
+):
+    """获取规格库存详情"""
+    from services.inventory_service_mysql import stock_service
+
+    spec_id_int = to_int_id(spec_id)
+    stock_status = await stock_service.get_stock_status_by_spec_ids([spec_id_int])
+
+    items = stock_status.get(str(spec_id_int), [])
+    total_quantity = sum(item.get("quantity", 0) for item in items)
+
+    return {
+        "spec_id": spec_id_int,
+        "items": items,
+        "total_quantity": total_quantity
+    }
+
 
 @product_router.post("/", response_model=dict)
 @wrap_response

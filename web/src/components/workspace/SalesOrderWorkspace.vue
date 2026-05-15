@@ -973,6 +973,7 @@ const handleSaveOrder = async () => {
     const submitData = {
       order_date: orderForm.value.order_date,
       customer_id: orderForm.value.customer_id,
+      customer_name: orderForm.value.customer_name,
       sale_user_id: orderForm.value.sale_user_id || undefined,
       deliver_info: orderForm.value.deliver_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
@@ -1037,6 +1038,7 @@ const handleSaveAndSubmit = async () => {
     const submitData = {
       order_date: orderForm.value.order_date,
       customer_id: orderForm.value.customer_id,
+      customer_name: orderForm.value.customer_name,
       sale_user_id: orderForm.value.sale_user_id || undefined,
       deliver_info: orderForm.value.deliver_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
