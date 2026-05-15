@@ -45,10 +45,20 @@ class PurchaseOrderService:
         generated_orders = []
         current_user = current_user or {}
 
-        # 按品牌分组
+        # 按品牌分组（通过关联链获取品牌）
         items_by_brand: Dict[int, List[SalesOrderItem]] = {}
         for item in selected_items:
-            brand_id = item.brand_id or 0
+            # 通过 spec -> product -> brand 获取品牌ID
+            brand_id = 0
+            if item.spec_id:
+                try:
+                    spec = item.spec
+                    if spec and hasattr(spec, 'product') and spec.product:
+                        product = spec.product
+                        if hasattr(product, 'brand') and product.brand:
+                            brand_id = product.brand.id or 0
+                except (TypeError, AttributeError):
+                    pass
             if brand_id not in items_by_brand:
                 items_by_brand[brand_id] = []
             items_by_brand[brand_id].append(item)
@@ -85,15 +95,29 @@ class PurchaseOrderService:
                 creator_id=current_user.get("id"),
             )
 
-            # 创建明细（移除 brand_name、warehouse_name 冗余字段赋值）
+            # 创建明细（通过关联链获取 product_id 和 brand_id）
             for idx, item in enumerate(items, 1):
                 amt = self._calculate_item_amount(item.qty, item.price, Decimal(str(item.discount)))
+
+                # 通过关联链获取 product_id 和 brand_id
+                product_id = None
+                brand_id = None
+                if item.spec_id:
+                    try:
+                        spec = item.spec
+                        if spec and hasattr(spec, 'product') and spec.product:
+                            product_id = spec.product.id
+                            if hasattr(spec.product, 'brand') and spec.product.brand:
+                                brand_id = spec.product.brand.id
+                    except (TypeError, AttributeError):
+                        pass
+
                 await PurchaseOrderItem.create(
                     purchase_order=purchase_order,
                     row_no=idx,
                     spec_id=item.spec_id,
-                    product_id=item.product_id,
-                    brand_id=item.brand_id,
+                    product_id=product_id,
+                    brand_id=brand_id,
                     warehouse_id=item.warehouse_id,
                     purchase_qty=item.qty,
                     purchase_price=item.price,

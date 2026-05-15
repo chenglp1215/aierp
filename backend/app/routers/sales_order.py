@@ -162,6 +162,14 @@ async def push_to_purchase(
     # 筛选选中的明细
     selected_items = [item for item in order.items if item.row_no in selected_row_nos]
 
+    # 预加载选中明细的关联数据
+    if selected_items:
+        item_ids = [item.id for item in selected_items]
+        selected_items = list(await SalesOrderItem.filter(id__in=item_ids).select_related(
+            "spec__product__brand",
+            "warehouse"
+        ).all())
+
     if not selected_items:
         raise ValueError("请选择要下推采购的商品明细")
 
