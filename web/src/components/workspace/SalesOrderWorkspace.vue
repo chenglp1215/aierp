@@ -608,15 +608,22 @@ const openEditOrder = async (order: SalesOrder) => {
   }
 
   editingOrder.value = fullOrder
+
+  // 发货方式中文转英文映射
+  const shippingMethodReverseMap: Record<string, string> = {
+    '直运': 'direct',
+    '仓库发货': 'warehouse'
+  }
+
   orderForm.value = {
     order_date: fullOrder.order_date,
     customer_id: fullOrder.customer_id,
     customer_name: fullOrder.customer_name || '',
     sale_user_id: fullOrder.sale_user_id || '',
-    deliver_info: { ...fullOrder.deliver_info },
+    deliver_info: fullOrder.deliver_info ? { ...fullOrder.deliver_info } : { addr: '', province: '', city: '', person_name: '', person_tel: '' },
     expect_deliver_date: fullOrder.expect_deliver_date || '',
     settle_type: fullOrder.settle_type,
-    invoice_info: { ...fullOrder.invoice_info },
+    invoice_info: fullOrder.invoice_info ? { ...fullOrder.invoice_info } : { invoice_title: '', tax_number: '', invoice_type: '', bank_name: '', bank_account: '' },
     remark: fullOrder.remark || '',
     items: (fullOrder.items || []).map(item => ({
       ...item,
@@ -624,7 +631,9 @@ const openEditOrder = async (order: SalesOrder) => {
       product_name: item.product_name || '',
       product_code: item.product_code || '',
       brand_name: item.brand_name || '',
-      spec_code: item.spec_code || ''
+      spec_code: item.spec_code || '',
+      // 发货方式中文转英文
+      shipping_method: (shippingMethodReverseMap[item.shipping_method] || item.shipping_method || 'warehouse') as 'direct' | 'warehouse'
     }))
   }
   customerSearchKeyword.value = fullOrder.customer_name || ''
@@ -657,22 +666,26 @@ const openEditOrder = async (order: SalesOrder) => {
 
   // 加载客户收货地址和开票信息用于下拉
   try {
-    const res = await customerApi.getById(order.customer_id)
+    const res = await customerApi.getById(fullOrder.customer_id)
     const detail = res
     customerInvoiceInfos.value = detail?.invoice_infos || []
     customerShippingAddresses.value = detail?.shipping_addresses || []
 
     // 匹配当前订单的收货地址
     const matchedAddr = customerShippingAddresses.value.find(
-      (a: any) => a.recipient_name === order.deliver_info?.person_name && a.recipient_phone === order.deliver_info?.person_tel
+      (a: any) => a.recipient_name === fullOrder.deliver_info?.person_name && a.recipient_phone === fullOrder.deliver_info?.person_tel
     )
     selectedShippingAddressId.value = matchedAddr?.id || ''
 
-    // 匹配当前订单的开票信息
-    const matchedInv = customerInvoiceInfos.value.find(
-      (i: any) => i.invoice_title === order.invoice_info?.invoice_title && i.tax_number === order.invoice_info?.tax_number
-    )
-    selectedInvoiceInfoId.value = matchedInv?.id || ''
+    // 匹配当前订单的开票信息（如果后端有返回）
+    if (fullOrder.invoice_info?.invoice_title) {
+      const matchedInv = customerInvoiceInfos.value.find(
+        (i: any) => i.invoice_title === fullOrder.invoice_info?.invoice_title && i.tax_number === fullOrder.invoice_info?.tax_number
+      )
+      selectedInvoiceInfoId.value = matchedInv?.id || ''
+    } else {
+      selectedInvoiceInfoId.value = ''
+    }
   } catch (e) {
     console.error('加载客户信息失败:', e)
     customerInvoiceInfos.value = []
@@ -682,10 +695,10 @@ const openEditOrder = async (order: SalesOrder) => {
   }
 
   // 设置省份/城市
-  selectedProvince.value = order.deliver_info?.province || ''
-  if (order.deliver_info?.province) {
-    cityList.value = getCities(order.deliver_info.province)
-    selectedCity.value = order.deliver_info?.city || ''
+  selectedProvince.value = fullOrder.deliver_info?.province || ''
+  if (fullOrder.deliver_info?.province) {
+    cityList.value = getCities(fullOrder.deliver_info.province)
+    selectedCity.value = fullOrder.deliver_info?.city || ''
   }
   showOrderModal.value = true
 }
