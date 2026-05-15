@@ -67,14 +67,13 @@ class PurchaseOrderService:
                 item.qty, item.price, Decimal(str(item.discount))
             ) for item in items)
 
-            # 创建采购单主表
+            # 创建采购单主表（使用 brand_id 外键，不再传入 brand_name）
             purchase_order = await PurchaseOrder.create(
                 purchase_no=purchase_no,
                 purchase_type=purchase_type,
                 source_sale_order_id=sales_order.id,
                 source_sale_order_no=sales_order.order_no,
                 brand_id=brand_id or None,
-                brand_name=items[0].brand_name if items else None,
                 purchase_status=PurchaseStatus.DRAFT,
                 total_amt=total_amt,
                 tax_rate=sales_order.tax_rate,
@@ -86,18 +85,16 @@ class PurchaseOrderService:
                 creator_id=current_user.get("id"),
             )
 
-            # 创建明细
+            # 创建明细（移除 brand_name、warehouse_name 冗余字段赋值）
             for idx, item in enumerate(items, 1):
                 amt = self._calculate_item_amount(item.qty, item.price, Decimal(str(item.discount)))
                 await PurchaseOrderItem.create(
                     purchase_order=purchase_order,
                     row_no=idx,
-                    product_id=item.product_id,
                     spec_id=item.spec_id,
+                    product_id=item.product_id,
                     brand_id=item.brand_id,
-                    brand_name=item.brand_name,
                     warehouse_id=item.warehouse_id,
-                    warehouse_name=item.warehouse_name,
                     purchase_qty=item.qty,
                     purchase_price=item.price,
                     discount=item.discount,
@@ -136,8 +133,21 @@ class PurchaseOrderService:
         if not order:
             return None
 
-        result = order.to_dict()
-        result["items"] = [item.to_dict() for item in order.items]
+        # 对每个明细使用 select_related 获取关联数据
+        items_data = []
+        for item in order.items:
+            # 使用 select_related 获取 spec 和 warehouse
+            item_with_relations = await PurchaseOrderItem.filter(id=item.id).select_related(
+                "spec__product__brand",
+                "warehouse"
+            ).first()
+            if item_with_relations:
+                items_data.append(await item_with_relations.to_dict())
+            else:
+                items_data.append(await item.to_dict())
+
+        result = await order.to_dict()
+        result["items"] = items_data
         return result
 
     async def list_orders(
@@ -161,7 +171,8 @@ class PurchaseOrderService:
         total = await query.count()
         orders = await query.offset((page - 1) * page_size).limit(page_size)
 
-        return [order.to_dict() for order in orders], total
+        # 使用 await 获取每个订单的 to_dict 结果
+        return [await order.to_dict() for order in orders], total
 
     # ============ 状态操作 ============
 

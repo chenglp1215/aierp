@@ -5,6 +5,9 @@ from tortoise import fields
 from tortoise.models import Model
 from enum import Enum
 
+from models_mysql.product import Brand, ProductSpec
+from models_mysql.warehouse import Warehouse
+
 
 class PurchaseType(str, Enum):
     """采购类型"""
@@ -41,10 +44,15 @@ class PurchaseOrder(Model):
     purchase_type = fields.CharEnumField(PurchaseType, description="采购类型")
     source_sale_order_id = fields.IntField(null=True, description="关联源销售订单ID")
     source_sale_order_no = fields.CharField(max_length=50, null=True, description="关联源销售订单号")
-    brand_id = fields.IntField(null=True, description="品牌ID")
-    brand_name = fields.CharField(max_length=100, null=True, description="品牌名称")
+
+    # 外键关联 - 替代冗余字段
+    brand: fields.ForeignKeyNullableRelation["Brand"] = fields.ForeignKeyField(
+        "models.Brand", related_name="purchase_orders", null=True, description="品牌"
+    )
+
+    # 保留的字段
     supplier_id = fields.IntField(null=True, description="供应商ID")
-    supplier_name = fields.CharField(max_length=200, null=True, description="供应商名称")
+    supplier_name = fields.CharField(max_length=200, null=True, description="供应商名称（快照）")
     purchase_user_id = fields.IntField(null=True, description="采购员用户ID")
     purchase_status = fields.CharEnumField(PurchaseStatus, default=PurchaseStatus.DRAFT, description="采购单状态")
     in_status = fields.CharEnumField(InStatus, default=InStatus.NONE, description="入库状态")
@@ -68,7 +76,17 @@ class PurchaseOrder(Model):
     def __str__(self):
         return f"{self.purchase_no}"
 
-    def to_dict(self):
+    async def to_dict(self):
+        """转换为字典格式，通过关联查询返回品牌名称"""
+        brand = None
+        if self.brand_id:
+            try:
+                brand = self.brand
+                if brand is None or not hasattr(brand, 'id'):
+                    brand = await self.brand
+            except TypeError:
+                brand = await self.brand
+
         return {
             "id": self.id,
             "purchase_no": self.purchase_no,
@@ -76,7 +94,7 @@ class PurchaseOrder(Model):
             "source_sale_order_id": self.source_sale_order_id,
             "source_sale_order_no": self.source_sale_order_no,
             "brand_id": self.brand_id,
-            "brand_name": self.brand_name,
+            "brand_name": brand.name if brand else None,
             "supplier_id": self.supplier_id,
             "supplier_name": self.supplier_name,
             "purchase_user_id": self.purchase_user_id,
@@ -102,12 +120,19 @@ class PurchaseOrderItem(Model):
     id = fields.IntField(pk=True, description="明细ID")
     purchase_order = fields.ForeignKeyField("models.PurchaseOrder", related_name="items", on_delete=fields.CASCADE)
     row_no = fields.IntField(description="行号")
-    product_id = fields.IntField(null=True, description="商品ID")
-    spec_id = fields.IntField(null=True, description="规格ID")
-    brand_id = fields.IntField(null=True, description="品牌ID")
-    brand_name = fields.CharField(max_length=100, null=True, description="品牌名称")
-    warehouse_id = fields.IntField(null=True, description="仓库ID")
-    warehouse_name = fields.CharField(max_length=100, null=True, description="仓库名称")
+
+    # 外键关联 - spec 关联 product，product 关联 brand
+    spec: fields.ForeignKeyNullableRelation["ProductSpec"] = fields.ForeignKeyField(
+        "models.ProductSpec", related_name="purchase_order_items", null=True, description="规格"
+    )
+    warehouse: fields.ForeignKeyNullableRelation["Warehouse"] = fields.ForeignKeyField(
+        "models.Warehouse", related_name="purchase_order_items", null=True, description="仓库"
+    )
+
+    # 保留的字段（冗余，用于兼容）
+    product_id = fields.IntField(null=True, description="商品ID（冗余，通过 spec 获取）")
+    brand_id = fields.IntField(null=True, description="品牌ID（冗余，通过 spec 获取）")
+
     purchase_qty = fields.IntField(description="采购数量")
     purchase_price = fields.DecimalField(max_digits=12, decimal_places=2, description="采购单价")
     discount = fields.DecimalField(max_digits=5, decimal_places=4, default=1.0, description="折扣系数")
@@ -123,17 +148,66 @@ class PurchaseOrderItem(Model):
         table = "purchase_order_items"
         ordering = ["row_no"]
 
-    def to_dict(self):
+    async def to_dict(self):
+        """转换为字典格式，通过关联查询返回名称
+
+        注意：如果使用 select_related 预加载了关联数据，self.spec、self.warehouse 等
+        会直接返回对象而不是协程
+        """
+        # 获取 spec
+        spec = None
+        if self.spec_id:
+            try:
+                spec = self.spec
+                if spec is None or not hasattr(spec, 'id'):
+                    spec = await self.spec
+            except TypeError:
+                spec = await self.spec
+
+        # 获取 warehouse
+        warehouse = None
+        if self.warehouse_id:
+            try:
+                warehouse = self.warehouse
+                if warehouse is None or not hasattr(warehouse, 'id'):
+                    warehouse = await self.warehouse
+            except TypeError:
+                warehouse = await self.warehouse
+
+        # 通过 spec 获取 product 和 brand
+        product = None
+        brand = None
+        if spec:
+            try:
+                product = spec.product
+                if product is None or not hasattr(product, 'id'):
+                    product = await spec.product
+            except (TypeError, AttributeError):
+                if hasattr(spec, 'product_id') and spec.product_id:
+                    product = await spec.product
+
+            if product:
+                try:
+                    brand = product.brand
+                    if brand is None or not hasattr(brand, 'id'):
+                        brand = await product.brand
+                except (TypeError, AttributeError):
+                    if hasattr(product, 'brand_id') and product.brand_id:
+                        brand = await product.brand
+
         return {
             "id": self.id,
             "purchase_order_id": self.purchase_order_id,
             "row_no": self.row_no,
-            "product_id": self.product_id,
+            "product_id": product.id if product else self.product_id,
+            "product_code": product.product_code if product else None,
+            "product_name": product.name if product else None,
             "spec_id": self.spec_id,
-            "brand_id": self.brand_id,
-            "brand_name": self.brand_name,
+            "spec_code": spec.spec_code if spec else None,
+            "brand_id": brand.id if brand else self.brand_id,
+            "brand_name": brand.name if brand else None,
             "warehouse_id": self.warehouse_id,
-            "warehouse_name": self.warehouse_name,
+            "warehouse_name": warehouse.name if warehouse else None,
             "purchase_qty": self.purchase_qty,
             "purchase_price": float(self.purchase_price),
             "discount": float(self.discount),
