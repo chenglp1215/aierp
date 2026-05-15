@@ -83,16 +83,14 @@
   "items": [
     {
       "row_no": 1,
-      "product_id": 1,
-      "product_code": "PRD001",
       "spec_id": 1,
+      "product_code": "PRD001",
       "spec_code": "SPEC001",
-      "brand_id": 1,
       "warehouse_id": 1,
       "qty": 2,
       "price": 5000,
       "discount": 0.8,
-      "shipping_method": "direct"
+      "shipping_method": "warehouse"
     }
   ]
 }
@@ -103,18 +101,19 @@
 | 字段 | 类型 | 必填 | 描述 |
 |------|------|------|------|
 | row_no | int | 是 | 行号（≥1） |
-| product_id | int | 否 | 商品ID |
-| product_code | string | 否 | 商品编码 |
-| spec_id | int | 否 | 规格ID |
-| spec_code | string | 否 | 规格编码 |
-| brand_id | int | 否 | 品牌ID |
-| warehouse_id | int | 否 | 仓库ID |
+| spec_id | int | 否 | 规格ID（外键关联，用于获取商品、品牌信息） |
+| product_code | string | 否 | 商品编码（快照） |
+| spec_code | string | 否 | 规格编码（快照） |
+| warehouse_id | int | 否 | 仓库ID（外键关联） |
 | qty | int | 是 | 数量（≥1） |
 | price | float | 是 | 单价（≥0） |
 | discount | float | 否 | 折扣率（0-1，默认1.0） |
 | shipping_method | string | 是 | 发货方式：`direct`（直运）/ `warehouse`（仓库发货） |
 
-> **说明**: `order_no` 由系统自动生成（格式 `SO{YYYYMMDD}{4位序号}`），金额由系统自动计算。
+> **重要说明**:
+> - `order_no` 由系统自动生成（格式 `SO{YYYYMMDD}{4位序号}`），金额由系统自动计算
+> - 商品名称（product_name）、品牌名称（brand_name）通过 `spec_id` 外键关联自动获取
+> - `product_code`、`spec_code` 作为历史快照保存，防止商品信息变更影响历史订单
 
 **成功响应**
 
@@ -208,8 +207,8 @@
         "remark": "备注",
         "creator_id": 1,
         "creator_name": "创建人",
-        "created_at": "2025-01-01T10:00:00",
-        "updated_at": "2025-01-01T10:00:00"
+        "created_at": "2025-01-01T10:00:00+00:00",
+        "updated_at": "2025-01-01T10:00:00+00:00"
       }
     ]
   }
@@ -259,8 +258,8 @@
     "remark": "备注",
     "creator_id": 1,
     "creator_name": "创建人",
-    "created_at": "2025-01-01T10:00:00",
-    "updated_at": "2025-01-01T10:00:00",
+    "created_at": "2025-01-01T10:00:00+00:00",
+    "updated_at": "2025-01-01T10:00:00+00:00",
     "items": [
       {
         "id": 1,
@@ -280,12 +279,12 @@
         "discount": 0.8,
         "discounted_price": 4000.00,
         "amt": 8000.00,
-        "shipping_method": "direct",
+        "shipping_method": "仓库发货",
         "pushed": false,
         "out_qty": 0,
         "return_qty": 0,
-        "created_at": "2025-01-01T10:00:00",
-        "updated_at": "2025-01-01T10:00:00"
+        "created_at": "2025-01-01T10:00:00+00:00",
+        "updated_at": "2025-01-01T10:00:00+00:00"
       }
     ],
     "deliver_info": {
@@ -299,6 +298,11 @@
   }
 }
 ```
+
+> **说明**: 
+> - `product_id`、`product_name`、`brand_id`、`brand_name` 通过 `spec_id` 外键关联自动获取
+> - `warehouse_name` 通过 `warehouse_id` 外键关联自动获取
+> - `shipping_method` 返回中文：`直运` 或 `仓库发货`
 
 **错误响应**
 
@@ -334,7 +338,7 @@
   "items": [
     {
       "row_no": 1,
-      "product_id": 1,
+      "spec_id": 1,
       "product_code": "PRD001",
       "qty": 3,
       "price": 5000,
@@ -567,7 +571,7 @@
       "new_value": "draft",
       "operator": "张三",
       "remark": "创建订单",
-      "created_at": "2025-01-01T10:00:00"
+      "created_at": "2025-01-01T10:00:00+00:00"
     },
     {
       "id": 2,
@@ -578,7 +582,7 @@
       "new_value": "pending",
       "operator": "张三",
       "remark": "提交审核",
-      "created_at": "2025-01-01T10:30:00"
+      "created_at": "2025-01-01T10:30:00+00:00"
     }
   ]
 }
@@ -596,7 +600,7 @@
 | order_no | string | 订单号（系统自动生成，格式 SO{YYYYMMDD}{4位序号}） |
 | order_date | string | 订单日期 |
 | customer_id | int | 客户ID |
-| customer_name | string | 客户名称 |
+| customer_name | string | 客户名称（快照） |
 | sale_user_id | int | 销售人员ID |
 | sale_user_name | string | 销售人员名称 |
 | order_status | string | 订单状态（见状态枚举） |
@@ -613,8 +617,8 @@
 | remark | string | 备注 |
 | creator_id | int | 创建人ID |
 | creator_name | string | 创建人名称 |
-| created_at | string | 创建时间 |
-| updated_at | string | 更新时间 |
+| created_at | string | 创建时间（ISO 8601 格式） |
+| updated_at | string | 更新时间（ISO 8601 格式） |
 
 ### SalesOrderItem（订单明细）
 
@@ -623,26 +627,26 @@
 | id | int | 明细ID |
 | sales_order_id | int | 关联订单ID |
 | row_no | int | 行号 |
-| product_id | int | 商品ID |
-| product_code | string | 商品编码 |
-| product_name | string | 商品名称 |
-| spec_id | int | 规格ID |
-| spec_code | string | 规格编码 |
-| brand_id | int | 品牌ID |
-| brand_name | string | 品牌名称 |
-| warehouse_id | int | 仓库ID |
-| warehouse_name | string | 仓库名称 |
+| spec_id | int | 规格ID（外键 → ProductSpec） |
+| product_id | int | 商品ID（通过 spec.product 获取） |
+| product_code | string | 商品编码（快照） |
+| product_name | string | 商品名称（通过 spec.product.name 获取） |
+| spec_code | string | 规格编码（快照） |
+| brand_id | int | 品牌ID（通过 spec.product.brand 获取） |
+| brand_name | string | 品牌名称（通过 spec.product.brand.name 获取） |
+| warehouse_id | int | 仓库ID（外键 → Warehouse） |
+| warehouse_name | string | 仓库名称（通过 warehouse.name 获取） |
 | qty | int | 订购数量 |
 | price | float | 原始单价 |
 | discount | float | 折扣率 |
 | discounted_price | float | 折后单价 |
 | amt | float | 行金额 |
-| shipping_method | string | 发货方式（direct/warehouse） |
+| shipping_method | string | 发货方式（中文：直运/仓库发货） |
 | pushed | boolean | 是否已下推采购 |
 | out_qty | int | 已发货数量 |
 | return_qty | int | 已退货数量 |
-| created_at | string | 创建时间 |
-| updated_at | string | 更新时间 |
+| created_at | string | 创建时间（ISO 8601 格式） |
+| updated_at | string | 更新时间（ISO 8601 格式） |
 
 ### SalesDeliverInfo（发货信息）
 
@@ -659,6 +663,19 @@
 ---
 
 ## 业务规则
+
+### 外键关联设计
+
+```
+SalesOrderItem
+    ├── spec_id → ProductSpec
+    │                ├── product_id → Product
+    │                │                  └── brand_id → Brand
+    │                └── spec_code, packaging, price...
+    └── warehouse_id → Warehouse
+```
+
+> **设计说明**: 订单明细只需关联 `spec_id` 和 `warehouse_id`，商品信息和品牌信息通过 `spec.product.brand` 链式获取，避免数据冗余。
 
 ### 订单状态流转
 
@@ -690,7 +707,7 @@ cancelled cancelled  cancelled          cancelled               cancelled
 1. **订单号**: 格式 `SO{YYYYMMDD}{4位序号}`，系统自动生成
 2. **金额计算**: `discounted_price = price × discount`，`amt = qty × discounted_price`，`total_amt = Σ amt`，`tax_amt = total_amt × tax_rate`
 3. **修改/删除约束**: 仅草稿和已取消的订单可修改/删除
-4. **发货方式**: `direct`（直运）/ `warehouse`（仓库发货）
+4. **发货方式**: `direct`（直运）/ `warehouse`（仓库发货），响应返回中文
 
 ### 状态枚举值
 
@@ -713,10 +730,10 @@ cancelled cancelled  cancelled          cancelled               cancelled
 | full | 全部 |
 
 #### 发货方式 (shipping_method)
-| 值 | 说明 |
-|------|------|
-| direct | 直运 |
-| warehouse | 仓库发货 |
+| 请求值 | 响应值 | 说明 |
+|------|------|------|
+| direct | 直运 | 直运 |
+| warehouse | 仓库发货 | 仓库发货 |
 
 ---
 

@@ -110,15 +110,19 @@ class SalesOrderItem(Model):
     id = fields.IntField(pk=True, description="明细ID")
     sales_order = fields.ForeignKeyField("models.SalesOrder", related_name="items", on_delete=fields.CASCADE)
     row_no = fields.IntField(description="行号")
-    product_id = fields.IntField(null=True, description="商品ID")
-    product_code = fields.CharField(max_length=50, null=True, description="商品编码")
-    product_name = fields.CharField(max_length=200, null=True, description="商品名称")
-    spec_id = fields.IntField(null=True, description="规格ID")
-    spec_code = fields.CharField(max_length=50, null=True, description="规格编码")
-    brand_id = fields.IntField(null=True, description="品牌ID")
-    brand_name = fields.CharField(max_length=100, null=True, description="品牌名称")
-    warehouse_id = fields.IntField(null=True, description="仓库ID")
-    warehouse_name = fields.CharField(max_length=100, null=True, description="仓库名称")
+
+    # 外键关联 - spec 关联 product，product 关联 brand，只需 spec 和 warehouse
+    spec: fields.ForeignKeyNullableRelation["ProductSpec"] = fields.ForeignKeyField(
+        "models.ProductSpec", related_name="sales_order_items", null=True, description="规格"
+    )
+    warehouse: fields.ForeignKeyNullableRelation["Warehouse"] = fields.ForeignKeyField(
+        "models.Warehouse", related_name="sales_order_items", null=True, description="仓库"
+    )
+
+    # 保留的字段（历史快照）
+    product_code = fields.CharField(max_length=50, null=True, description="商品编码（快照）")
+    spec_code = fields.CharField(max_length=50, null=True, description="规格编码（快照）")
+
     qty = fields.IntField(description="订购数量")
     price = fields.DecimalField(max_digits=12, decimal_places=2, description="原始单价")
     discount = fields.DecimalField(max_digits=5, decimal_places=4, default=1.0, description="折扣率")
@@ -136,7 +140,53 @@ class SalesOrderItem(Model):
         ordering = ["row_no"]
         unique_together = ("sales_order", "row_no")
 
-    def to_dict(self):
+    async def to_dict(self):
+        """转换为字典格式，通过关联查询返回名称
+
+        注意：如果使用 select_related 预加载了关联数据，self.spec、self.warehouse 等
+        会直接返回对象而不是协程
+        """
+        # 获取 spec - select_related 预加载时直接返回对象，否则需要 await
+        spec = None
+        if self.spec_id:
+            try:
+                spec = self.spec  # 如果已预加载，直接返回对象
+                if spec is None or not hasattr(spec, 'id'):
+                    spec = await self.spec  # 未预加载，需要 await
+            except TypeError:
+                spec = await self.spec
+
+        # 获取 warehouse
+        warehouse = None
+        if self.warehouse_id:
+            try:
+                warehouse = self.warehouse
+                if warehouse is None or not hasattr(warehouse, 'id'):
+                    warehouse = await self.warehouse
+            except TypeError:
+                warehouse = await self.warehouse
+
+        # 通过 spec 获取 product 和 brand
+        product = None
+        brand = None
+        if spec:
+            try:
+                product = spec.product
+                if product is None or not hasattr(product, 'id'):
+                    product = await spec.product
+            except (TypeError, AttributeError):
+                if hasattr(spec, 'product_id') and spec.product_id:
+                    product = await spec.product
+
+            if product:
+                try:
+                    brand = product.brand
+                    if brand is None or not hasattr(brand, 'id'):
+                        brand = await product.brand
+                except (TypeError, AttributeError):
+                    if hasattr(product, 'brand_id') and product.brand_id:
+                        brand = await product.brand
+
         # 发货方式中文映射
         shipping_method_map = {
             ShippingMethod.DIRECT: "直运",
@@ -148,15 +198,15 @@ class SalesOrderItem(Model):
             "id": self.id,
             "sales_order_id": self.sales_order_id,
             "row_no": self.row_no,
-            "product_id": self.product_id,
-            "product_code": self.product_code,
-            "product_name": self.product_name,
+            "product_id": product.id if product else None,
+            "product_code": self.product_code or (product.product_code if product else None),
+            "product_name": product.name if product else None,
             "spec_id": self.spec_id,
-            "spec_code": self.spec_code,
-            "brand_id": self.brand_id,
-            "brand_name": self.brand_name,
+            "spec_code": self.spec_code or (spec.spec_code if spec else None),
+            "brand_id": brand.id if brand else None,
+            "brand_name": brand.name if brand else None,
             "warehouse_id": self.warehouse_id,
-            "warehouse_name": self.warehouse_name,
+            "warehouse_name": warehouse.name if warehouse else None,
             "qty": self.qty,
             "price": float(self.price),
             "discount": float(self.discount),

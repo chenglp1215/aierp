@@ -158,15 +158,10 @@ class SalesOrderService:
             await SalesOrderItem.create(
                 sales_order=order,
                 row_no=item.get("row_no", idx),
-                product_id=self._parse_int_field(item.get("product_id")),
-                product_code=item.get("product_code"),
-                product_name=item.get("product_name"),
                 spec_id=self._parse_int_field(item.get("spec_id")),
-                spec_code=item.get("spec_code"),
-                brand_id=self._parse_int_field(item.get("brand_id")),
-                brand_name=item.get("brand_name"),
+                product_code=item.get("product_code"),  # 保留快照
+                spec_code=item.get("spec_code"),  # 保留快照
                 warehouse_id=self._parse_int_field(item.get("warehouse_id")),
-                warehouse_name=item.get("warehouse_name"),
                 qty=item.get("qty"),
                 price=item.get("price"),
                 discount=item.get("discount", 1.0),
@@ -205,12 +200,29 @@ class SalesOrderService:
 
     async def get_order_by_no(self, order_no: str) -> Optional[Dict[str, Any]]:
         """根据订单号获取订单详情"""
-        order = await SalesOrder.filter(order_no=order_no).prefetch_related("items", "deliver_infos").first()
+        order = await SalesOrder.filter(order_no=order_no).prefetch_related(
+            "items",
+            "deliver_infos"
+        ).first()
         if not order:
             return None
 
+        # 对每个明细使用 select_related 获取关联数据
+        items_data = []
+        for item in order.items:
+            # 使用 select_related 获取 spec 和 warehouse
+            item_with_relations = await SalesOrderItem.filter(id=item.id).select_related(
+                "spec__product__brand",
+                "warehouse"
+            ).first()
+            if item_with_relations:
+                items_data.append(await item_with_relations.to_dict())
+            else:
+                items_data.append(await item.to_dict())
+
         result = order.to_dict()
-        result["items"] = [item.to_dict() for item in order.items]
+        result["items"] = items_data
+        # deliver_infos 已通过 prefetch_related 预加载
         result["deliver_info"] = order.deliver_infos[0].to_dict() if order.deliver_infos else {}
         return result
 
@@ -275,15 +287,10 @@ class SalesOrderService:
                 await SalesOrderItem.create(
                     sales_order=order,
                     row_no=item.get("row_no", idx),
-                    product_id=self._parse_int_field(item.get("product_id")),
-                    product_code=item.get("product_code"),
-                    product_name=item.get("product_name"),
                     spec_id=self._parse_int_field(item.get("spec_id")),
-                    spec_code=item.get("spec_code"),
-                    brand_id=self._parse_int_field(item.get("brand_id")),
-                    brand_name=item.get("brand_name"),
+                    product_code=item.get("product_code"),  # 保留快照
+                    spec_code=item.get("spec_code"),  # 保留快照
                     warehouse_id=self._parse_int_field(item.get("warehouse_id")),
-                    warehouse_name=item.get("warehouse_name"),
                     qty=item.get("qty"),
                     price=item.get("price"),
                     discount=item.get("discount", 1.0),

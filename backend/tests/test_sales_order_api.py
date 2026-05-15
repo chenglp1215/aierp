@@ -101,22 +101,24 @@ def find_existing_product():
     resp, err = api("GET", "/products/", params={"page": 1, "page_size": 1})
     body = parse(resp, err, "查找商品")
     if not body or body.get("status") != "success":
-        return None, None
+        return None, None, None
     items = body.get("result", {}).get("items", [])
     if not items:
         print("  ⚠️ 数据库中没有商品数据，请先创建商品")
-        return None, None
+        return None, None, None
     product = items[0]
     product_code = product.get("product_code")
     specs = product.get("specs", [])
-    spec_code = specs[0].get("spec_code") if specs else None
+    spec = specs[0] if specs else {}
+    spec_id = spec.get("id")
+    spec_code = spec.get("spec_code")
     result.record("查找已有商品", bool(product_code), f"product_code={product_code}")
-    result.record("查找已有规格", bool(spec_code), f"spec_code={spec_code}")
-    return product_code, spec_code
+    result.record("查找已有规格", bool(spec_code), f"spec_code={spec_code}, spec_id={spec_id}")
+    return product_code, spec_code, spec_id
 
 
-def _build_order_items(product_code, spec_code, qty=10):
-    return [{
+def _build_order_items(product_code, spec_code, spec_id=None, qty=10):
+    item = {
         "row_no": 1,
         "product_code": product_code,
         "spec_code": spec_code,
@@ -124,10 +126,13 @@ def _build_order_items(product_code, spec_code, qty=10):
         "price": 100.00,
         "discount": 1.0,
         "shipping_method": "快递",
-    }]
+    }
+    if spec_id:
+        item["spec_id"] = spec_id
+    return [item]
 
 
-def test_create_order(customer_id, product_code, spec_code):
+def test_create_order(customer_id, product_code, spec_code, spec_id=None):
     print("\n📦 [1/14] 创建销售订单")
     payload = {
         "order_date": "2026-05-12",
@@ -137,7 +142,7 @@ def test_create_order(customer_id, product_code, spec_code):
         "tax_rate": 0.13,
         "expect_deliver_date": "2026-06-01",
         "remark": "接口测试订单",
-        "items": _build_order_items(product_code, spec_code),
+        "items": _build_order_items(product_code, spec_code, spec_id),
     }
     resp, err = api("POST", "/sales-orders/", payload)
     body = parse(resp, err, "创建订单")
@@ -176,7 +181,7 @@ def test_create_order(customer_id, product_code, spec_code):
     return order_no
 
 
-def test_create_and_submit(customer_id, product_code, spec_code):
+def test_create_and_submit(customer_id, product_code, spec_code, spec_id=None):
     print("\n📦 [2/14] 创建并提交销售订单")
     payload = {
         "order_date": "2026-05-12",
@@ -184,7 +189,7 @@ def test_create_and_submit(customer_id, product_code, spec_code):
         "customer_name": "测试客户",
         "settle_type": "月结",
         "tax_rate": 0.13,
-        "items": _build_order_items(product_code, spec_code, qty=20),
+        "items": _build_order_items(product_code, spec_code, spec_id, qty=20),
     }
     resp, err = api("POST", "/sales-orders/create-and-submit", payload)
     body = parse(resp, err, "创建并提交订单")
@@ -477,14 +482,14 @@ def main():
         print("\n❌ 无法继续测试：缺少客户数据")
         sys.exit(1)
 
-    product_code, spec_code = find_existing_product()
+    product_code, spec_code, spec_id = find_existing_product()
     if not product_code:
         print("\n❌ 无法继续测试：缺少商品数据")
         sys.exit(1)
 
     # 创建测试订单
-    order_no_1 = test_create_order(customer_id, product_code, spec_code)
-    order_no_2 = test_create_and_submit(customer_id, product_code, spec_code)
+    order_no_1 = test_create_order(customer_id, product_code, spec_code, spec_id)
+    order_no_2 = test_create_and_submit(customer_id, product_code, spec_code, spec_id)
 
     # 校验测试
     test_validation_empty_items()
@@ -506,7 +511,7 @@ def main():
         test_approve_order(order_no_1)  # pending → audited
 
         # 创建新订单测试驳回流程
-        order_no_3 = test_create_order(customer_id, product_code, spec_code)
+        order_no_3 = test_create_order(customer_id, product_code, spec_code, spec_id)
         if order_no_3:
             test_submit_order(order_no_3)  # draft → pending
             test_reject_order(order_no_3)  # pending → draft
