@@ -1,7 +1,12 @@
-"""销售订单模块接口测试脚本
+"""销售订单模块接口测试脚本 (MySQL 版本)
 
 测试流程: 查找已有数据 → 创建订单 → 列表/详情/搜索 → 更新 → 状态流转 → 删除
 使用方法: python tests/test_sales_order_api.py
+
+接口变更说明 (MySQL 迁移后):
+- 新增 submit/approve/reject/cancel 独立状态操作接口
+- 订单状态新增 pending（待审核）
+- 响应格式中状态字段直接返回 order_status 等字符串值
 """
 import requests
 import json
@@ -150,11 +155,11 @@ def test_create_order(customer_id, product_code, spec_code):
     body2 = parse(resp2, None, "创建订单-验证详情")
     if body2 and body2.get("result"):
         detail = body2["result"]
-        actual_status = detail.get("status", {}).get("order_status")
-        print(f"  📋 详情: order_no={detail.get('order_no')}, status={actual_status}, customer_id={detail.get('customer_id')}")
+        actual_status = detail.get("order_status")
+        print(f"  📋 详情: order_no={detail.get('order_no')}, order_status={actual_status}, customer_id={detail.get('customer_id')}")
         result.record("创建订单-状态为draft",
                        actual_status == "draft",
-                       f"status={actual_status}")
+                       f"order_status={actual_status}")
         result.record("创建订单-customer_id正确",
                        detail.get("customer_id") == customer_id)
         result.record("创建订单-明细数量正确",
@@ -197,8 +202,8 @@ def test_create_and_submit(customer_id, product_code, spec_code):
     if body2 and body2.get("result"):
         detail = body2["result"]
         result.record("创建并提交订单-状态为audited",
-                       detail.get("status", {}).get("order_status") == "audited",
-                       f"status={detail.get('status', {}).get('order_status')}")
+                       detail.get("order_status") == "audited",
+                       f"order_status={detail.get('order_status')}")
     return order_no
 
 
@@ -280,7 +285,7 @@ def test_get_detail(order_no):
     order = body.get("result", {})
     result.record("获取详情-order_no正确", order.get("order_no") == order_no)
     result.record("获取详情-包含items", "items" in order)
-    result.record("获取详情-包含status", "status" in order)
+    result.record("获取详情-包含order_status", "order_status" in order)
     result.record("获取详情-包含customer_id", "customer_id" in order)
 
 
@@ -313,36 +318,93 @@ def test_update_order(order_no):
                        f"remark={body2['result'].get('remark')}")
 
 
-def test_update_status(order_no, status_key, new_value):
-    print(f"\n📦 状态流转: {status_key} → {new_value}")
-    payload = {"status": new_value}
-    resp, err = api("PATCH", f"/sales-orders/{order_no}/{status_key}", payload)
-    body = parse(resp, err, f"状态流转-{status_key}")
+def test_submit_order(order_no):
+    """提交审核：draft → pending"""
+    print(f"\n📦 提交审核: {order_no}")
+    resp, err = api("POST", f"/sales-orders/{order_no}/submit")
+    body = parse(resp, err, "提交审核")
     if not body:
         return False
     if body.get("status") != "success":
-        result.record(f"状态流转-{status_key}", False, body.get("message"))
+        result.record("提交审核", False, body.get("message"))
         return False
-    result.record(f"状态流转-{status_key}-返回成功", True)
+    result.record("提交审核-返回成功", True)
+
+    # 验证状态已变更
     resp2, _ = api("GET", f"/sales-orders/{order_no}")
-    body2 = parse(resp2, None, f"状态流转-{status_key}-验证")
+    body2 = parse(resp2, None, "提交审核-验证")
     if body2 and body2.get("result"):
-        actual = body2["result"].get("status", {}).get(status_key)
-        result.record(f"状态流转-{status_key}-值已更新",
-                       actual == new_value,
-                       f"expected={new_value}, actual={actual}")
+        actual = body2["result"].get("order_status")
+        result.record("提交审核-状态为pending",
+                       actual == "pending",
+                       f"order_status={actual}")
     return True
 
 
-def test_update_invalid_status_key(order_no):
-    print("\n📦 [12/14] 无效状态键")
-    payload = {"status": "test"}
-    resp, err = api("PATCH", f"/sales-orders/{order_no}/invalid_status_key", payload)
-    body = parse(resp, err, "无效状态键")
-    if body:
-        result.record("无效状态键-应报错",
-                       body.get("status") == "error",
-                       f"http={resp.status_code}, msg={body.get('message')}")
+def test_approve_order(order_no):
+    """审核通过：pending → audited"""
+    print(f"\n📦 审核通过: {order_no}")
+    resp, err = api("POST", f"/sales-orders/{order_no}/approve")
+    body = parse(resp, err, "审核通过")
+    if not body:
+        return False
+    if body.get("status") != "success":
+        result.record("审核通过", False, body.get("message"))
+        return False
+    result.record("审核通过-返回成功", True)
+
+    resp2, _ = api("GET", f"/sales-orders/{order_no}")
+    body2 = parse(resp2, None, "审核通过-验证")
+    if body2 and body2.get("result"):
+        actual = body2["result"].get("order_status")
+        result.record("审核通过-状态为audited",
+                       actual == "audited",
+                       f"order_status={actual}")
+    return True
+
+
+def test_reject_order(order_no):
+    """驳回：pending → draft"""
+    print(f"\n📦 驳回订单: {order_no}")
+    resp, err = api("POST", f"/sales-orders/{order_no}/reject")
+    body = parse(resp, err, "驳回订单")
+    if not body:
+        return False
+    if body.get("status") != "success":
+        result.record("驳回订单", False, body.get("message"))
+        return False
+    result.record("驳回订单-返回成功", True)
+
+    resp2, _ = api("GET", f"/sales-orders/{order_no}")
+    body2 = parse(resp2, None, "驳回订单-验证")
+    if body2 and body2.get("result"):
+        actual = body2["result"].get("order_status")
+        result.record("驳回订单-状态为draft",
+                       actual == "draft",
+                       f"order_status={actual}")
+    return True
+
+
+def test_cancel_order(order_no):
+    """取消订单：* → cancelled"""
+    print(f"\n📦 取消订单: {order_no}")
+    resp, err = api("POST", f"/sales-orders/{order_no}/cancel")
+    body = parse(resp, err, "取消订单")
+    if not body:
+        return False
+    if body.get("status") != "success":
+        result.record("取消订单", False, body.get("message"))
+        return False
+    result.record("取消订单-返回成功", True)
+
+    resp2, _ = api("GET", f"/sales-orders/{order_no}")
+    body2 = parse(resp2, None, "取消订单-验证")
+    if body2 and body2.get("result"):
+        actual = body2["result"].get("order_status")
+        result.record("取消订单-状态为cancelled",
+                       actual == "cancelled",
+                       f"order_status={actual}")
+    return True
 
 
 def test_get_status_flows(order_no):
@@ -400,7 +462,7 @@ def test_delete_draft_order(order_no):
 def main():
     time.sleep(2)
     print("=" * 60)
-    print("销售订单模块接口测试")
+    print("销售订单模块接口测试 (MySQL 版本)")
     print(f"服务地址: {BASE_URL}")
     print("=" * 60)
 
@@ -420,26 +482,42 @@ def main():
         print("\n❌ 无法继续测试：缺少商品数据")
         sys.exit(1)
 
+    # 创建测试订单
     order_no_1 = test_create_order(customer_id, product_code, spec_code)
     order_no_2 = test_create_and_submit(customer_id, product_code, spec_code)
 
+    # 校验测试
     test_validation_empty_items()
     test_validation_missing_product_code()
 
+    # 列表查询测试
     test_list_orders()
     test_list_with_keyword()
     test_list_with_customer_filter(customer_id)
 
     if order_no_1:
+        # 详情和更新测试
         test_get_detail(order_no_1)
         test_update_order(order_no_1)
-        test_update_invalid_status_key(order_no_1)
         test_get_status_flows(order_no_1)
-        test_update_status(order_no_1, "order_status", "cancelled")
-        test_delete_draft_order(order_no_1)
+
+        # 状态流转测试：draft → pending → audited → cancelled
+        test_submit_order(order_no_1)  # draft → pending
+        test_approve_order(order_no_1)  # pending → audited
+
+        # 创建新订单测试驳回流程
+        order_no_3 = test_create_order(customer_id, product_code, spec_code)
+        if order_no_3:
+            test_submit_order(order_no_3)  # draft → pending
+            test_reject_order(order_no_3)  # pending → draft
+            test_delete_draft_order(order_no_3)  # 删除草稿订单
+
+        # 取消并删除
+        test_cancel_order(order_no_1)  # audited → cancelled
     else:
         print("\n⏭ 跳过依赖创建订单的测试（创建订单失败）")
 
+    # 边界条件测试
     test_get_detail_nonexistent()
     test_delete_nonexistent()
 
