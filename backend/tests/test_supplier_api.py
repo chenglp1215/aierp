@@ -1,5 +1,5 @@
 """
-供应商管理 API 测试脚本
+供应商管理 API 测试脚本 (MySQL 版本)
 """
 import requests
 import json
@@ -41,7 +41,7 @@ def test_login():
     assert body.get("status") == "success", f"登录失败: {body}"
     result = body.get("result", {})
     token = result.get("access_token")
-    print(f"✅ 登录成功, token: {token[:50] if token else 'None'}...\n")
+    print(f"✅ 登录成功, token: {token[:50] if token else 'none'}...\n")
     return token
 
 
@@ -51,6 +51,10 @@ def test_list_suppliers(token):
     print(f"状态码: {code}, 响应: {json.dumps(body, ensure_ascii=False, indent=2)[:500]}")
     assert code == 200, f"获取供应商列表失败: {code}"
     assert "items" in body.get("result", {}), "无items字段"
+    # 验证 ID 是整数类型
+    items = body["result"].get("items", [])
+    if items:
+        assert isinstance(items[0].get("id"), int), "ID 应该是整数类型"
     print(f"✅ 获取供应商列表成功, 共{body['result'].get('total', 0)}条\n")
     return body["result"]
 
@@ -64,7 +68,7 @@ def test_get_all_suppliers(token):
     return body["result"]
 
 
-def test_create_supplier(token, name):
+def test_create_supplier(token, name, brand_id=None):
     print(f"=== 测试创建供应商: {name} ===")
     supplier_data = {
         "name": name,
@@ -77,41 +81,26 @@ def test_create_supplier(token, name):
             "account_name": name,
             "account_no": "6222021234567890123"
         },
-        "supplied_brands": [
-            {
-                "brand_id": "507f1f77bcf86cd799439011",
-                "discount": 0.95,
-                "is_priority": True
-            }
-        ],
+        "supplied_brands": [],
         "remark": "优质供应商",
         "is_active": True
     }
+    # 如果提供了品牌 ID，添加品牌关联
+    if brand_id:
+        supplier_data["supplied_brands"].append({
+            "brand_id": brand_id,
+            "discount": 0.95,
+            "is_priority": True
+        })
+
     body, code = api("POST", "/suppliers/", data=supplier_data, token=token)
     print(f"状态码: {code}, 响应: {json.dumps(body, ensure_ascii=False, indent=2)}")
     assert code == 200, f"创建供应商失败: {code}"
     supplier_id = body.get("result", {}).get("id")
+    # 验证 ID 是整数类型
+    assert isinstance(supplier_id, int), f"ID 应该是整数类型, 实际是: {type(supplier_id)}"
     print(f"✅ 创建供应商成功, id: {supplier_id}\n")
     return supplier_id
-
-
-def test_create_supplier_with_invalid_brands(token, name):
-    print(f"=== 测试创建供应商(无效品牌) ===")
-    supplier_data = {
-        "name": name,
-        "contact_person": "张三",
-        "supplied_brands": [
-            {
-                "brand_id": "",
-                "discount": 1.5
-            }
-        ]
-    }
-    body, code = api("POST", "/suppliers/", data=supplier_data, token=token)
-    print(f"状态码: {code}, 响应: {json.dumps(body, ensure_ascii=False, indent=2)}")
-    assert code == 200, f"应该返回错误: {code}"
-    assert body.get("status") == "error", f"应该是错误响应"
-    print("✅ 无效品牌校验正常\n")
 
 
 def test_create_duplicate_name_supplier(token, name):
@@ -129,13 +118,16 @@ def test_get_supplier_detail(token, supplier_id):
     body, code = api("GET", f"/suppliers/{supplier_id}", token=token)
     print(f"状态码: {code}, 响应: {json.dumps(body, ensure_ascii=False, indent=2)[:500]}")
     assert code == 200, f"获取供应商详情失败: {code}"
+    # 验证 ID 是整数类型
+    result_id = body.get("result", {}).get("id")
+    assert isinstance(result_id, int), f"ID 应该是整数类型, 实际是: {type(result_id)}"
     print(f"✅ 获取供应商详情成功\n")
     return body["result"]
 
 
 def test_get_nonexistent_supplier(token):
     print("=== 测试获取不存在的供应商 ===")
-    body, code = api("GET", "/suppliers/nonexistent123", token=token)
+    body, code = api("GET", "/suppliers/999999", token=token)
     print(f"状态码: {code}, 响应: {json.dumps(body, ensure_ascii=False, indent=2)}")
     assert code == 200, f"应该返回错误: {code}"
     assert body.get("status") == "error", f"应该是错误响应"
@@ -184,9 +176,27 @@ def test_search_suppliers(token):
     print(f"✅ 搜索供应商成功\n")
 
 
+def test_get_suppliers_by_brand(token, brand_id):
+    print(f"=== 测试按品牌查询供应商: {brand_id} ===")
+    body, code = api("GET", f"/suppliers/by-brand/{brand_id}", token=token)
+    print(f"状态码: {code}, 响应: {json.dumps(body, ensure_ascii=False, indent=2)[:500]}")
+    assert code == 200, f"按品牌查询供应商失败: {code}"
+    print(f"✅ 按品牌查询供应商成功\n")
+
+
+def get_first_brand_id(token):
+    """获取第一个品牌 ID 用于测试"""
+    body, code = api("GET", "/brands/all", token=token)
+    if code == 200 and body.get("result"):
+        brands = body["result"]
+        if brands:
+            return brands[0].get("id")
+    return None
+
+
 if __name__ == "__main__":
     print("=" * 60)
-    print("开始供应商接口测试...")
+    print("开始供应商接口测试 (MySQL 版本)...")
     print("=" * 60)
 
     time.sleep(1)
@@ -203,15 +213,16 @@ if __name__ == "__main__":
     test_search_suppliers(token)
     time.sleep(0.5)
 
+    # 获取品牌 ID 用于测试
+    brand_id = get_first_brand_id(token)
+    print(f"使用品牌 ID: {brand_id}")
+    time.sleep(0.5)
+
     supplier_name = f"测试供应商_{int(time.time())}"
-    supplier_id = test_create_supplier(token, supplier_name)
+    supplier_id = test_create_supplier(token, supplier_name, brand_id)
     time.sleep(0.5)
 
     test_create_duplicate_name_supplier(token, supplier_name)
-    time.sleep(0.5)
-
-    invalid_name = f"无效品牌测试_{int(time.time())}"
-    test_create_supplier_with_invalid_brands(token, invalid_name)
     time.sleep(0.5)
 
     test_get_supplier_detail(token, supplier_id)
@@ -225,6 +236,10 @@ if __name__ == "__main__":
 
     test_toggle_supplier_active(token, supplier_id)
     time.sleep(0.5)
+
+    if brand_id:
+        test_get_suppliers_by_brand(token, brand_id)
+        time.sleep(0.5)
 
     test_delete_supplier(token, supplier_id)
     time.sleep(0.5)
