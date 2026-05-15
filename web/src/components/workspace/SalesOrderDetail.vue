@@ -124,7 +124,7 @@ const handleUpdateOrderStatus = async (status: string) => {
   try {
     await salesOrderApi.updateOrderStatus(order.value.order_no, status)
     window.showToast('订单状态更新成功', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, order_status: status } }
+    order.value = { ...order.value, order_status: status }
     const flowsRes = await salesOrderApi.getStatusFlows(order.value.order_no)
     flows.value = flowsRes.result || []
   } catch (error: any) {
@@ -138,7 +138,7 @@ const handleUpdateDeliveryStatus = async (status: string) => {
   try {
     await salesOrderApi.updateDeliveryStatus(order.value.order_no, status)
     window.showToast('发货状态更新成功', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, delivery_status: status } }
+    order.value = { ...order.value, delivery_status: status }
   } catch (error: any) {
     window.showToast(error.message || '状态更新失败', 'error')
   }
@@ -149,7 +149,7 @@ const handleUpdateReceiveStatus = async (status: string) => {
   try {
     await salesOrderApi.updateReceiveStatus(order.value.order_no, status)
     window.showToast('收货状态更新成功', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, receive_status: status } }
+    order.value = { ...order.value, receive_status: status }
   } catch (error: any) {
     window.showToast(error.message || '状态更新失败', 'error')
   }
@@ -160,7 +160,7 @@ const handleUpdateInvoiceStatus = async (status: string) => {
   try {
     await salesOrderApi.updateInvoiceStatus(order.value.order_no, status)
     window.showToast('开票状态更新成功', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, invoice_status: status } }
+    order.value = { ...order.value, invoice_status: status }
   } catch (error: any) {
     window.showToast(error.message || '状态更新失败', 'error')
   }
@@ -173,7 +173,7 @@ const handleAudit = async () => {
   try {
     await salesOrderApi.updateOrderStatus(order.value.order_no, 'audited')
     window.showToast('订单审核成功', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, order_status: 'audited' } }
+    order.value = { ...order.value, order_status: 'audited' }
     const flowsRes = await salesOrderApi.getStatusFlows(order.value.order_no)
     flows.value = flowsRes.result || []
   } catch (error: any) {
@@ -266,7 +266,7 @@ const handleClose = async () => {
   try {
     await salesOrderApi.updateOrderStatus(order.value.order_no, 'closed')
     window.showToast('订单关闭成功', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, order_status: 'closed' } }
+    order.value = { ...order.value, order_status: 'closed' }
     const flowsRes = await salesOrderApi.getStatusFlows(order.value.order_no)
     flows.value = flowsRes.result || []
   } catch (error: any) {
@@ -282,7 +282,7 @@ const handleCancel = async () => {
   try {
     await salesOrderApi.updateOrderStatus(order.value.order_no, 'cancelled')
     window.showToast('订单取消成功', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, order_status: 'cancelled' } }
+    order.value = { ...order.value, order_status: 'cancelled' }
     const flowsRes = await salesOrderApi.getStatusFlows(order.value.order_no)
     flows.value = flowsRes.result || []
   } catch (error: any) {
@@ -341,15 +341,15 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
             返回
           </button>
           <h2 class="order-title">{{ order.order_no }}</h2>
-          <span class="status-tag" :class="getStatusClass(orderStatusMap, order.status?.order_status)">
-            {{ getStatusLabel(orderStatusMap, order.status?.order_status) }}
+          <span class="status-tag" :class="getStatusClass(orderStatusMap, order.order_status)">
+            {{ getStatusLabel(orderStatusMap, order.order_status) }}
           </span>
         </div>
         <div class="header-actions">
-          <button v-if="order.status?.order_status === 'draft'" class="btn-primary" @click="handleAudit" :disabled="actionLoading">审核通过</button>
+          <button v-if="order.order_status === 'draft'" class="btn-primary" @click="handleAudit" :disabled="actionLoading">审核通过</button>
           <button v-if="canPushPurchase" class="btn-primary" @click="handlePushPurchase" :disabled="actionLoading">下推采购</button>
-          <button v-if="order.status?.order_status === 'audited'" class="btn-warning" @click="handleClose" :disabled="actionLoading">关闭订单</button>
-          <button v-if="order.status?.order_status === 'draft' || order.status?.order_status === 'audited'" class="btn-danger" @click="handleCancel" :disabled="actionLoading">取消订单</button>
+          <button v-if="order.order_status === 'audited'" class="btn-warning" @click="handleClose" :disabled="actionLoading">关闭订单</button>
+          <button v-if="order.order_status === 'draft' || order.order_status === 'audited'" class="btn-danger" @click="handleCancel" :disabled="actionLoading">取消订单</button>
         </div>
       </div>
 
@@ -375,8 +375,8 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
               <div class="status-row">
                 <label>订单状态</label>
                 <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(orderStatusMap, order.status?.order_status)">{{ getStatusLabel(orderStatusMap, order.status?.order_status) }}</span>
-                  <select :value="order.status?.order_status" @change="handleUpdateOrderStatus(($event.target as HTMLSelectElement).value)" class="status-select">
+                  <span class="status-tag" :class="getStatusClass(orderStatusMap, order.order_status)">{{ getStatusLabel(orderStatusMap, order.order_status) }}</span>
+                  <select :value="order.order_status" @change="handleUpdateOrderStatus(($event.target as HTMLSelectElement).value)" class="status-select">
                     <option value="draft">草稿</option>
                     <option value="audited">已审核</option>
                     <option value="partially_pushed_to_purchase">部分下推采购</option>
@@ -389,8 +389,8 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
               <div class="status-row">
                 <label>发货状态</label>
                 <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(deliveryStatusMap, order.status?.delivery_status)">{{ getStatusLabel(deliveryStatusMap, order.status?.delivery_status) }}</span>
-                  <select :value="order.status?.delivery_status" @change="handleUpdateDeliveryStatus(($event.target as HTMLSelectElement).value)" class="status-select">
+                  <span class="status-tag" :class="getStatusClass(deliveryStatusMap, order.delivery_status)">{{ getStatusLabel(deliveryStatusMap, order.delivery_status) }}</span>
+                  <select :value="order.delivery_status" @change="handleUpdateDeliveryStatus(($event.target as HTMLSelectElement).value)" class="status-select">
                     <option value="none">未发货</option>
                     <option value="partial">部分发货</option>
                     <option value="full">全部发货</option>
@@ -400,8 +400,8 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
               <div class="status-row">
                 <label>收货状态</label>
                 <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(receiveStatusMap, order.status?.receive_status)">{{ getStatusLabel(receiveStatusMap, order.status?.receive_status) }}</span>
-                  <select :value="order.status?.receive_status" @change="handleUpdateReceiveStatus(($event.target as HTMLSelectElement).value)" class="status-select">
+                  <span class="status-tag" :class="getStatusClass(receiveStatusMap, order.receive_status)">{{ getStatusLabel(receiveStatusMap, order.receive_status) }}</span>
+                  <select :value="order.receive_status" @change="handleUpdateReceiveStatus(($event.target as HTMLSelectElement).value)" class="status-select">
                     <option value="none">未收货</option>
                     <option value="partial">部分收货</option>
                     <option value="full">全部收货</option>
@@ -411,8 +411,8 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
               <div class="status-row">
                 <label>开票状态</label>
                 <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(invoiceStatusMap, order.status?.invoice_status)">{{ getStatusLabel(invoiceStatusMap, order.status?.invoice_status) }}</span>
-                  <select :value="order.status?.invoice_status" @change="handleUpdateInvoiceStatus(($event.target as HTMLSelectElement).value)" class="status-select">
+                  <span class="status-tag" :class="getStatusClass(invoiceStatusMap, order.invoice_status)">{{ getStatusLabel(invoiceStatusMap, order.invoice_status) }}</span>
+                  <select :value="order.invoice_status" @change="handleUpdateInvoiceStatus(($event.target as HTMLSelectElement).value)" class="status-select">
                     <option value="none">未开票</option>
                     <option value="partial">部分开票</option>
                     <option value="full">全部开票</option>
