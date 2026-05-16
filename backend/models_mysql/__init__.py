@@ -17,6 +17,14 @@ from .purchase_order import (
 from .order_status_flow import OrderStatusFlow
 from .supplier import Supplier, SupplierBankAccount, SupplierBrand
 
+from .ai import (
+    LlmModel, LlmConfig, LlmModelType, LlmModelStatus,
+    KnowledgeBase, KnowledgeBaseType,
+    McpServer, McpServerType, McpServerStatus,
+    Skill, SkillCategory,
+    Agent
+)
+
 __all__ = [
     "User",
     "Role",
@@ -60,4 +68,17 @@ __all__ = [
     "Supplier",
     "SupplierBankAccount",
     "SupplierBrand",
+    # AI 智能配置
+    "LlmModel",
+    "LlmConfig",
+    "LlmModelType",
+    "LlmModelStatus",
+    "KnowledgeBase",
+    "KnowledgeBaseType",
+    "McpServer",
+    "McpServerType",
+    "McpServerStatus",
+    "Skill",
+    "SkillCategory",
+    "Agent",
 ]
