@@ -141,11 +141,11 @@ interface Warehouse {
 // Constants
 const orderStatusMap: Record<string, { label: string; class: string }> = {
   draft: { label: '草稿', class: 'draft' },
-  pending: { label: '待审核', class: 'pending' },
+  pending: { label: '待审核', class: 'pending' },  // 兼容历史数据
   audited: { label: '已审核', class: 'audited' },
-  partially_pushed_to_purchase: { label: '部分下推采购', class: 'partial-pushed' },
+  partially_pushed_to_purchase: { label: '部分下推', class: 'partial-pushed' },  // 文案调整
   pushed_to_purchase: { label: '已下推采购', class: 'pushed' },
-  closed: { label: '已关闭', class: 'closed' },
+  closed: { label: '已完成', class: 'closed' },  // 文案调整
   cancelled: { label: '已取消', class: 'cancelled' }
 }
 
