@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, provide } from 'vue'
 import { useRouter } from 'vue-router'
 import SidebarNav from './SidebarNav.vue'
 import DashboardHeader from './DashboardHeader.vue'
@@ -33,6 +33,15 @@ import { usePermission, MENU_PERMISSION_MAP } from '../hooks'
 const router = useRouter()
 const { loadPermissions, hasPermission } = usePermission()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
+
+const isSidebarCollapsed = ref(false)
+
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+}
+
+provide('sidebarCollapsed', isSidebarCollapsed)
+provide('toggleSidebar', toggleSidebar)
 
 interface Tab {
   id: string
@@ -349,7 +358,7 @@ onMounted(async () => {
       @click="toggleMobileMenu"
     ></div>
 
-    <main class="main-content">
+    <main class="main-content" :style="{ marginLeft: isSidebarCollapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)' }">
       <div class="fixed-header">
         <DashboardHeader @logout="handleLogout" @settings="handleSettings">
           <template #breadcrumb>
@@ -418,6 +427,7 @@ onMounted(async () => {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  transition: margin-left var(--transition-normal);
 }
 
 .fixed-header {
