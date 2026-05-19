@@ -566,25 +566,35 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
         </div>
       </div>
 
-      <!-- 发货信息 -->
-      <div class="section-card" v-if="order.deliver_info">
-        <h3 class="section-title">发货信息</h3>
-        <div class="info-inline">
-          <span class="info-tag"><strong>收货人:</strong> {{ order.deliver_info.person_name || '-' }}</span>
-          <span class="info-tag"><strong>电话:</strong> {{ order.deliver_info.person_tel || '-' }}</span>
-          <span class="info-tag"><strong>地址:</strong> {{ [order.deliver_info.province, order.deliver_info.city, order.deliver_info.addr].filter(Boolean).join(' ') || '-' }}</span>
+      <!-- 发货信息 + 开票信息 双栏 -->
+      <div class="two-col-row" v-if="order.deliver_info || order.invoice_info">
+        <div class="col-left" v-if="order.deliver_info">
+          <div class="section-card">
+            <h3 class="section-title">发货信息</h3>
+            <div class="info-inline">
+              <span class="info-tag"><strong>收货人:</strong> {{ order.deliver_info.person_name || '-' }}</span>
+              <span class="info-tag"><strong>电话:</strong> {{ order.deliver_info.person_tel || '-' }}</span>
+              <span class="info-tag"><strong>地址:</strong> {{ [order.deliver_info.province, order.deliver_info.city, order.deliver_info.addr].filter(Boolean).join(' ') || '-' }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-right" v-if="order.invoice_info">
+          <div class="section-card">
+            <h3 class="section-title">开票信息</h3>
+            <div class="info-inline">
+              <span class="info-tag"><strong>抬头:</strong> {{ order.invoice_info.invoice_title || '-' }}</span>
+              <span class="info-tag"><strong>税号:</strong> {{ order.invoice_info.tax_number || '-' }}</span>
+              <span class="info-tag"><strong>开户行:</strong> {{ order.invoice_info.bank_name || '-' }}</span>
+              <span class="info-tag"><strong>账号:</strong> {{ order.invoice_info.bank_account || '-' }}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- 开票信息 -->
-      <div class="section-card" v-if="order.invoice_info">
-        <h3 class="section-title">开票信息</h3>
-        <div class="info-inline">
-          <span class="info-tag"><strong>抬头:</strong> {{ order.invoice_info.invoice_title || '-' }}</span>
-          <span class="info-tag"><strong>税号:</strong> {{ order.invoice_info.tax_number || '-' }}</span>
-          <span class="info-tag"><strong>开户行:</strong> {{ order.invoice_info.bank_name || '-' }}</span>
-          <span class="info-tag"><strong>账号:</strong> {{ order.invoice_info.bank_account || '-' }}</span>
-        </div>
+      <!-- 备注 -->
+      <div class="section-card" v-if="order.remark">
+        <h3 class="section-title">备注</h3>
+        <p class="remarks-text">{{ order.remark }}</p>
       </div>
 
       <!-- 主 Tab 区域 -->
@@ -759,26 +769,39 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
         </div>
       </div>
 
-      <!-- 状态流转记录 -->
-      <div class="section-card">
-        <h3 class="section-title">状态流转记录</h3>
-        <div v-if="flows.length === 0" class="empty-state">暂无流转记录</div>
-        <div v-else class="flow-timeline">
-          <div v-for="flow in flows" :key="flow.id" class="flow-item">
-            <div class="flow-dot"></div>
-            <div class="flow-content">
-              <div class="flow-time">{{ flow.operate_time }}</div>
-              <div class="flow-desc">
-                <span class="flow-field">{{ getFlowFieldName(flow.field) }}</span>
-                <span v-if="flow.old_value" class="flow-old">{{ flow.old_value }}</span>
-                <span v-if="flow.old_value" class="flow-arrow">→</span>
-                <span class="flow-new">{{ flow.new_value }}</span>
+      <!-- 状态流转记录（可折叠） -->
+      <div class="section-card collapsible-section" v-if="flows.length > 0">
+        <div class="section-header" @click="flowExpanded = !flowExpanded">
+          <h3 class="section-title">
+            <svg class="collapse-icon" :class="{ expanded: flowExpanded }" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+            </svg>
+            状态流转记录
+            <span class="record-count">({{ flows.length }})</span>
+          </h3>
+        </div>
+        <div class="collapsible-content" v-show="flowExpanded">
+          <div class="flow-timeline">
+            <div v-for="flow in flows" :key="flow.id" class="flow-item">
+              <div class="flow-dot"></div>
+              <div class="flow-content">
+                <div class="flow-time">{{ flow.operate_time }}</div>
+                <div class="flow-desc">
+                  <span class="flow-field">{{ getFlowFieldName(flow.field) }}</span>
+                  <span v-if="flow.old_value" class="flow-old">{{ flow.old_value }}</span>
+                  <span v-if="flow.old_value" class="flow-arrow">→</span>
+                  <span class="flow-new">{{ flow.new_value }}</span>
+                </div>
+                <div class="flow-operator">操作人: {{ flow.operator }}</div>
+                <div v-if="flow.remark" class="flow-remark">{{ flow.remark }}</div>
               </div>
-              <div class="flow-operator">操作人: {{ flow.operator }}</div>
-              <div v-if="flow.remark" class="flow-remark">{{ flow.remark }}</div>
             </div>
           </div>
         </div>
+      </div>
+      <div class="section-card" v-else>
+        <h3 class="section-title">状态流转记录</h3>
+        <div class="empty-state">暂无流转记录</div>
       </div>
     </template>
 
