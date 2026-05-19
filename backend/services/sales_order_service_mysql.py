@@ -523,6 +523,59 @@ class SalesOrderService:
         logger.info(f"销售订单取消: {order_no}")
         return True
 
+    async def check_and_auto_complete(self, order_no: str, operator: str = "system") -> bool:
+        """检查并触发订单自动完成
+
+        当发货、收货、财务、开票状态均为最终状态时，自动将订单状态更新为 closed。
+        最终状态条件：
+        - delivery_status = full
+        - receive_status = full
+        - finance_status = reconciled
+        - invoice_status = full
+        """
+        order = await SalesOrder.filter(order_no=order_no).first()
+        if not order:
+            logger.warning(f"检查自动完成失败: 订单不存在 {order_no}")
+            return False
+
+        # 已完成或已取消的订单不再处理
+        if order.order_status in [OrderStatus.CLOSED, OrderStatus.CANCELLED]:
+            return False
+
+        # 检查是否满足自动完成条件
+        is_ready = (
+            order.delivery_status == DeliveryStatus.FULL and
+            order.receive_status == ReceiveStatus.FULL and
+            order.finance_status == FinanceStatus.RECONCILED and
+            order.invoice_status == InvoiceStatus.FULL
+        )
+
+        if not is_ready:
+            logger.debug(f"订单 {order_no} 不满足自动完成条件: "
+                         f"delivery={order.delivery_status.value}, "
+                         f"receive={order.receive_status.value}, "
+                         f"finance={order.finance_status.value}, "
+                         f"invoice={order.invoice_status.value}")
+            return False
+
+        # 满足条件，自动完成
+        old_status = order.order_status
+        order.order_status = OrderStatus.CLOSED
+        await order.save()
+
+        await OrderStatusFlow.create(
+            order_no=order_no,
+            order_type="sales",
+            field="order_status",
+            old_value=old_status.value,
+            new_value=OrderStatus.CLOSED.value,
+            operator=operator,
+            remark="自动完成（发货、收货、财务、开票均为最终状态）",
+        )
+
+        logger.info(f"销售订单自动完成: {order_no}, {old_status.value} → closed")
+        return True
+
     # ============ 下推采购相关 ============
 
     async def update_push_status(
