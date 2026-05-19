@@ -53,6 +53,13 @@ const invoiceStatusMap: Record<string, { label: string; class: string }> = {
   full: { label: '全部开票', class: 'full' }
 }
 
+const financeStatusMap: Record<string, { label: string; class: string }> = {
+  unpaid: { label: '未付款', class: 'none' },
+  partial_paid: { label: '部分付款', class: 'partial' },
+  paid: { label: '已付款', class: 'full' },
+  reconciled: { label: '已对账', class: 'reconciled' }
+}
+
 const purchaseStatusMap: Record<string, { label: string; class: string }> = {
   draft: { label: '草稿', class: 'draft' },
   audited: { label: '已审核', class: 'audited' },
@@ -355,6 +362,12 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
                 <label>开票状态</label>
                 <div class="status-control">
                   <span class="status-tag" :class="getStatusClass(invoiceStatusMap, order.invoice_status)">{{ getStatusLabel(invoiceStatusMap, order.invoice_status) }}</span>
+                </div>
+              </div>
+              <div class="status-row">
+                <label>财务状态</label>
+                <div class="status-control">
+                  <span class="status-tag" :class="getStatusClass(financeStatusMap, order.finance_status)">{{ getStatusLabel(financeStatusMap, order.finance_status) }}</span>
                 </div>
               </div>
             </div>
@@ -772,6 +785,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
 .status-tag.none { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
 .status-tag.partial { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.full { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+.status-tag.reconciled { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
 .status-tag.pending { background-color: rgba(255, 152, 0, 0.1); color: #ff9800; }
 .status-tag.stock-sufficient { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .status-tag.stock-normal { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }

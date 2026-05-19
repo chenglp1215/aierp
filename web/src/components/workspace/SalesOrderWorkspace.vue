@@ -168,9 +168,9 @@ const invoiceStatusMap: Record<string, { label: string; class: string }> = {
 }
 
 const financeStatusMap: Record<string, { label: string; class: string }> = {
-  none: { label: '未付款', class: 'none' },
-  partial: { label: '部分付款', class: 'partial' },
-  full: { label: '已付款', class: 'full' },
+  unpaid: { label: '未付款', class: 'none' },
+  partial_paid: { label: '部分付款', class: 'partial' },
+  paid: { label: '已付款', class: 'full' },
   reconciled: { label: '已对账', class: 'reconciled' }
 }
 
