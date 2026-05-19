@@ -74,10 +74,15 @@ async def init_mysql():
     # URL 编码密码中的特殊字符
     encoded_password = quote_plus(settings.MYSQL_PASSWORD)
     # 连接池参数通过 URL 查询参数传递
+    # minsize: 最小连接数
+    # maxsize: 最大连接数
+    # pool_recycle: 连接回收时间（秒），60秒回收避免被服务器断开
+    # connect_timeout: 连接建立超时（秒）
+    # 注意: aiomysql 不支持 read_timeout/write_timeout/pool_timeout 参数
     db_url = (
         f"mysql://{settings.MYSQL_USER}:{encoded_password}"
         f"@{settings.MYSQL_HOST}:{settings.MYSQL_PORT}/{settings.MYSQL_DATABASE}"
-        f"?minsize=1&maxsize=5&pool_recycle=1800"
+        f"?minsize=1&maxsize=5&pool_recycle=60&connect_timeout=5"
     )
 
     await Tortoise.init(
@@ -91,6 +96,7 @@ async def init_mysql():
             "models_mysql.sales_order",
             "models_mysql.purchase_order",
             "models_mysql.order_status_flow",
+            "models_mysql.supplier",
             ]},
     )
     await Tortoise.generate_schemas()

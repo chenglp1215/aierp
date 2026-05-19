@@ -12,6 +12,60 @@
 
 ---
 
+## 状态流转
+
+### 采购单状态流转图
+
+```
+pending_review (待审核)
+      │
+      ├── [审核通过] ──→ ready_purchase (准备采购)
+      │                        │
+      │                        ├── [开始采购] ──→ purchasing (采购中)
+      │                        │                        │
+      │                        │                        └── [采购完成] ──→ completed (采购完成)
+      │                        │
+      │                        └── [回退] ──→ pending_review
+      │
+      └── [撤回] ──→ 删除采购单，回退销售单状态
+```
+
+### 状态枚举 (purchase_status)
+
+| 值 | 说明 | 可执行操作 |
+|------|------|-----------|
+| `pending_review` | 待审核 | 审核通过、撤回 |
+| `ready_purchase` | 准备采购 | 开始采购、回退 |
+| `purchasing` | 采购中 | 采购完成、回退 |
+| `completed` | 采购完成 | - |
+| `closed` | 已关闭 | - |
+| `cancelled` | 已取消 | - |
+
+### 入库状态 (in_status)
+
+| 值 | 说明 |
+|------|------|
+| `none` | 未入库 |
+| `partial` | 部分入库 |
+| `full` | 全部入库 |
+
+### 付款状态 (pay_status)
+
+| 值 | 说明 |
+|------|------|
+| `none` | 未付款 |
+| `partial` | 部分付款 |
+| `full` | 全部结清 |
+
+### 采购类型 (purchase_type)
+
+| 值 | 说明 |
+|------|------|
+| `direct` | 直运采购 |
+| `warehouse` | 仓库采购 |
+
+---
+
 ## 数据模型
 
 ### 外键关联说明
@@ -27,128 +81,37 @@
 - Product → 关联 Brand 表，获取 `brand_id`、`brand_name`
 - `warehouse_id` → 关联 Warehouse 表，获取 `warehouse_name`
 
-**注意：** 创建时只需传入外键 ID（`spec_id`、`warehouse_id`），名称字段由系统通过关联查询自动填充。
-
----
-
-### 采购单创建模型
-
-创建采购单时只需要提供以下字段，其他字段由系统自动生成：
-
-```json
-{
-  "purchase_type": "direct",
-  "source_sale_order_no": "SO202501010001",
-  "source_sale_order_id": 1,
-  "brand_id": 1,
-  "supplier_id": 1,
-  "purchase_user_id": 1,
-  "expect_arrive_date": "2025-04-30",
-  "settle_type": "月结",
-  "freight_amt": 100.00,
-  "remark": "由销售单自动生成-直运采购",
-  "items": [
-    {
-      "row_no": 1,
-      "spec_id": 1,
-      "product_id": 1,
-      "brand_id": 1,
-      "warehouse_id": 1,
-      "purchase_qty": 2,
-      "purchase_price": 4000,
-      "discount": 1.0,
-      "amt": 8000,
-      "shipping_method": "直运",
-      "source_sale_row_no": 1
-    }
-  ]
-}
-```
-
-### 字段说明
-
-#### 必填字段
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| purchase_type | string | 采购类型：direct=直运采购 / warehouse=仓库采购 |
-| settle_type | string | 结算方式：月结/货到付款/款到发货 |
-| items | array | 商品明细 |
-
-#### 明细字段
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| row_no | int | 是 | 行号 |
-| spec_id | int | 是 | 规格ID（外键关联 ProductSpec） |
-| warehouse_id | int | 是 | 仓库ID（外键关联 Warehouse） |
-| product_id | int | 否 | 商品ID（可选，通过 spec 关联获取） |
-| brand_id | int | 否 | 品牌ID（可选，通过 spec 关联获取） |
-| purchase_qty | int | 是 | 采购数量 |
-| purchase_price | float | 是 | 采购单价 |
-| discount | float | 否 | 折扣系数（默认 1.0） |
-| amt | float | 否 | 行金额（自动计算） |
-| shipping_method | string | 否 | 发货方式 |
-| source_sale_row_no | int | 否 | 关联源销售单明细行号 |
-
-**注意：** `brand_name`、`warehouse_name` 不再作为传入参数，通过外键关联查询自动获取。
-
-#### 可选字段
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| supplier_id | int | 供应商ID |
-| source_sale_order_no | string | 关联源销售订单号 |
-| source_sale_order_id | int | 关联源销售订单主键ID |
-| brand_id | int | 品牌ID |
-| purchase_user_id | int | 采购员用户ID |
-| expect_arrive_date | string | 预计到货日期（YYYY-MM-DD） |
-| freight_amt | float | 运费总金额（默认0） |
-| remark | string | 备注 |
-
-#### 系统自动计算字段（不需要传入）
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| purchase_no | string | 采购单号（系统生成） |
-| total_amt | float | 物料不含税总金额（根据商品明细自动计算） |
-| tax_rate | float | 税率（默认 0.13） |
-| tax_amt | float | 税额（自动计算） |
-| total_tax_amt | float | 含税总金额（自动计算） |
-| purchase_status | string | 采购状态（默认 draft） |
-| in_status | string | 入库状态（默认 none） |
-| pay_status | string | 付款状态（默认 none） |
-| creator_id | int | 创建人ID |
-| created_at | datetime | 创建时间 |
-
 ### 采购单完整模型（响应示例）
 
 ```json
 {
   "id": 1,
-  "purchase_no": "PO202504200001",
+  "purchase_no": "PO202605150001",
   "purchase_type": "direct",
   "source_sale_order_id": 1,
-  "source_sale_order_no": "SO202501010001",
+  "source_sale_order_no": "SO202605150001",
   "brand_id": 1,
   "brand_name": "品牌名称",
   "supplier_id": 1,
-  "supplier_name": "供应商名称（快照）",
+  "supplier_name": "供应商名称",
   "purchase_user_id": 1,
-  "expect_arrive_date": "2025-04-30",
+  "expect_arrive_date": "2026-05-20",
   "settle_type": "月结",
   "total_amt": 8000.00,
   "freight_amt": 100.00,
   "tax_rate": 0.13,
   "tax_amt": 1040.00,
   "total_tax_amt": 9140.00,
-  "purchase_status": "audited",
+  "purchase_status": "pending_review",
   "in_status": "none",
   "pay_status": "none",
+  "logistics_company": "顺丰速运",
+  "logistics_no": "SF1234567890",
+  "source_purchase_order_id": "1688-ORDER-001",
   "creator_id": 1,
-  "created_at": "2025-04-20T15:00:00",
-  "updated_at": "2025-04-20T15:00:00",
-  "remark": "由销售单SO202501010001自动生成-直运采购",
+  "created_at": "2026-05-15T15:00:00",
+  "updated_at": "2026-05-15T15:00:00",
+  "remark": "由销售单下推生成",
   "items": [
     {
       "id": 1,
@@ -170,104 +133,17 @@
       "in_qty": 0,
       "return_qty": 0,
       "source_sale_row_no": 1,
-      "shipping_method": "直运",
-      "created_at": "2025-04-20T15:00:00",
-      "updated_at": "2025-04-20T15:00:00"
+      "shipping_method": "直运"
     }
   ]
 }
 ```
-
-**字段来源说明：**
-- `brand_name`：通过 `brand_id` 外键关联 Brand 表查询获取
-- `product_name`、`product_code`：通过 `spec_id` → ProductSpec → Product 关联查询获取
-- `brand_name`（明细）：通过 `spec_id` → ProductSpec → Product → Brand 关联查询获取
-- `warehouse_name`：通过 `warehouse_id` 外键关联 Warehouse 表查询获取
-
-### 状态枚举
-
-#### 采购状态 (purchase_status)
-- `draft`: 草稿
-- `audited`: 已审核
-- `closed`: 已结案
-- `cancelled`: 已作废
-
-#### 入库状态 (in_status)
-- `none`: 未入库
-- `partial`: 部分入库
-- `full`: 全部入库
-
-#### 付款状态 (pay_status)
-- `none`: 未付款
-- `partial`: 部分付款
-- `full`: 全部结清
-
-#### 采购类型 (purchase_type)
-- `direct`: 直运采购
-- `warehouse`: 仓库采购
-
-#### 结算方式 (settle_type)
-- `月结`: 月结
-- `货到付款`: 货到付款
-- `款到发货`: 款到发货
-
-#### 发货方式 (shipping_method)
-- `直运`: 直运
-- `物流`: 物流
-- `自提`: 自提
-- `送货`: 送货
 
 ---
 
 ## API 接口
 
-### 1. 创建采购单
-
-**POST** `/api/v1/purchase-orders/`
-
-**权限**: `purchase.create`
-
-#### 请求参数
-
-```json
-{
-  "purchase_type": "direct",
-  "supplier_id": 1,
-  "brand_id": 1,
-  "settle_type": "月结",
-  "expect_arrive_date": "2025-04-30",
-  "remark": "备注",
-  "items": [
-    {
-      "row_no": 1,
-      "spec_id": 1,
-      "warehouse_id": 1,
-      "purchase_qty": 2,
-      "purchase_price": 4000,
-      "discount": 1.0,
-      "shipping_method": "直运",
-      "source_sale_row_no": 1
-    }
-  ]
-}
-```
-
-#### 响应示例
-
-```json
-{
-  "status": "success",
-  "message": "采购单创建成功",
-  "result": {
-    "purchase_no": "PO202504200001",
-    "id": 1
-  }
-}
-```
-
----
-
-### 2. 获取采购单列表
+### 1. 获取采购单列表
 
 **GET** `/api/v1/purchase-orders/`
 
@@ -288,98 +164,24 @@
 ```json
 {
   "status": "success",
-  "message": "获取采购单列表成功",
-  "result": [
-    {
-      "id": 1,
-      "purchase_no": "PO202504200001",
-      "purchase_type": "direct",
-      "brand_id": 1,
-      "brand_name": "品牌名称",
-      "supplier_id": 1,
-      "supplier_name": "供应商名称",
-      "settle_type": "月结",
-      "total_amt": 8000.00,
-      "freight_amt": 100.00,
-      "purchase_status": "draft",
-      "in_status": "none",
-      "pay_status": "none",
-      "created_at": "2025-04-20T15:00:00",
-      "updated_at": "2025-04-20T15:00:00"
-    }
-  ]
-}
-```
-
----
-
-### 3. 获取采购单详情
-
-**GET** `/api/v1/purchase-orders/{purchase_no}`
-
-**权限**: `purchase.view`
-
-#### 路径参数
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| purchase_no | string | 是 | 采购单号 |
-
-#### 响应示例
-
-```json
-{
-  "status": "success",
-  "message": "获取采购单详情成功",
+  "message": "操作成功",
   "result": {
-    "id": 1,
-    "purchase_no": "PO202504200001",
-    "purchase_type": "direct",
-    "source_sale_order_id": 1,
-    "source_sale_order_no": "SO202501010001",
-    "brand_id": 1,
-    "brand_name": "品牌名称",
-    "supplier_id": 1,
-    "supplier_name": "供应商名称",
-    "purchase_user_id": 1,
-    "expect_arrive_date": "2025-04-30",
-    "settle_type": "月结",
-    "total_amt": 8000.00,
-    "freight_amt": 100.00,
-    "tax_rate": 0.13,
-    "tax_amt": 1040.00,
-    "total_tax_amt": 9140.00,
-    "purchase_status": "audited",
-    "in_status": "none",
-    "pay_status": "none",
-    "creator_id": 1,
-    "created_at": "2025-04-20T15:00:00",
-    "updated_at": "2025-04-20T15:00:00",
-    "remark": "由销售单SO202501010001自动生成-直运采购",
+    "total": 10,
+    "page": 1,
+    "page_size": 20,
     "items": [
       {
         "id": 1,
-        "purchase_order_id": 1,
-        "row_no": 1,
-        "product_id": 1,
-        "product_code": "PROD001",
-        "product_name": "商品名称",
-        "spec_id": 1,
-        "spec_code": "SPEC001",
+        "purchase_no": "PO202605150001",
+        "purchase_type": "direct",
+        "purchase_status": "pending_review",
         "brand_id": 1,
         "brand_name": "品牌名称",
-        "warehouse_id": 1,
-        "warehouse_name": "仓库名称",
-        "purchase_qty": 2,
-        "purchase_price": 4000.00,
-        "discount": 1.0,
-        "amt": 8000.00,
-        "in_qty": 0,
-        "return_qty": 0,
-        "source_sale_row_no": 1,
-        "shipping_method": "直运",
-        "created_at": "2025-04-20T15:00:00",
-        "updated_at": "2025-04-20T15:00:00"
+        "supplier_id": 1,
+        "supplier_name": "供应商名称",
+        "total_amt": 8000.00,
+        "total_tax_amt": 9140.00,
+        "created_at": "2026-05-15T15:00:00"
       }
     ]
   }
@@ -388,81 +190,201 @@
 
 ---
 
-### 4. 审核通过采购单
+### 2. 获取采购单详情
+
+**GET** `/api/v1/purchase-orders/{purchase_no}`
+
+**权限**: `purchase.view`
+
+#### 响应示例
+
+返回完整采购单信息，包括：
+- 基本信息
+- 商品明细列表
+- 关联销售单简要信息（`source_sales_order`）
+
+---
+
+### 3. 获取可选供应商列表
+
+**GET** `/api/v1/purchase-orders/{purchase_no}/available-suppliers`
+
+**权限**: `purchase.view`
+
+根据采购单品牌筛选有供应资格的供应商，优先供应商排在前面。
+
+#### 响应示例
+
+```json
+{
+  "status": "success",
+  "message": "操作成功",
+  "result": [
+    {
+      "id": 1,
+      "name": "供应商A",
+      "contact_person": "张三",
+      "contact_phone": "13800138000",
+      "discount": 0.95,
+      "is_priority": true
+    }
+  ]
+}
+```
+
+---
+
+### 4. 选择/修改供应商
+
+**PUT** `/api/v1/purchase-orders/{purchase_no}/supplier`
+
+**权限**: `purchase.edit`
+
+#### 请求体
+
+```json
+{
+  "supplier_id": 1
+}
+```
+
+**状态限制**: 仅 `pending_review` 或 `ready_purchase` 状态可修改。
+
+---
+
+### 5. 更新物流信息
+
+**PUT** `/api/v1/purchase-orders/{purchase_no}/logistics`
+
+**权限**: `purchase.edit`
+
+#### 请求体
+
+```json
+{
+  "logistics_company": "顺丰速运",
+  "logistics_no": "SF1234567890",
+  "source_purchase_order_id": "1688-ORDER-001",
+  "expect_arrive_date": "2026-05-20"
+}
+```
+
+**状态限制**: 仅 `pending_review` 或 `ready_purchase` 状态可修改。
+
+---
+
+### 6. 审核通过
 
 **POST** `/api/v1/purchase-orders/{purchase_no}/approve`
 
 **权限**: `purchase.edit`
 
-审核通过采购单（草稿 → 已审核）
+将采购单从 `pending_review` 状态变更为 `ready_purchase` 状态。
 
-#### 路径参数
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| purchase_no | string | 是 | 采购单号 |
-
-#### 响应示例
-
-```json
-{
-  "status": "success",
-  "message": "采购单审核通过"
-}
-```
+**状态限制**: 仅 `pending_review` 状态可操作。
 
 ---
 
-### 5. 撤回采购单
+### 7. 开始采购
+
+**POST** `/api/v1/purchase-orders/{purchase_no}/start-purchase`
+
+**权限**: `purchase.edit`
+
+将采购单从 `ready_purchase` 状态变更为 `purchasing` 状态。
+
+**状态限制**: 仅 `ready_purchase` 状态可操作。
+
+---
+
+### 8. 采购完成
+
+**POST** `/api/v1/purchase-orders/{purchase_no}/complete`
+
+**权限**: `purchase.edit`
+
+将采购单从 `purchasing` 状态变更为 `completed` 状态。
+
+**状态限制**: 仅 `purchasing` 状态可操作。
+
+---
+
+### 9. 状态回退
+
+**POST** `/api/v1/purchase-orders/{purchase_no}/rollback`
+
+**权限**: `purchase.edit`
+
+将采购单状态回退到上一状态：
+- `ready_purchase` → `pending_review`（清空物流信息和供应商信息）
+- `purchasing` → `ready_purchase`
+
+**状态限制**: `completed` 状态不可回退。
+
+---
+
+### 10. 撤回采购单
 
 **POST** `/api/v1/purchase-orders/{purchase_no}/recall`
 
 **权限**: `purchase.edit`
 
-撤回采购单（删除采购单，更新销售单状态）
+删除采购单，并回退关联销售单的状态。
 
-#### 路径参数
+**状态限制**: 仅 `pending_review` 状态可操作。
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| purchase_no | string | 是 | 采购单号 |
+---
+
+### 11. 获取状态流转记录
+
+**GET** `/api/v1/purchase-orders/{purchase_no}/status-flows`
+
+**权限**: `purchase.view`
 
 #### 响应示例
 
 ```json
 {
   "status": "success",
-  "message": "采购单撤回成功"
+  "message": "操作成功",
+  "result": [
+    {
+      "id": 1,
+      "order_no": "PO202605150001",
+      "field": "purchase_status",
+      "old_value": null,
+      "new_value": "pending_review",
+      "operator": "admin",
+      "operate_time": "2026-05-15T15:00:00",
+      "remark": "从销售订单下推创建"
+    }
+  ]
 }
 ```
 
 ---
 
-## 错误响应
+## 错误响应示例
 
-### 采购单不存在
+### 业务错误
 
 ```json
 {
   "status": "error",
-  "message": "采购单不存在"
+  "message": "只有待审核状态的采购单可以审核",
+  "result": null
 }
 ```
 
-### 只有草稿状态可以审核
+### 参数校验错误
 
 ```json
 {
   "status": "error",
-  "message": "只有草稿状态的采购单可以审核"
-}
-```
-
-### 只有草稿或已审核状态可以撤销
-
-```json
-{
-  "status": "error",
-  "message": "只有草稿或已审核状态的采购单可以撤销"
+  "message": "参数验证失败",
+  "result": null,
+  "validation_errors": [
+    {"field": "supplier_id", "message": "supplier_id为必填"}
+  ]
 }
 ```

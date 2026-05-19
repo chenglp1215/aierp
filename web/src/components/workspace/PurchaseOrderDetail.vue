@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
-import { purchaseOrderApi, supplierApi } from '../../services/api'
+import { purchaseOrderApi } from '../../services/api'
 
 interface Props {
   purchaseNo?: string
@@ -19,12 +19,22 @@ const flows = ref<any[]>([])
 const actionLoading = ref(false)
 const supplierOptions = ref<any[]>([])
 
+// 物流表单
+const logisticsForm = ref({
+  logistics_company: '',
+  logistics_no: '',
+  source_purchase_order_id: '',
+  expect_arrive_date: ''
+})
+
 // ============ 状态映射 ============
 const purchaseStatusMap: Record<string, { label: string; class: string }> = {
-  draft: { label: '草稿', class: 'draft' },
-  audited: { label: '已审核', class: 'audited' },
-  closed: { label: '已结案', class: 'closed' },
-  cancelled: { label: '已作废', class: 'cancelled' }
+  pending_review: { label: '待审核', class: 'pending-review' },
+  ready_purchase: { label: '准备采购', class: 'ready-purchase' },
+  purchasing: { label: '采购中', class: 'purchasing' },
+  completed: { label: '采购完成', class: 'completed' },
+  closed: { label: '已关闭', class: 'closed' },
+  cancelled: { label: '已取消', class: 'cancelled' }
 }
 
 const inStatusMap: Record<string, { label: string; class: string }> = {
@@ -40,9 +50,13 @@ const payStatusMap: Record<string, { label: string; class: string }> = {
 }
 
 // ============ 计算属性 ============
-const isDraft = computed(() => order.value?.status?.purchase_status === 'draft')
-const isAudited = computed(() => order.value?.status?.purchase_status === 'audited')
-const canEdit = computed(() => isDraft.value)
+const currentStatus = computed(() => order.value?.purchase_status)
+const isPendingReview = computed(() => currentStatus.value === 'pending_review')
+const isReadyPurchase = computed(() => currentStatus.value === 'ready_purchase')
+const isPurchasing = computed(() => currentStatus.value === 'purchasing')
+const isCompleted = computed(() => currentStatus.value === 'completed')
+const canEditSupplier = computed(() => isPendingReview.value || isReadyPurchase.value)
+const canEditLogistics = computed(() => isPendingReview.value || isReadyPurchase.value)
 
 // ============ 数据加载 ============
 const loadOrder = async () => {
@@ -53,8 +67,16 @@ const loadOrder = async () => {
       purchaseOrderApi.getByPurchaseNo(props.purchaseNo),
       purchaseOrderApi.getStatusFlows(props.purchaseNo)
     ])
-    order.value = orderRes.result
-    flows.value = flowsRes.result || []
+    order.value = orderRes
+    flows.value = flowsRes || []
+
+    // 初始化物流表单
+    logisticsForm.value = {
+      logistics_company: order.value?.logistics_company || '',
+      logistics_no: order.value?.logistics_no || '',
+      source_purchase_order_id: order.value?.source_purchase_order_id || '',
+      expect_arrive_date: order.value?.expect_arrive_date || ''
+    }
   } catch (e) {
     console.error('加载采购单详情失败:', e)
   } finally {
@@ -63,9 +85,9 @@ const loadOrder = async () => {
 }
 
 const loadSupplierOptions = async () => {
-  if (!order.value?.brand_id) return
+  if (!props.purchaseNo) return
   try {
-    const res = await supplierApi.getByBrandId(order.value.brand_id)
+    const res = await purchaseOrderApi.getAvailableSuppliers(props.purchaseNo)
     supplierOptions.value = res || []
   } catch (e) {
     console.error('加载供应商列表失败:', e)
@@ -96,9 +118,7 @@ const handleApprove = async () => {
   try {
     await purchaseOrderApi.approve(order.value.purchase_no)
     window.showToast('采购单审核通过', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, purchase_status: 'audited' } }
-    const flowsRes = await purchaseOrderApi.getStatusFlows(order.value.purchase_no)
-    flows.value = flowsRes.result || []
+    await loadOrder()
   } catch (error: any) {
     window.showToast(error.message || '审核失败', 'error')
   } finally {
@@ -106,109 +126,77 @@ const handleApprove = async () => {
   }
 }
 
-const handleClose = async () => {
+const handleStartPurchase = async () => {
   if (!order.value) return
   actionLoading.value = true
   try {
-    await purchaseOrderApi.close(order.value.purchase_no)
-    window.showToast('采购单结案成功', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, purchase_status: 'closed' } }
-    const flowsRes = await purchaseOrderApi.getStatusFlows(order.value.purchase_no)
-    flows.value = flowsRes.result || []
+    await purchaseOrderApi.startPurchase(order.value.purchase_no)
+    window.showToast('开始采购成功', 'success')
+    await loadOrder()
   } catch (error: any) {
-    window.showToast(error.message || '结案失败', 'error')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     actionLoading.value = false
   }
 }
 
-const handleReaudit = async () => {
+const handleComplete = async () => {
   if (!order.value) return
-  if (!confirm('确定要重审该采购单吗？重审后将撤回到草稿状态。')) return
-
   actionLoading.value = true
   try {
-    await purchaseOrderApi.reaudit(order.value.purchase_no)
-    window.showToast('采购单重审成功', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, purchase_status: 'draft' } }
-    const flowsRes = await purchaseOrderApi.getStatusFlows(order.value.purchase_no)
-    flows.value = flowsRes.result || []
+    await purchaseOrderApi.complete(order.value.purchase_no)
+    window.showToast('采购完成', 'success')
+    await loadOrder()
   } catch (error: any) {
-    window.showToast(error.message || '重审失败', 'error')
+    window.showToast(error.message || '操作失败', 'error')
   } finally {
     actionLoading.value = false
   }
 }
 
-const handleVoid = async () => {
+const handleRollback = async () => {
   if (!order.value) return
-  if (!confirm('确定要作废该采购单吗？')) return
+  const targetStatus = isReadyPurchase.value ? '待审核' : '准备采购'
+  if (!confirm(`确定要回退到${targetStatus}状态吗？`)) return
 
   actionLoading.value = true
   try {
-    await purchaseOrderApi.void(order.value.purchase_no)
-    window.showToast('采购单作废成功', 'success')
-    order.value = { ...order.value, status: { ...order.value.status, purchase_status: 'cancelled' } }
-    const flowsRes = await purchaseOrderApi.getStatusFlows(order.value.purchase_no)
-    flows.value = flowsRes.result || []
+    await purchaseOrderApi.rollback(order.value.purchase_no)
+    window.showToast('状态回退成功', 'success')
+    await loadOrder()
   } catch (error: any) {
-    window.showToast(error.message || '作废失败', 'error')
+    window.showToast(error.message || '回退失败', 'error')
   } finally {
     actionLoading.value = false
   }
 }
 
-const handleSupplierChange = async (supplierId: string) => {
-  if (!order.value || !canEdit.value) return
-
-  const selectedSupplier = supplierOptions.value.find(s => s.id === supplierId)
-  if (!selectedSupplier) return
+const handleSupplierChange = async (supplierId: number) => {
+  if (!order.value || !canEditSupplier.value) return
 
   actionLoading.value = true
   try {
-    // 更新供应商并重新计算商品价格
-    const updateData = {
-      supplier_id: supplierId,
-      items: order.value.items.map((item: any) => {
-        // 获取供应商对品牌的折扣率
-        const discount = selectedSupplier.supplied_brands?.find((sb: any) => sb.brand_id === item.brand_id)?.discount || 1.0
-        const newPrice = (item.purchase_price / (item.discount || 1.0)) * discount
-        return {
-          ...item,
-          purchase_price: newPrice,
-          discount: discount,
-          amt: item.purchase_qty * newPrice
-        }
-      })
-    }
-
-    await purchaseOrderApi.update(order.value.purchase_no, updateData)
+    await purchaseOrderApi.updateSupplier(order.value.purchase_no, supplierId)
     window.showToast('供应商更新成功', 'success')
-
-    // 重新加载订单数据
-    const orderRes = await purchaseOrderApi.getByPurchaseNo(order.value.purchase_no)
-    order.value = orderRes.result
+    await loadOrder()
   } catch (error: any) {
     window.showToast(error.message || '更新失败', 'error')
-    // 重新加载原始数据
     await loadOrder()
   } finally {
     actionLoading.value = false
   }
 }
 
-const handleFreightChange = async (event: Event) => {
-  if (!order.value || !canEdit.value) return
+const handleLogisticsSubmit = async () => {
+  if (!order.value || !canEditLogistics.value) return
 
-  const newFreight = parseFloat((event.target as HTMLInputElement).value) || 0
   actionLoading.value = true
   try {
-    await purchaseOrderApi.update(order.value.purchase_no, { freight_amt: newFreight })
-    window.showToast('运费更新成功', 'success')
-    order.value = { ...order.value, freight_amt: newFreight }
+    await purchaseOrderApi.updateLogistics(order.value.purchase_no, logisticsForm.value)
+    window.showToast('物流信息更新成功', 'success')
+    await loadOrder()
   } catch (error: any) {
     window.showToast(error.message || '更新失败', 'error')
-    await loadOrder()
   } finally {
     actionLoading.value = false
   }
@@ -248,10 +236,9 @@ const formatAmount = (amount: number | undefined) => {
 }
 
 // ============ 初始化 ============
-onMounted(() => { loadOrder() })
-onActivated(() => { loadOrder() })
-watch(() => props.purchaseNo, () => { if (props.purchaseNo) loadOrder() })
-watch(() => order.value?.brand_id, () => { if (order.value?.brand_id) loadSupplierOptions() })
+onMounted(() => { loadOrder(); loadSupplierOptions() })
+onActivated(() => { loadOrder(); loadSupplierOptions() })
+watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadSupplierOptions() } })
 </script>
 
 <template>
@@ -272,23 +259,40 @@ watch(() => order.value?.brand_id, () => { if (order.value?.brand_id) loadSuppli
             返回
           </button>
           <h2 class="order-title">{{ order.purchase_no }}</h2>
-          <span class="status-tag" :class="getStatusClass(purchaseStatusMap, order.status?.purchase_status)">
-            {{ getStatusLabel(purchaseStatusMap, order.status?.purchase_status) }}
+          <span class="status-tag" :class="getStatusClass(purchaseStatusMap, order.purchase_status)">
+            {{ getStatusLabel(purchaseStatusMap, order.purchase_status) }}
           </span>
         </div>
         <div class="header-actions">
-          <!-- 草稿状态操作 -->
-          <template v-if="isDraft">
+          <!-- 待审核状态操作 -->
+          <template v-if="isPendingReview">
             <button class="btn-primary" @click="handleApprove" :disabled="actionLoading">审核通过</button>
             <button class="btn-danger" @click="handleRecall" :disabled="actionLoading">撤回</button>
           </template>
-          <!-- 已审核状态操作 -->
-          <template v-else-if="isAudited">
-            <button class="btn-primary" @click="handleClose" :disabled="actionLoading">结案</button>
-            <button class="btn-warning" @click="handleReaudit" :disabled="actionLoading">重审</button>
-            <button class="btn-danger" @click="handleRecall" :disabled="actionLoading">撤回</button>
-            <button class="btn-danger-outline" @click="handleVoid" :disabled="actionLoading">作废</button>
+          <!-- 准备采购状态操作 -->
+          <template v-else-if="isReadyPurchase">
+            <button class="btn-primary" @click="handleStartPurchase" :disabled="actionLoading">开始采购</button>
+            <button class="btn-warning" @click="handleRollback" :disabled="actionLoading">回退</button>
           </template>
+          <!-- 采购中状态操作 -->
+          <template v-else-if="isPurchasing">
+            <button class="btn-primary" @click="handleComplete" :disabled="actionLoading">采购完成</button>
+            <button class="btn-warning" @click="handleRollback" :disabled="actionLoading">回退</button>
+          </template>
+        </div>
+      </div>
+
+      <!-- 关联销售单信息 -->
+      <div class="section-card" v-if="order.source_sales_order">
+        <h3 class="section-title">关联销售单</h3>
+        <div class="info-inline">
+          <span class="info-tag">
+            <strong>销售单号:</strong>
+            <span class="order-link" @click="navigateToSalesOrder">{{ order.source_sales_order.order_no }}</span>
+          </span>
+          <span class="info-tag"><strong>客户:</strong> {{ order.source_sales_order.customer_name }}</span>
+          <span class="info-tag"><strong>订单日期:</strong> {{ order.source_sales_order.order_date }}</span>
+          <span class="info-tag"><strong>金额:</strong> {{ formatAmount(order.source_sales_order.total_amt) }}</span>
         </div>
       </div>
 
@@ -303,28 +307,20 @@ watch(() => order.value?.brand_id, () => { if (order.value?.brand_id) loadSuppli
               <div class="info-item"><label>品牌</label><span>{{ order.brand_name || '-' }}</span></div>
               <div class="info-item">
                 <label>供应商</label>
-                <div v-if="canEdit" class="search-select">
-                  <div class="search-input-wrapper">
-                    <select :value="order.supplier_id" @change="handleSupplierChange(($event.target as HTMLSelectElement).value)" class="supplier-select">
-                      <option value="">请选择供应商</option>
-                      <option v-for="supplier in supplierOptions" :key="supplier.id" :value="supplier.id">
-                        {{ supplier.name }}
-                        <template v-if="supplier.supplied_brands">
-                          (折扣: {{ (supplier.supplied_brands.find((sb: any) => sb.brand_id === order.brand_id)?.discount || 1) * 100 }}%)
-                        </template>
-                      </option>
-                    </select>
-                  </div>
+                <div v-if="canEditSupplier" class="search-select">
+                  <select :value="order.supplier_id" @change="handleSupplierChange(Number(($event.target as HTMLSelectElement).value))" class="supplier-select">
+                    <option value="0">请选择供应商</option>
+                    <option v-for="supplier in supplierOptions" :key="supplier.id" :value="supplier.id">
+                      {{ supplier.name }}
+                      <template v-if="supplier.is_priority"> (优先)</template>
+                      <template v-if="supplier.discount"> (折扣: {{ Math.round(supplier.discount * 100) }}%)</template>
+                    </option>
+                  </select>
                 </div>
                 <span v-else>{{ order.supplier_name || '-' }}</span>
               </div>
-              <div class="info-item"><label>采购员</label><span>{{ order.purchase_user_id || '-' }}</span></div>
-              <div class="info-item"><label>结算方式</label><span>{{ order.settle_type }}</span></div>
+              <div class="info-item"><label>结算方式</label><span>{{ order.settle_type || '-' }}</span></div>
               <div class="info-item"><label>预计到货日</label><span>{{ order.expect_arrive_date || '-' }}</span></div>
-              <div class="info-item" v-if="order.source_sale_order_no">
-                <label>来源销售单</label>
-                <span class="order-link" @click="navigateToSalesOrder">{{ order.source_sale_order_no }}</span>
-              </div>
             </div>
           </div>
         </div>
@@ -334,55 +330,60 @@ watch(() => order.value?.brand_id, () => { if (order.value?.brand_id) loadSuppli
             <div class="status-list">
               <div class="status-row">
                 <label>采购状态</label>
-                <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(purchaseStatusMap, order.status?.purchase_status)">
-                    {{ getStatusLabel(purchaseStatusMap, order.status?.purchase_status) }}
-                  </span>
-                </div>
+                <span class="status-tag" :class="getStatusClass(purchaseStatusMap, order.purchase_status)">
+                  {{ getStatusLabel(purchaseStatusMap, order.purchase_status) }}
+                </span>
               </div>
               <div class="status-row">
                 <label>入库状态</label>
-                <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(inStatusMap, order.status?.in_status)">
-                    {{ getStatusLabel(inStatusMap, order.status?.in_status) }}
-                  </span>
-                </div>
+                <span class="status-tag" :class="getStatusClass(inStatusMap, order.in_status)">
+                  {{ getStatusLabel(inStatusMap, order.in_status) }}
+                </span>
               </div>
               <div class="status-row">
                 <label>付款状态</label>
-                <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(payStatusMap, order.status?.pay_status)">
-                    {{ getStatusLabel(payStatusMap, order.status?.pay_status) }}
-                  </span>
-                </div>
+                <span class="status-tag" :class="getStatusClass(payStatusMap, order.pay_status)">
+                  {{ getStatusLabel(payStatusMap, order.pay_status) }}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 收货信息 -->
-      <div class="section-card" v-if="order.receive_info">
-        <h3 class="section-title">收货信息</h3>
-        <div class="info-inline">
-          <span class="info-tag" v-if="order.receive_info.type === 'customer'">
-            <strong>类型:</strong> 直运发给客户
-          </span>
-          <span class="info-tag" v-else-if="order.receive_info.type === 'warehouse'">
-            <strong>类型:</strong> 入库到仓库
-          </span>
-          <span class="info-tag" v-if="order.receive_info.warehouse_name">
-            <strong>仓库:</strong> {{ order.receive_info.warehouse_name }}
-          </span>
-          <span class="info-tag" v-if="order.receive_info.contact_person">
-            <strong>收货人:</strong> {{ order.receive_info.contact_person }}
-          </span>
-          <span class="info-tag" v-if="order.receive_info.contact_tel">
-            <strong>电话:</strong> {{ order.receive_info.contact_tel }}
-          </span>
-          <span class="info-tag" v-if="order.receive_info.customer_addr">
-            <strong>地址:</strong> {{ [order.receive_info.province, order.receive_info.city, order.receive_info.customer_addr].filter(Boolean).join(' ') }}
-          </span>
+      <!-- 物流信息（准备采购状态可编辑） -->
+      <div class="section-card" v-if="isReadyPurchase || order.logistics_company || order.logistics_no || order.source_purchase_order_id">
+        <h3 class="section-title">物流信息</h3>
+        <div class="logistics-form" v-if="canEditLogistics">
+          <div class="form-row">
+            <div class="form-item">
+              <label>物流公司</label>
+              <input type="text" v-model="logisticsForm.logistics_company" placeholder="请输入物流公司" />
+            </div>
+            <div class="form-item">
+              <label>物流单号</label>
+              <input type="text" v-model="logisticsForm.logistics_no" placeholder="请输入物流单号" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-item">
+              <label>采购源订单ID</label>
+              <input type="text" v-model="logisticsForm.source_purchase_order_id" placeholder="如1688订单号" />
+            </div>
+            <div class="form-item">
+              <label>预计到货日期</label>
+              <input type="date" v-model="logisticsForm.expect_arrive_date" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-primary" @click="handleLogisticsSubmit" :disabled="actionLoading">保存物流信息</button>
+          </div>
+        </div>
+        <div class="info-inline" v-else>
+          <span class="info-tag" v-if="order.logistics_company"><strong>物流公司:</strong> {{ order.logistics_company }}</span>
+          <span class="info-tag" v-if="order.logistics_no"><strong>物流单号:</strong> {{ order.logistics_no }}</span>
+          <span class="info-tag" v-if="order.source_purchase_order_id"><strong>源订单ID:</strong> {{ order.source_purchase_order_id }}</span>
+          <span class="info-tag" v-if="order.expect_arrive_date"><strong>预计到货:</strong> {{ order.expect_arrive_date }}</span>
         </div>
       </div>
 
@@ -402,7 +403,6 @@ watch(() => order.value?.brand_id, () => { if (order.value?.brand_id) loadSuppli
                 <th class="col-num">采购单价</th>
                 <th class="col-num">折扣</th>
                 <th class="col-num">金额</th>
-                <th>发货方式</th>
               </tr>
             </thead>
             <tbody>
@@ -416,50 +416,39 @@ watch(() => order.value?.brand_id, () => { if (order.value?.brand_id) loadSuppli
                 <td class="col-num">{{ item.purchase_price?.toFixed(2) }}</td>
                 <td class="col-num">{{ ((item.discount || 1) * 100).toFixed(0) }}%</td>
                 <td class="col-num">{{ item.amt?.toFixed(2) }}</td>
-                <td>{{ item.shipping_method }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- 双栏：金额 + 备注 -->
-      <div class="two-col-row">
-        <div class="col-left">
-          <div class="section-card">
-            <h3 class="section-title">金额信息</h3>
-            <div class="amount-list">
-              <div class="amount-row">
-                <span class="amount-label">商品总金额</span>
-                <span class="amount-value">{{ formatAmount(order.total_amt) }}</span>
-              </div>
-              <div class="amount-row">
-                <span class="amount-label">运费</span>
-                <span class="amount-value" v-if="canEdit">
-                  <input
-                    type="number"
-                    :value="order.freight_amt"
-                    @change="handleFreightChange"
-                    min="0"
-                    step="0.01"
-                    class="freight-input"
-                  />
-                </span>
-                <span class="amount-value" v-else>{{ formatAmount(order.freight_amt) }}</span>
-              </div>
-              <div class="amount-row highlight">
-                <span class="amount-label">合计金额</span>
-                <span class="amount-value">{{ formatAmount(order.total_amt + (order.freight_amt || 0)) }}</span>
-              </div>
-            </div>
+      <!-- 金额信息 -->
+      <div class="section-card">
+        <h3 class="section-title">金额信息</h3>
+        <div class="amount-list">
+          <div class="amount-row">
+            <span class="amount-label">商品总金额</span>
+            <span class="amount-value">{{ formatAmount(order.total_amt) }}</span>
+          </div>
+          <div class="amount-row">
+            <span class="amount-label">运费</span>
+            <span class="amount-value">{{ formatAmount(order.freight_amt) }}</span>
+          </div>
+          <div class="amount-row">
+            <span class="amount-label">税额</span>
+            <span class="amount-value">{{ formatAmount(order.tax_amt) }}</span>
+          </div>
+          <div class="amount-row highlight">
+            <span class="amount-label">含税合计</span>
+            <span class="amount-value">{{ formatAmount(order.total_tax_amt) }}</span>
           </div>
         </div>
-        <div class="col-right">
-          <div class="section-card" v-if="order.remark">
-            <h3 class="section-title">备注</h3>
-            <p class="remarks-text">{{ order.remark }}</p>
-          </div>
-        </div>
+      </div>
+
+      <!-- 备注 -->
+      <div class="section-card" v-if="order.remark">
+        <h3 class="section-title">备注</h3>
+        <p class="remarks-text">{{ order.remark }}</p>
       </div>
 
       <!-- 状态流转记录 -->
@@ -654,13 +643,6 @@ watch(() => order.value?.brand_id, () => { if (order.value?.brand_id) loadSuppli
   min-width: 70px;
 }
 
-.status-control {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-}
-
 /* 状态标签 */
 .status-tag {
   display: inline-block;
@@ -670,13 +652,58 @@ watch(() => order.value?.brand_id, () => { if (order.value?.brand_id) loadSuppli
   white-space: nowrap;
 }
 
-.status-tag.draft { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
-.status-tag.audited { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
+.status-tag.pending-review { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
+.status-tag.ready-purchase { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
+.status-tag.purchasing { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
+.status-tag.completed { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .status-tag.closed { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .status-tag.cancelled { background-color: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
 .status-tag.none { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
 .status-tag.partial { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.full { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+
+/* 物流表单 */
+.logistics-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-item label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.form-item input {
+  padding: 8px 10px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.form-item input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 
 /* 表格 */
 .table-wrapper {
@@ -747,23 +774,6 @@ watch(() => order.value?.brand_id, () => { if (order.value?.brand_id) loadSuppli
 .amount-row.highlight .amount-value {
   color: var(--accent-blue);
   font-size: 17px;
-}
-
-/* 运费输入框 */
-.freight-input {
-  width: 120px;
-  padding: 4px 8px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-size: 14px;
-  text-align: right;
-}
-
-.freight-input:focus {
-  outline: none;
-  border-color: var(--accent-blue);
 }
 
 /* 供应商选择 */
@@ -891,22 +901,8 @@ watch(() => order.value?.brand_id, () => { if (order.value?.brand_id) loadSuppli
 .btn-danger:hover { background-color: #dc2626; }
 .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.btn-danger-outline {
-  padding: 8px 16px;
-  background-color: transparent;
-  color: var(--accent-red);
-  border: 1px solid var(--accent-red);
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-danger-outline:hover { background-color: rgba(239, 68, 68, 0.1); }
-.btn-danger-outline:disabled { opacity: 0.6; cursor: not-allowed; }
-
 @media (max-width: 900px) {
-  .two-col-row {
+  .two-col-row, .form-row {
     grid-template-columns: 1fr;
   }
 }

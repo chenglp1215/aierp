@@ -5,7 +5,7 @@ import { ref, onMounted } from 'vue'
 import { llmApi } from '../../services/api'
 
 interface LlmModel {
-  id?: string
+  id?: number
   name: string
   model_type: string
   status: string
@@ -23,7 +23,7 @@ interface LlmConfig {
 const models = ref<LlmModel[]>([])
 const loading = ref(false)
 const saving = ref(false)
-const testingModelId = ref<string | null>(null)
+const testingModelId = ref<number | null>(null)
 
 const config = ref<LlmConfig>({
   default_model: '',
@@ -37,7 +37,7 @@ const config = ref<LlmConfig>({
 const showModelModal = ref(false)
 const showDeleteConfirm = ref(false)
 const editingModel = ref<LlmModel | null>(null)
-const deleteTargetId = ref<string | null>(null)
+const deleteTargetId = ref<number | null>(null)
 
 const modelForm = ref<Partial<LlmModel>>({
   name: '',
@@ -93,7 +93,7 @@ const saveConfig = async () => {
   }
 }
 
-const testConnection = async (modelId: string) => {
+const testConnection = async (modelId: number) => {
   testingModelId.value = modelId
   try {
     await llmApi.testConnection(modelId)
@@ -125,7 +125,7 @@ const openEditModel = (model: LlmModel) => {
   showModelModal.value = true
 }
 
-const confirmDelete = (id: string) => {
+const confirmDelete = (id: number) => {
   deleteTargetId.value = id
   showDeleteConfirm.value = true
 }

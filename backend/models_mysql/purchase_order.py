@@ -17,10 +17,12 @@ class PurchaseType(str, Enum):
 
 class PurchaseStatus(str, Enum):
     """采购单主流程状态"""
-    DRAFT = "draft"
-    AUDITED = "audited"
-    CLOSED = "closed"
-    CANCELLED = "cancelled"
+    PENDING_REVIEW = "pending_review"    # 待审核
+    READY_PURCHASE = "ready_purchase"    # 准备采购
+    PURCHASING = "purchasing"            # 采购中
+    COMPLETED = "completed"              # 采购完成
+    CLOSED = "closed"                    # 已关闭
+    CANCELLED = "cancelled"              # 已取消
 
 
 class InStatus(str, Enum):
@@ -54,7 +56,7 @@ class PurchaseOrder(Model):
     supplier_id = fields.IntField(null=True, description="供应商ID")
     supplier_name = fields.CharField(max_length=200, null=True, description="供应商名称（快照）")
     purchase_user_id = fields.IntField(null=True, description="采购员用户ID")
-    purchase_status = fields.CharEnumField(PurchaseStatus, default=PurchaseStatus.DRAFT, description="采购单状态")
+    purchase_status = fields.CharEnumField(PurchaseStatus, default=PurchaseStatus.PENDING_REVIEW, description="采购单状态")
     in_status = fields.CharEnumField(InStatus, default=InStatus.NONE, description="入库状态")
     pay_status = fields.CharEnumField(PayStatus, default=PayStatus.NONE, description="付款状态")
     total_amt = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="物料不含税总金额")
@@ -65,6 +67,10 @@ class PurchaseOrder(Model):
     expect_arrive_date = fields.DateField(null=True, description="预计到货日期")
     settle_type = fields.CharField(max_length=50, null=True, description="结算方式")
     remark = fields.TextField(null=True, description="备注")
+    # 物流信息
+    logistics_company = fields.CharField(max_length=100, null=True, description="物流公司")
+    logistics_no = fields.CharField(max_length=100, null=True, description="物流单号")
+    source_purchase_order_id = fields.CharField(max_length=100, null=True, description="采购源订单ID")
     creator_id = fields.IntField(null=True, description="创建人ID")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
@@ -109,6 +115,9 @@ class PurchaseOrder(Model):
             "expect_arrive_date": self.expect_arrive_date.isoformat() if self.expect_arrive_date else None,
             "settle_type": self.settle_type,
             "remark": self.remark,
+            "logistics_company": self.logistics_company,
+            "logistics_no": self.logistics_no,
+            "source_purchase_order_id": self.source_purchase_order_id,
             "creator_id": self.creator_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

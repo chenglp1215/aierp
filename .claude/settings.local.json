@@ -58,7 +58,12 @@
       "Skill(openspec-archive-change)",
       "Skill(openspec-archive-change:*)",
       "Skill(dev-full-pipeline)",
-      "Skill(dev-full-pipeline:*)"
+      "Skill(dev-full-pipeline:*)",
+      "Skill(opsx:apply)",
+      "Skill(opsx:apply:*)",
+      "WebSearch",
+      "Skill(api-testing)",
+      "Skill(api-testing:*)"
     ],
     "additionalDirectories": [
       "e:\\ai_erp\\aierp\\openspec\\specs",

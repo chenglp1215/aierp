@@ -109,10 +109,12 @@ interface Supplier {
 // ============ 状态映射 ============
 
 const purchaseStatusMap: Record<string, { label: string; class: string }> = {
-  draft: { label: '草稿', class: 'draft' },
-  audited: { label: '已审核', class: 'audited' },
-  closed: { label: '已结案', class: 'closed' },
-  cancelled: { label: '已作废', class: 'cancelled' }
+  pending_review: { label: '待审核', class: 'pending-review' },
+  ready_purchase: { label: '准备采购', class: 'ready-purchase' },
+  purchasing: { label: '采购中', class: 'purchasing' },
+  completed: { label: '采购完成', class: 'completed' },
+  closed: { label: '已关闭', class: 'closed' },
+  cancelled: { label: '已取消', class: 'cancelled' }
 }
 
 const inStatusMap: Record<string, { label: string; class: string }> = {
@@ -253,9 +255,9 @@ const totalTaxInclAmount = computed(() => {
 })
 
 const isFormDisabled = computed(() => {
-  // 已审核、已结案、已作废状态不可编辑
+  // 采购中、采购完成、已关闭、已取消状态不可编辑
   const status = editingOrder.value?.status?.purchase_status
-  return status === 'audited' || status === 'closed' || status === 'cancelled'
+  return status === 'purchasing' || status === 'completed' || status === 'closed' || status === 'cancelled'
 })
 
 // ============ 方法 ============
@@ -266,14 +268,16 @@ const loadOrders = async () => {
     const res = await purchaseOrderApi.list({
       page: page.value,
       page_size: pageSize.value,
-      status: filterStatus.value || undefined,
+      purchase_status: filterStatus.value || undefined,
       purchase_type: filterPurchaseType.value || undefined,
       brand_id: filterBrandId.value || undefined,
       supplier_id: filterSupplierId.value || undefined,
       purchase_no: filterPurchaseNo.value || undefined,
     })
-    orders.value = res?.items || []
-    total.value = res?.total || 0
+    // 数据在 result 字段里
+    const data = res?.result || res
+    orders.value = data?.items || []
+    total.value = data?.total || 0
   } catch (error: any) {
     window.showToast(error.message || '加载采购单列表失败', 'error')
   } finally {
@@ -622,6 +626,63 @@ const handleVoidOrder = async () => {
   }
 }
 
+// ============ 新状态操作方法 ============
+
+const confirmStartPurchase = (order: PurchaseOrder) => {
+  if (!confirm(`确定要开始采购采购单 ${order.purchase_no} 吗？`)) return
+  handleStartPurchase(order.purchase_no)
+}
+
+const handleStartPurchase = async (purchaseNo: string) => {
+  actionLoading.value = true
+  try {
+    await purchaseOrderApi.startPurchase(purchaseNo)
+    window.showToast('开始采购成功', 'success')
+    loadOrders()
+  } catch (error: any) {
+    window.showToast(error.message || '操作失败', 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const confirmComplete = (order: PurchaseOrder) => {
+  if (!confirm(`确定采购单 ${order.purchase_no} 已完成采购吗？`)) return
+  handleComplete(order.purchase_no)
+}
+
+const handleComplete = async (purchaseNo: string) => {
+  actionLoading.value = true
+  try {
+    await purchaseOrderApi.complete(purchaseNo)
+    window.showToast('采购完成', 'success')
+    loadOrders()
+  } catch (error: any) {
+    window.showToast(error.message || '操作失败', 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const confirmRollback = (order: PurchaseOrder) => {
+  const targetStatus = order.status?.purchase_status === 'ready_purchase' ? '待审核' : '准备采购'
+  if (!confirm(`确定要回退到${targetStatus}状态吗？`)) return
+  handleRollback(order.purchase_no)
+}
+
+const handleRollback = async (purchaseNo: string) => {
+  actionLoading.value = true
+  try {
+    await purchaseOrderApi.rollback(purchaseNo)
+    window.showToast('状态回退成功', 'success')
+    loadOrders()
+  } catch (error: any) {
+    window.showToast(error.message || '回退失败', 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
 // ============ 商品明细操作 ============
 
 const addOrderItem = () => {
@@ -855,41 +916,43 @@ onBeforeUnmount(() => {
         <vxe-column field="freight_amt" title="运费金额" width="100" class-name="col--right">
           <template #default="{ row }">{{ formatAmount(row.freight_amt) }}</template>
         </vxe-column>
-        <vxe-column field="status.purchase_status" title="采购状态" width="100" class-name="col--center">
+        <vxe-column field="purchase_status" title="采购状态" width="100" class-name="col--center">
           <template #default="{ row }">
-            <span class="status-tag" :class="getPurchaseStatusInfo(row.status?.purchase_status).class">
-              {{ getPurchaseStatusInfo(row.status?.purchase_status).label }}
+            <span class="status-tag" :class="getPurchaseStatusInfo(row.purchase_status).class">
+              {{ getPurchaseStatusInfo(row.purchase_status).label }}
             </span>
           </template>
         </vxe-column>
-        <vxe-column field="status.in_status" title="入库状态" width="100" class-name="col--center">
+        <vxe-column field="in_status" title="入库状态" width="100" class-name="col--center">
           <template #default="{ row }">
-            <span class="status-tag" :class="getInStatusInfo(row.status?.in_status).class">
-              {{ getInStatusInfo(row.status?.in_status).label }}
+            <span class="status-tag" :class="getInStatusInfo(row.in_status).class">
+              {{ getInStatusInfo(row.in_status).label }}
             </span>
           </template>
         </vxe-column>
-        <vxe-column field="status.pay_status" title="付款状态" width="100" class-name="col--center">
+        <vxe-column field="pay_status" title="付款状态" width="100" class-name="col--center">
           <template #default="{ row }">
-            <span class="status-tag" :class="getPayStatusInfo(row.status?.pay_status).class">
-              {{ getPayStatusInfo(row.status?.pay_status).label }}
+            <span class="status-tag" :class="getPayStatusInfo(row.pay_status).class">
+              {{ getPayStatusInfo(row.pay_status).label }}
             </span>
           </template>
         </vxe-column>
         <vxe-column field="create_time" title="创建时间" width="160" class-name="col--center">
           <template #default="{ row }">{{ formatDate(row.create_time) }}</template>
         </vxe-column>
-        <vxe-column title="操作" width="220" fixed="right" class-name="col--center">
+        <vxe-column title="操作" width="280" fixed="right" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
               <button class="btn-link" @click="navigateToDetail(row.purchase_no)">详情</button>
-              <button class="btn-link" @click="openEditOrder(row)" v-if="row.status?.purchase_status === 'draft'">编辑</button>
-              <button class="btn-link success" @click="confirmAudit(row)" v-if="row.status?.purchase_status === 'draft'">审核</button>
-              <button class="btn-link warning" @click="confirmClose(row)" v-if="row.status?.purchase_status === 'audited'">结案</button>
-              <button class="btn-link" @click="confirmReaudit(row)" v-if="row.status?.purchase_status === 'audited'">重审</button>
-              <button class="btn-link danger" @click="confirmRecall(row)" v-if="row.status?.purchase_status === 'draft' || row.status?.purchase_status === 'audited'">撤回</button>
-              <button class="btn-link" @click="confirmCancel(row)" v-if="row.status?.purchase_status === 'draft' || row.status?.purchase_status === 'audited'">作废</button>
-              <button class="btn-link danger" @click="confirmDelete(row)" v-if="row.status?.purchase_status === 'draft'">删除</button>
+              <!-- 待审核状态操作 -->
+              <button class="btn-link success" @click="confirmAudit(row)" v-if="row.purchase_status === 'pending_review'">审核</button>
+              <button class="btn-link danger" @click="confirmRecall(row)" v-if="row.purchase_status === 'pending_review'">撤回</button>
+              <!-- 准备采购状态操作 -->
+              <button class="btn-link success" @click="confirmStartPurchase(row)" v-if="row.purchase_status === 'ready_purchase'">开始采购</button>
+              <button class="btn-link warning" @click="confirmRollback(row)" v-if="row.purchase_status === 'ready_purchase'">回退</button>
+              <!-- 采购中状态操作 -->
+              <button class="btn-link success" @click="confirmComplete(row)" v-if="row.purchase_status === 'purchasing'">采购完成</button>
+              <button class="btn-link warning" @click="confirmRollback(row)" v-if="row.purchase_status === 'purchasing'">回退</button>
             </span>
           </template>
         </vxe-column>

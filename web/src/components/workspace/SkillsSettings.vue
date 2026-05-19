@@ -5,7 +5,7 @@ import { ref, onMounted } from 'vue'
 import { skillApi } from '../../services/api'
 
 interface Skill {
-  id?: string
+  id?: number
   name: string
   description?: string
   category: string
@@ -22,12 +22,12 @@ interface Skill {
 const skills = ref<Skill[]>([])
 const loading = ref(false)
 const saving = ref(false)
-const togglingId = ref<string | null>(null)
+const togglingId = ref<number | null>(null)
 
 const showSkillModal = ref(false)
 const showDeleteConfirm = ref(false)
 const editingSkill = ref<Skill | null>(null)
-const deleteTargetId = ref<string | null>(null)
+const deleteTargetId = ref<number | null>(null)
 
 const selectedFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -169,7 +169,7 @@ const openEditSkill = (skill: Skill) => {
   showSkillModal.value = true
 }
 
-const confirmDelete = (id: string) => {
+const confirmDelete = (id: number) => {
   deleteTargetId.value = id
   showDeleteConfirm.value = true
 }

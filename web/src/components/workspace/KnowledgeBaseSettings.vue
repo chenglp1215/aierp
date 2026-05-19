@@ -5,7 +5,7 @@ import { ref, onMounted } from 'vue'
 import { knowledgeBaseApi } from '../../services/api'
 
 interface KnowledgeBase {
-  id?: string
+  id?: number
   name: string
   description?: string
   kb_type: string
@@ -35,7 +35,7 @@ const showCollectionModal = ref(false)
 const showDocumentModal = ref(false)
 const showDeleteConfirm = ref(false)
 const editingCollection = ref<KnowledgeBase | null>(null)
-const deleteTargetId = ref<string | null>(null)
+const deleteTargetId = ref<number | null>(null)
 const deleteType = ref<'collection' | 'document'>('collection')
 
 const collectionForm = ref<Partial<KnowledgeBase>>({
@@ -90,7 +90,7 @@ const loadCollections = async () => {
   }
 }
 
-const loadDocuments = async (collectionId: string) => {
+const loadDocuments = async (collectionId: number) => {
   try {
     const res = await knowledgeBaseApi.getDocuments(collectionId)
     documents.value = res.items || []
@@ -134,9 +134,9 @@ const openEditCollection = (collection: KnowledgeBase) => {
   showCollectionModal.value = true
 }
 
-const confirmDelete = (type: 'collection' | 'document', id: string) => {
+const confirmDelete = (type: 'collection' | 'document', id: number | string) => {
   deleteType.value = type
-  deleteTargetId.value = id
+  deleteTargetId.value = typeof id === 'number' ? id : null
   showDeleteConfirm.value = true
 }
 
@@ -245,7 +245,7 @@ const handleDelete = async () => {
   }
 }
 
-const rebuildIndex = async (collectionId: string) => {
+const rebuildIndex = async (collectionId: number) => {
   try {
     await knowledgeBaseApi.rebuildIndex(collectionId)
     window.showToast('索引重建任务已启动', 'success')

@@ -5,12 +5,12 @@ import { ref, onMounted } from 'vue'
 import { agentApi, skillApi, mcpApi, aiToolsApi } from '../../services/api'
 
 interface Agent {
-  id?: string
+  id?: number
   name: string
   description?: string
   system_prompt: string
-  skill_ids: string[]
-  mcp_server_ids: string[]
+  skill_ids: number[]
+  mcp_server_ids: number[]
   tools_range: string[]
   enabled: boolean
   sort_order: number
@@ -18,14 +18,14 @@ interface Agent {
 }
 
 interface Skill {
-  id: string
+  id: number
   name: string
   category: string
   enabled: boolean
 }
 
 interface McpServer {
-  id: string
+  id: number
   name: string
   server_type: string
   status: string
@@ -48,7 +48,7 @@ const saving = ref(false)
 const showAgentModal = ref(false)
 const showDeleteConfirm = ref(false)
 const editingAgent = ref<Agent | null>(null)
-const deleteTargetId = ref<string | null>(null)
+const deleteTargetId = ref<number | null>(null)
 
 const agentForm = ref<Partial<Agent>>({
   name: '',
@@ -143,7 +143,7 @@ const openEditAgent = (agent: Agent) => {
   showAgentModal.value = true
 }
 
-const confirmDelete = (id: string) => {
+const confirmDelete = (id: number) => {
   deleteTargetId.value = id
   showDeleteConfirm.value = true
 }

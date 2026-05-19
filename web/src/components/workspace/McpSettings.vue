@@ -5,7 +5,7 @@ import { ref, onMounted } from 'vue'
 import { mcpApi } from '../../services/api'
 
 interface McpServer {
-  id?: string
+  id?: number
   name: string
   description?: string
   server_type: string
@@ -28,17 +28,17 @@ interface Tool {
 }
 
 const servers = ref<McpServer[]>([])
-const serverTools = ref<Record<string, Tool[]>>({})
-const expandedServer = ref<string | null>(null)
+const serverTools = ref<Record<number, Tool[]>>({})
+const expandedServer = ref<number | null>(null)
 const loading = ref(false)
 const formLoading = ref(false)
 const deleteLoading = ref(false)
-const testingServerId = ref<string | null>(null)
+const testingServerId = ref<number | null>(null)
 
 const showServerModal = ref(false)
 const showDeleteConfirm = ref(false)
 const editingServer = ref<McpServer | null>(null)
-const deleteTargetId = ref<string | null>(null)
+const deleteTargetId = ref<number | null>(null)
 
 const serverForm = ref<Partial<McpServer>>({
   name: '',
@@ -76,7 +76,7 @@ const loadServers = async () => {
   }
 }
 
-const loadServerTools = async (serverId: string) => {
+const loadServerTools = async (serverId: number) => {
   if (serverTools.value[serverId]) return
   try {
     const res = await mcpApi.getTools(serverId)
@@ -98,7 +98,7 @@ const toggleServerTools = async (server: McpServer) => {
   }
 }
 
-const testConnection = async (serverId: string) => {
+const testConnection = async (serverId: number) => {
   testingServerId.value = serverId
   try {
     await mcpApi.testConnection(serverId)
@@ -134,7 +134,7 @@ const openEditServer = (server: McpServer) => {
   showServerModal.value = true
 }
 
-const confirmDelete = (id: string) => {
+const confirmDelete = (id: number) => {
   deleteTargetId.value = id
   showDeleteConfirm.value = true
 }

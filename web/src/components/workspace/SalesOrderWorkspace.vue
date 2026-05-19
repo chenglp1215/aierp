@@ -80,6 +80,9 @@ interface SalesOrder {
   delivery_status: string
   receive_status: string
   invoice_status: string
+  finance_status?: string
+  cost_amt?: number
+  profit_amt?: number
   invoice_info: InvoiceInfo
   creator_id: string
   creator_name?: string
@@ -162,6 +165,13 @@ const invoiceStatusMap: Record<string, { label: string; class: string }> = {
   none: { label: '未开票', class: 'none' },
   partial: { label: '部分开票', class: 'partial' },
   full: { label: '全部开票', class: 'full' }
+}
+
+const financeStatusMap: Record<string, { label: string; class: string }> = {
+  none: { label: '未付款', class: 'none' },
+  partial: { label: '部分付款', class: 'partial' },
+  full: { label: '已付款', class: 'full' },
+  reconciled: { label: '已对账', class: 'reconciled' }
 }
 
 const settleTypeOptions = [
@@ -1321,13 +1331,15 @@ const getOrderStatusInfo = (status: string) => orderStatusMap[status] || { label
 const getDeliveryStatusInfo = (status: string) => deliveryStatusMap[status] || { label: status, class: '' }
 const getReceiveStatusInfo = (status: string) => receiveStatusMap[status] || { label: status, class: '' }
 const getInvoiceStatusInfo = (status: string) => invoiceStatusMap[status] || { label: status, class: '' }
+const getFinanceStatusInfo = (status: string) => financeStatusMap[status] || { label: status || '未付款', class: 'none' }
 
 const statusFieldLabel = (field: string) => {
   const map: Record<string, string> = {
     order_status: '订单状态',
     delivery_status: '发货状态',
     receive_status: '收货状态',
-    invoice_status: '开票状态'
+    invoice_status: '开票状态',
+    finance_status: '财务状态'
   }
   return map[field] || field
 }
@@ -1461,10 +1473,29 @@ onBeforeUnmount(() => {
             {{ formatAmount(row.total_tax_amt) }}
           </template>
         </vxe-column>
+        <vxe-column field="cost_amt" title="成本" width="100" class-name="col--right">
+          <template #default="{ row }">
+            {{ formatAmount(row.cost_amt || 0) }}
+          </template>
+        </vxe-column>
+        <vxe-column field="profit_amt" title="利润" width="100" class-name="col--right">
+          <template #default="{ row }">
+            <span :class="{ 'profit-positive': (row.profit_amt || 0) > 0, 'profit-negative': (row.profit_amt || 0) < 0 }">
+              {{ formatAmount(row.profit_amt || 0) }}
+            </span>
+          </template>
+        </vxe-column>
         <vxe-column field="order_status" title="订单状态" width="100" class-name="col--center">
           <template #default="{ row }">
             <span class="status-tag" :class="getOrderStatusInfo(row.order_status).class">
               {{ getOrderStatusInfo(row.order_status).label }}
+            </span>
+          </template>
+        </vxe-column>
+        <vxe-column field="finance_status" title="财务状态" width="100" class-name="col--center">
+          <template #default="{ row }">
+            <span class="status-tag" :class="getFinanceStatusInfo(row.finance_status).class">
+              {{ getFinanceStatusInfo(row.finance_status).label }}
             </span>
           </template>
         </vxe-column>
@@ -1487,6 +1518,11 @@ onBeforeUnmount(() => {
             <span class="status-tag" :class="getInvoiceStatusInfo(row.invoice_status).class">
               {{ getInvoiceStatusInfo(row.invoice_status).label }}
             </span>
+          </template>
+        </vxe-column>
+        <vxe-column field="sale_user_name" title="业务员" width="100" class-name="col--center">
+          <template #default="{ row }">
+            {{ row.sale_user_name || '-' }}
           </template>
         </vxe-column>
         <vxe-column field="settle_type" title="结算方式" width="100" class-name="col--center" />
@@ -2342,6 +2378,10 @@ onBeforeUnmount(() => {
 .status-tag.none { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
 .status-tag.partial { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.full { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+.status-tag.reconciled { background-color: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+
+.profit-positive { color: var(--accent-green); }
+.profit-negative { color: var(--accent-red); }
 
 .action-btns {
   display: flex;

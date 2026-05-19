@@ -9,7 +9,7 @@ from models.ai import (
     Skill, SkillCreate, SkillUpdate, SkillListResponse,
     Agent, AgentCreate, AgentUpdate, AgentListResponse
 )
-from services.ai_service import (
+from services.ai_service_mysql import (
     llm_service, llm_config_service,
     knowledge_base_service, mcp_service,
     skill_service, agent_service
@@ -38,7 +38,7 @@ async def list_llm_models(
 
 
 @llm_router.get("/models/{model_id}", response_model=LlmModel)
-async def get_llm_model(model_id: str):
+async def get_llm_model(model_id: int):
     """获取 LLM 模型详情"""
     model = await llm_service.get_by_id(model_id)
     if not model:
@@ -54,7 +54,7 @@ async def create_llm_model(model_data: LlmModelCreate):
 
 
 @llm_router.put("/models/{model_id}", response_model=dict)
-async def update_llm_model(model_id: str, model_data: LlmModelUpdate):
+async def update_llm_model(model_id: int, model_data: LlmModelUpdate):
     """更新 LLM 模型"""
     success = await llm_service.update_model(model_id, model_data.model_dump(exclude_unset=True))
     if not success:
@@ -63,7 +63,7 @@ async def update_llm_model(model_id: str, model_data: LlmModelUpdate):
 
 
 @llm_router.delete("/models/{model_id}", response_model=dict)
-async def delete_llm_model(model_id: str):
+async def delete_llm_model(model_id: int):
     """删除 LLM 模型"""
     success = await llm_service.delete(model_id)
     if not success:
@@ -72,7 +72,7 @@ async def delete_llm_model(model_id: str):
 
 
 @llm_router.post("/models/{model_id}/test", response_model=dict)
-async def test_llm_model(model_id: str):
+async def test_llm_model(model_id: int):
     """测试 LLM 模型连接"""
     model = await llm_service.get_by_id(model_id)
     if not model:
@@ -112,7 +112,7 @@ async def list_knowledge_bases(
 
 
 @kb_router.get("/collections/{kb_id}", response_model=KnowledgeBase)
-async def get_knowledge_base(kb_id: str):
+async def get_knowledge_base(kb_id: int):
     """获取知识库详情"""
     kb = await knowledge_base_service.get_by_id(kb_id)
     if not kb:
@@ -128,7 +128,7 @@ async def create_knowledge_base(kb_data: KnowledgeBaseCreate):
 
 
 @kb_router.put("/collections/{kb_id}", response_model=dict)
-async def update_knowledge_base(kb_id: str, kb_data: KnowledgeBaseUpdate):
+async def update_knowledge_base(kb_id: int, kb_data: KnowledgeBaseUpdate):
     """更新知识库"""
     success = await knowledge_base_service.update_knowledge_base(kb_id, kb_data.model_dump(exclude_unset=True))
     if not success:
@@ -137,7 +137,7 @@ async def update_knowledge_base(kb_id: str, kb_data: KnowledgeBaseUpdate):
 
 
 @kb_router.delete("/collections/{kb_id}", response_model=dict)
-async def delete_knowledge_base(kb_id: str):
+async def delete_knowledge_base(kb_id: int):
     """删除知识库"""
     success = await knowledge_base_service.delete(kb_id)
     if not success:
@@ -159,7 +159,7 @@ async def list_mcp_servers(
 
 
 @mcp_router.get("/servers/{server_id}", response_model=McpServer)
-async def get_mcp_server(server_id: str):
+async def get_mcp_server(server_id: int):
     """获取 MCP 服务器详情"""
     server = await mcp_service.get_by_id(server_id)
     if not server:
@@ -175,7 +175,7 @@ async def create_mcp_server(server_data: McpServerCreate):
 
 
 @mcp_router.put("/servers/{server_id}", response_model=dict)
-async def update_mcp_server(server_id: str, server_data: McpServerUpdate):
+async def update_mcp_server(server_id: int, server_data: McpServerUpdate):
     """更新 MCP 服务器"""
     success = await mcp_service.update_server(server_id, server_data.model_dump(exclude_unset=True))
     if not success:
@@ -184,7 +184,7 @@ async def update_mcp_server(server_id: str, server_data: McpServerUpdate):
 
 
 @mcp_router.delete("/servers/{server_id}", response_model=dict)
-async def delete_mcp_server(server_id: str):
+async def delete_mcp_server(server_id: int):
     """删除 MCP 服务器"""
     success = await mcp_service.delete(server_id)
     if not success:
@@ -193,7 +193,7 @@ async def delete_mcp_server(server_id: str):
 
 
 @mcp_router.post("/servers/{server_id}/test", response_model=dict)
-async def test_mcp_server(server_id: str):
+async def test_mcp_server(server_id: int):
     """测试 MCP 服务器连接"""
     server = await mcp_service.get_by_id(server_id)
     if not server:
@@ -202,7 +202,7 @@ async def test_mcp_server(server_id: str):
 
 
 @mcp_router.get("/servers/{server_id}/tools", response_model=dict)
-async def get_mcp_server_tools(server_id: str):
+async def get_mcp_server_tools(server_id: int):
     """获取 MCP 服务器工具列表"""
     server = await mcp_service.get_by_id(server_id)
     if not server:
@@ -224,7 +224,7 @@ async def list_skills(
 
 
 @skill_router.get("/{skill_id}", response_model=Skill)
-async def get_skill(skill_id: str):
+async def get_skill(skill_id: int):
     """获取技能详情"""
     skill = await skill_service.get_by_id(skill_id)
     if not skill:
@@ -240,7 +240,7 @@ async def create_skill(skill_data: SkillCreate):
 
 
 @skill_router.put("/{skill_id}", response_model=dict)
-async def update_skill(skill_id: str, skill_data: SkillUpdate):
+async def update_skill(skill_id: int, skill_data: SkillUpdate):
     """更新技能"""
     success = await skill_service.update_skill(skill_id, skill_data.model_dump(exclude_unset=True))
     if not success:
@@ -249,7 +249,7 @@ async def update_skill(skill_id: str, skill_data: SkillUpdate):
 
 
 @skill_router.delete("/{skill_id}", response_model=dict)
-async def delete_skill(skill_id: str):
+async def delete_skill(skill_id: int):
     """删除技能"""
     success = await skill_service.delete(skill_id)
     if not success:
@@ -258,7 +258,7 @@ async def delete_skill(skill_id: str):
 
 
 @skill_router.patch("/{skill_id}/enable", response_model=dict)
-async def enable_skill(skill_id: str):
+async def enable_skill(skill_id: int):
     """启用技能"""
     success = await skill_service.enable_skill(skill_id)
     if not success:
@@ -267,7 +267,7 @@ async def enable_skill(skill_id: str):
 
 
 @skill_router.patch("/{skill_id}/disable", response_model=dict)
-async def disable_skill(skill_id: str):
+async def disable_skill(skill_id: int):
     """禁用技能"""
     success = await skill_service.disable_skill(skill_id)
     if not success:
@@ -288,7 +288,7 @@ async def list_agents(
 
 
 @agent_router.get("/{agent_id}", response_model=Agent)
-async def get_agent(agent_id: str):
+async def get_agent(agent_id: int):
     """获取 Agent 详情"""
     agent = await agent_service.get_by_id(agent_id)
     if not agent:
@@ -305,7 +305,7 @@ async def create_agent(agent_data: AgentCreate):
 
 
 @agent_router.put("/{agent_id}", response_model=dict)
-async def update_agent(agent_id: str, agent_data: AgentUpdate):
+async def update_agent(agent_id: int, agent_data: AgentUpdate):
     """更新 Agent"""
     success = await agent_service.update_agent(agent_id, agent_data.model_dump(exclude_unset=True))
     if not success:
@@ -315,7 +315,7 @@ async def update_agent(agent_id: str, agent_data: AgentUpdate):
 
 
 @agent_router.delete("/{agent_id}", response_model=dict)
-async def delete_agent(agent_id: str):
+async def delete_agent(agent_id: int):
     """删除 Agent"""
     success = await agent_service.delete(agent_id)
     if not success:
