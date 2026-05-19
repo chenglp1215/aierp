@@ -405,6 +405,16 @@ export const salesOrderApi = {
   // 更新财务状态
   updateFinanceStatus: (orderNo: string, financeStatus: string) => {
     return apiService.put<any>(`/sales-orders/${orderNo}/finance-status`, { finance_status: financeStatus })
+  },
+
+  // 测试用：手动修改订单业务状态
+  testUpdateStatus: (orderNo: string, data: {
+    delivery_status?: string
+    receive_status?: string
+    finance_status?: string
+    invoice_status?: string
+  }) => {
+    return apiService.post<any>(`/sales-orders/${orderNo}/test-update-status`, data)
   }
 }
 

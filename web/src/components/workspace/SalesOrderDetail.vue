@@ -81,6 +81,67 @@ const stockStatusMap: Record<string, { label: string; class: string }> = {
   overstock: { label: '积压', class: 'stock-over' }
 }
 
+// ============ 测试状态修改弹窗 ============
+const showTestStatusModal = ref(false)
+const testStatusLoading = ref(false)
+const testStatusForm = ref({
+  delivery_status: '',
+  receive_status: '',
+  finance_status: '',
+  invoice_status: ''
+})
+
+const deliveryStatusOptions = [
+  { value: 'none', label: '未发货' },
+  { value: 'partial', label: '部分发货' },
+  { value: 'full', label: '全部发货' }
+]
+
+const receiveStatusOptions = [
+  { value: 'none', label: '未收货' },
+  { value: 'partial', label: '部分收货' },
+  { value: 'full', label: '全部收货' }
+]
+
+const invoiceStatusOptions = [
+  { value: 'none', label: '未开票' },
+  { value: 'partial', label: '部分开票' },
+  { value: 'full', label: '全部开票' }
+]
+
+const financeStatusOptions = [
+  { value: 'unpaid', label: '未付款' },
+  { value: 'partial_paid', label: '部分付款' },
+  { value: 'paid', label: '已付款' },
+  { value: 'reconciled', label: '已对账' }
+]
+
+const openTestStatusModal = () => {
+  if (!order.value) return
+  testStatusForm.value = {
+    delivery_status: order.value.delivery_status || 'none',
+    receive_status: order.value.receive_status || 'none',
+    finance_status: order.value.finance_status || 'unpaid',
+    invoice_status: order.value.invoice_status || 'none'
+  }
+  showTestStatusModal.value = true
+}
+
+const handleTestUpdateStatus = async () => {
+  if (!order.value) return
+  testStatusLoading.value = true
+  try {
+    const result = await salesOrderApi.testUpdateStatus(order.value.order_no, testStatusForm.value)
+    window.showToast(result.auto_completed ? '状态已更新，订单已自动完成' : '状态已更新', 'success')
+    showTestStatusModal.value = false
+    await loadOrder()
+  } catch (error: any) {
+    window.showToast(error.message || '更新失败', 'error')
+  } finally {
+    testStatusLoading.value = false
+  }
+}
+
 // ============ 计算属性 ============
 const canPushPurchase = computed(() => {
   const s = order.value?.status?.order_status
@@ -577,6 +638,51 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
       @close="handleClosePushItemSelect"
       @submit="handleSubmitPushPurchase"
     />
+
+    <!-- 测试状态修改弹窗 -->
+    <div class="modal-overlay" v-if="showTestStatusModal">
+      <div class="modal" style="width: 400px;">
+        <div class="modal-header">
+          <h3>测试修改状态</h3>
+          <button class="modal-close" @click="showTestStatusModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p style="color: #e67e22; margin-bottom: 16px; font-size: 12px;">
+            注意：此功能仅用于测试自动完成机制，后续版本删除。
+          </p>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>发货状态</label>
+            <select v-model="testStatusForm.delivery_status" class="form-select">
+              <option v-for="opt in deliveryStatusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>收货状态</label>
+            <select v-model="testStatusForm.receive_status" class="form-select">
+              <option v-for="opt in receiveStatusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>财务状态</label>
+            <select v-model="testStatusForm.finance_status" class="form-select">
+              <option v-for="opt in financeStatusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>开票状态</label>
+            <select v-model="testStatusForm.invoice_status" class="form-select">
+              <option v-for="opt in invoiceStatusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showTestStatusModal = false">取消</button>
+          <button class="btn-primary" @click="handleTestUpdateStatus" :disabled="testStatusLoading">
+            {{ testStatusLoading ? '保存中...' : '保存' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
