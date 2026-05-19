@@ -592,15 +592,9 @@ const handleTableScroll = (params: any) => {
   const left = params.scrollLeft || 0
   scrollLeft.value = left
 
-  // 同步顶部滚动条
+  // 同步顶部滚动条 - 使用 vxe-table 的 scrollTo 方法
   if (topTableRef.value) {
-    const topTableEl = topTableRef.value.$el
-    if (topTableEl) {
-      const scrollContainer = topTableEl.querySelector('.vxe-table--body-wrapper')
-      if (scrollContainer) {
-        scrollContainer.scrollLeft = left
-      }
-    }
+    topTableRef.value.scrollTo(left, 0)
   }
 
   // 使用 transform 移动展开内容
@@ -614,15 +608,9 @@ const handleTableScroll = (params: any) => {
 const handleTopScroll = (params: any) => {
   const left = params.scrollLeft || 0
 
-  // 同步主表格
+  // 同步主表格 - 使用 vxe-table 的 scrollTo 方法
   if (tableRef.value) {
-    const mainTableEl = tableRef.value.$el
-    if (mainTableEl) {
-      const scrollContainer = mainTableEl.querySelector('.vxe-table--body-wrapper')
-      if (scrollContainer) {
-        scrollContainer.scrollLeft = left
-      }
-    }
+    tableRef.value.scrollTo(left, 0)
   }
 
   // 同步展开内容
