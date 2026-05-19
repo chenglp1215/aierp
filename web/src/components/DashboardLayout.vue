@@ -279,7 +279,7 @@ const currentBreadcrumb = computed(() => {
 })
 
 const keepAliveList = computed(() => {
-  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderWorkspace', 'SalesOrderList', 'PurchaseOrderWorkspace', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'BrandWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace', 'CustomerDiscountWorkspace', 'SalesOrderCreate', 'SalesOrderDetail', 'PurchaseOrderDetail', 'SupplierWorkspace']
+  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderWorkspace', 'PurchaseOrderWorkspace', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'BrandWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace', 'CustomerDiscountWorkspace', 'SalesOrderCreate', 'SalesOrderDetail', 'PurchaseOrderDetail', 'SupplierWorkspace']
   return names
 })
 

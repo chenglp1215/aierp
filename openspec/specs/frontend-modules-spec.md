@@ -1,8 +1,24 @@
 # 前端项目模块说明
 
-<!-- 变更日期: 2026-05-08 -->
+<!-- 变更日期: 2026-05-19 -->
 
 > 本文档说明前端各业务模块的功能、路由和核心组件。随开发实时更新。
+
+---
+
+## 重要说明：路由映射机制
+
+前端使用动态组件加载机制，在 `DashboardLayout.vue` 中通过 `currentComponent` 计算属性映射路由 ID 到组件：
+
+```javascript
+// 路由映射逻辑（DashboardLayout.vue 第 250-274 行）
+if (id === 'sales-order') return SalesOrderWorkspace        // 销售订单管理
+if (id.startsWith('sales-order-detail')) return SalesOrderDetail  // 销售订单详情
+if (id === 'sales-order-create-drilldown') return SalesOrderCreate  // 销售订单创建
+if (id.startsWith('sales')) return SalesWorkspace           // 销售合同、退货管理等
+```
+
+**注意**：修改组件前务必确认路由映射，避免改错文件。
 
 ---
 
@@ -84,16 +100,22 @@ web/src/
 **路由**：`/sales-order`
 
 **核心组件**：
-- `SalesOrderWorkspace.vue` — 销售订单主页面（页签容器）
-- `SalesOrderList.vue` — 销售订单列表
+- `SalesOrderWorkspace.vue` — 销售订单管理页面（列表 + 创建 + 编辑 + 状态流转）
 - `SalesOrderCreate.vue` — 销售订单创建
 - `SalesOrderDetail.vue` — 销售订单详情
 
 **功能**：
-- 订单列表查询
+- 订单列表查询（支持展开行查看商品明细）
 - 创建/编辑订单
 - 订单状态流转
 - 订单详情查看
+- 成本、利润、财务状态展示
+- 批量操作支持
+
+**路由映射**（DashboardLayout.vue）：
+- `id === 'sales-order'` → `SalesOrderWorkspace`
+- `id.startsWith('sales-order-detail')` → `SalesOrderDetail`
+- `id === 'sales-order-create-drilldown'` → `SalesOrderCreate`
 
 ---
 
@@ -207,14 +229,17 @@ web/src/
 
 ### 9. 销售管理
 
-**路由**：`/sales`
+**路由**：`/sales-contract`、`/sales-return` 等
 
 **核心组件**：
-- `SalesWorkspace.vue` — 销售模块主页（含客户、折扣等子功能）
+- `SalesWorkspace.vue` — 销售模块子功能页面（销售合同、退货管理等）
 
 **子功能**：
-- 客户管理（CRM）
-- 客户折扣管理
+- 销售合同管理
+- 退货管理
+
+**路由映射**（DashboardLayout.vue）：
+- `id.startsWith('sales')` 且非 `sales-order` 相关 → `SalesWorkspace`
 
 ---
 
