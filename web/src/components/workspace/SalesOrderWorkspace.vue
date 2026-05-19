@@ -3309,7 +3309,15 @@ onBeforeUnmount(() => {
 .expand-items-panel {
   padding: 12px 16px;
   background-color: var(--bg-card);
-  margin-left: 260px;
+}
+
+/* 固定列遮盖展开内容 */
+:deep(.vxe-table--fixed-left-wrapper) {
+  z-index: 10 !important;
+}
+
+:deep(.vxe-table--fixed-right-wrapper) {
+  z-index: 10 !important;
 }
 
 :deep(.vxe-body--column) {
