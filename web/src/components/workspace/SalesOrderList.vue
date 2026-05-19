@@ -6,42 +6,60 @@ import { salesOrderApi, customerApi, productApi, warehouseApi } from '../../serv
 
 // Types
 interface SalesOrderItem {
-  product_id: string
-  product_name: string
-  product_code?: string
-  quantity: number
-  unit_price: number
-  subtotal: number
+  id: number
+  row_no: number
+  product_id: number | null
+  product_name: string | null
+  product_code: string | null
+  spec_id: number | null
+  spec_code: string | null
+  brand_id: number | null
+  brand_name: string | null
+  warehouse_id: number | null
+  warehouse_name: string | null
+  qty: number
+  price: number
+  discount: number
+  discounted_price: number | null
+  amt: number | null
+  shipping_method: string | null
+  pushed: boolean
+  out_qty: number
+  return_qty: number
+  exchange_qty: number
+  supplement_qty: number
+  created_at: string
+  updated_at: string
 }
 
 interface SalesOrder {
-  id: string
+  id: number
   order_no: string
-  customer_id: string
-  customer_name: string
-  contact_phone?: string
-  delivery_address?: string
-  delivery_type: 'inventory' | 'direct'
-  warehouse_id?: string
-  warehouse_name?: string
-  pickup_type: 'self_pickup' | 'express'
-  express_type?: 'sf' | 'yto' | 'zto' | 'jd' | 'ems' | 'other'
-  express_no?: string
-  express_fee: number
-  discount_ratio: number
-  items: SalesOrderItem[]
-  total_amount: number
-  discount_amount: number
-  final_amount: number
-  order_status: string
-  delivery_status?: string
-  receive_status?: string
-  invoice_status?: string
-  procurement_order_id?: string
   order_date: string
-  expected_delivery_date?: string
-  remarks?: string
+  customer_id: number
+  customer_name: string
+  sale_user_id: number | null
+  sale_user_name: string | null
+  order_status: string
+  delivery_status: string
+  receive_status: string
+  invoice_status: string
+  finance_status: string
+  total_amt: number
+  tax_rate: number
+  tax_amt: number
+  total_tax_amt: number
+  total_discount_amt: number
+  cost_amt: number
+  profit_amt: number
+  expect_deliver_date: string | null
+  settle_type: string | null
+  remark: string | null
+  creator_id: number | null
+  creator_name: string | null
   created_at: string
+  updated_at: string
+  items: SalesOrderItem[]
 }
 
 interface Customer {
@@ -69,8 +87,20 @@ const statusMap: Record<string, { label: string; class: string }> = {
   partially_pushed_to_purchase: { label: '部分下推采购', class: 'partial-pushed' },
   pushed_to_purchase: { label: '已下推采购', class: 'pushed' },
   closed: { label: '已关闭', class: 'closed' },
-  cancelled: { label: '已取消', class: 'cancelled' }
+  cancelled: { label: '已取消', class: 'cancelled' },
+  none: { label: '无', class: 'none' },
+  partial: { label: '部分', class: 'partial' },
+  full: { label: '完成', class: 'full' }
 }
+
+const financeStatusMap: Record<string, { label: string; class: string }> = {
+  unpaid: { label: '未付款', class: 'none' },
+  partial_paid: { label: '部分付款', class: 'partial' },
+  paid: { label: '已付款', class: 'full' },
+  reconciled: { label: '已对账', class: 'closed' }
+}
+
+const getFinanceStatusInfo = (status: string) => financeStatusMap[status] || { label: status, class: '' }
 
 const deliveryTypes = [
   { value: 'inventory', label: '库存发货' },
@@ -91,7 +121,7 @@ const expressTypes = [
   { value: 'other', label: '其他' }
 ]
 
-const orderStatuses = Object.entries(statusMap).map(([value, { label }]) => ({ value, label }))
+const orderStatuses = Object.entries(statusMap).filter(([k]) => ['draft', 'pending', 'audited', 'partially_pushed_to_purchase', 'pushed_to_purchase', 'closed', 'cancelled'].includes(k)).map(([value, { label }]) => ({ value, label }))
 
 // State
 const loading = ref(false)
@@ -102,6 +132,17 @@ const pageSize = ref(20)
 const keyword = ref('')
 const filterStatus = ref('')
 const filterCustomerId = ref('')
+
+// 展开行状态
+const expandedRows = ref<string[]>([])
+
+// 选中行状态
+const selectedOrders = ref<string[]>([])
+
+// 计算属性：是否全选
+const isAllSelected = computed(() => {
+  return orders.value.length > 0 && selectedOrders.value.length === orders.value.length
+})
 
 // Modals
 const showOrderModal = ref(false)
@@ -180,16 +221,80 @@ const loadOrders = async () => {
       customer_id: filterCustomerId.value || undefined,
       order_no: keyword.value || undefined
     })
-    orders.value = res.items.map((item: any) => ({
-      ...item,
-      status: item.status,
-      payment_status: item.payment_status
-    }))
+    orders.value = res.items
     total.value = res.total
   } catch (error) {
     console.error('加载订单列表失败:', error)
   } finally {
     loading.value = false
+  }
+}
+
+// 展开/收起行
+const toggleExpand = (orderNo: string) => {
+  const index = expandedRows.value.indexOf(orderNo)
+  if (index === -1) {
+    expandedRows.value.push(orderNo)
+  } else {
+    expandedRows.value.splice(index, 1)
+  }
+}
+
+// 选中/取消选中订单
+const handleSelectOrder = (orderNo: string) => {
+  const index = selectedOrders.value.indexOf(orderNo)
+  if (index === -1) {
+    selectedOrders.value.push(orderNo)
+  } else {
+    selectedOrders.value.splice(index, 1)
+  }
+}
+
+// 全选/取消全选
+const handleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedOrders.value = []
+  } else {
+    selectedOrders.value = orders.value.map(o => o.order_no)
+  }
+}
+
+// 清除选择
+const clearSelection = () => {
+  selectedOrders.value = []
+}
+
+// 批量提交审核
+const handleBatchSubmit = async () => {
+  if (selectedOrders.value.length === 0) {
+    window.showToast('请选择要提交的订单', 'warning')
+    return
+  }
+
+  let successCount = 0
+  let skipCount = 0
+
+  for (const orderNo of selectedOrders.value) {
+    const order = orders.value.find(o => o.order_no === orderNo)
+    if (order && order.order_status === 'draft') {
+      try {
+        await salesOrderApi.submit(orderNo)
+        successCount++
+      } catch (error) {
+        console.error(`提交订单 ${orderNo} 失败:`, error)
+      }
+    } else {
+      skipCount++
+    }
+  }
+
+  if (successCount > 0) {
+    window.showToast(`成功提交 ${successCount} 个订单`, 'success')
+    loadOrders()
+    clearSelection()
+  }
+  if (skipCount > 0) {
+    window.showToast(`跳过 ${skipCount} 个非草稿状态订单`, 'info')
   }
 }
 
@@ -702,54 +807,143 @@ onMounted(() => {
       </div>
     </div>
 
+    <div class="batch-actions" v-if="selectedOrders.length > 0">
+      <span class="selected-count">已选择 {{ selectedOrders.length }} 条</span>
+      <button class="batch-btn" @click="handleBatchSubmit">批量提交审核</button>
+      <button class="batch-btn secondary" @click="clearSelection">取消选择</button>
+    </div>
+
     <div class="table-section">
       <table class="data-table">
         <thead>
           <tr>
+            <th style="width: 40px">
+              <input type="checkbox" @change="handleSelectAll" :checked="isAllSelected" />
+            </th>
+            <th style="width: 40px"></th>
+            <th style="width: 110px">订单日期</th>
             <th style="width: 130px">订单编号</th>
             <th>客户名称</th>
-            <th style="width: 100px">发货方式</th>
             <th style="width: 100px; text-align: right">订单金额</th>
             <th style="width: 80px">订单状态</th>
-            <th style="width: 100px">下单日期</th>
+            <th style="width: 80px; text-align: right">成本</th>
+            <th style="width: 80px; text-align: right">利润</th>
+            <th style="width: 80px">财务状态</th>
+            <th style="width: 80px">发票状态</th>
+            <th style="width: 80px">发货状态</th>
+            <th style="width: 80px">收货状态</th>
+            <th style="width: 80px">业务员</th>
             <th style="width: 200px">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="7" class="loading-cell">加载中...</td>
+            <td colspan="15" class="loading-cell">加载中...</td>
           </tr>
           <tr v-else-if="orders.length === 0">
-            <td colspan="7" class="empty-cell">暂无数据</td>
+            <td colspan="15" class="empty-cell">暂无数据</td>
           </tr>
-          <tr v-else v-for="order in orders" :key="order.order_no">
-            <td>{{ order.order_no }}</td>
-            <td>{{ order.customer_name }}</td>
-            <td>
-              <span v-if="order.delivery_type === 'inventory'">
-                库存发货
-                <span v-if="order.warehouse_name" class="warehouse-tag">({{ order.warehouse_name }})</span>
-              </span>
-              <span v-else>采购直发</span>
-            </td>
-            <td style="text-align: right">{{ formatAmount(order.final_amount) }}</td>
-            <td>
-              <span class="status-tag" :class="getStatusInfo(order.order_status).class">
-                {{ getStatusInfo(order.order_status).label }}
-              </span>
-            </td>
-            <td>{{ formatDate(order.order_date) }}</td>
-            <td>
-              <div class="action-buttons">
-                <button class="btn-link" @click="openDetail(order)">详情</button>
-                <button class="btn-link" @click="openEditOrder(order)" v-if="order.order_status === 'draft'">编辑</button>
-                <button class="btn-link highlight" @click="handleSubmitOrder(order.order_no)" v-if="order.order_status === 'draft'">提交审核</button>
-                <button class="btn-link success" @click="handleApproveOrder(order.order_no)" v-if="order.order_status === 'pending'">审核通过</button>
-                <button class="btn-link warning" @click="handleRejectOrder(order.order_no)" v-if="order.order_status === 'pending'">驳回</button>
-                <button class="btn-link danger" @click="confirmDelete(order.order_no)" v-if="order.order_status === 'draft'">删除</button>
-              </div>
-            </td>
-          </tr>
+          <template v-else v-for="order in orders" :key="order.order_no">
+            <tr :class="{ 'selected-row': selectedOrders.includes(order.order_no) }">
+              <td>
+                <input
+                  type="checkbox"
+                  :checked="selectedOrders.includes(order.order_no)"
+                  @change="handleSelectOrder(order.order_no)"
+                />
+              </td>
+              <td>
+                <button class="expand-btn" @click="toggleExpand(order.order_no)">
+                  {{ expandedRows.includes(order.order_no) ? '▼' : '▶' }}
+                </button>
+              </td>
+              <td>{{ formatDate(order.order_date) }}</td>
+              <td>{{ order.order_no }}</td>
+              <td>{{ order.customer_name }}</td>
+              <td style="text-align: right">{{ formatAmount(order.total_tax_amt) }}</td>
+              <td>
+                <span class="status-tag" :class="getStatusInfo(order.order_status).class">
+                  {{ getStatusInfo(order.order_status).label }}
+                </span>
+              </td>
+              <td style="text-align: right">{{ formatAmount(order.cost_amt) }}</td>
+              <td style="text-align: right" :class="{ 'profit-positive': order.profit_amt >= 0, 'profit-negative': order.profit_amt < 0 }">
+                {{ formatAmount(order.profit_amt) }}
+              </td>
+              <td>
+                <span class="status-tag" :class="getFinanceStatusInfo(order.finance_status).class">
+                  {{ getFinanceStatusInfo(order.finance_status).label }}
+                </span>
+              </td>
+              <td>
+                <span class="status-tag" :class="getStatusInfo(order.invoice_status).class">
+                  {{ getStatusInfo(order.invoice_status).label }}
+                </span>
+              </td>
+              <td>
+                <span class="status-tag" :class="getStatusInfo(order.delivery_status).class">
+                  {{ getStatusInfo(order.delivery_status).label }}
+                </span>
+              </td>
+              <td>
+                <span class="status-tag" :class="getStatusInfo(order.receive_status).class">
+                  {{ getStatusInfo(order.receive_status).label }}
+                </span>
+              </td>
+              <td>{{ order.sale_user_name || '-' }}</td>
+              <td>
+                <div class="action-buttons">
+                  <button class="btn-link" @click="openDetail(order)">详情</button>
+                  <button class="btn-link" @click="openEditOrder(order)" v-if="order.order_status === 'draft'">编辑</button>
+                  <button class="btn-link highlight" @click="handleSubmitOrder(order.order_no)" v-if="order.order_status === 'draft'">提交审核</button>
+                  <button class="btn-link success" @click="handleApproveOrder(order.order_no)" v-if="order.order_status === 'pending'">审核通过</button>
+                  <button class="btn-link warning" @click="handleRejectOrder(order.order_no)" v-if="order.order_status === 'pending'">驳回</button>
+                  <button class="btn-link danger" @click="confirmDelete(order.order_no)" v-if="order.order_status === 'draft'">删除</button>
+                </div>
+              </td>
+            </tr>
+            <!-- 展开行 - 商品明细 -->
+            <tr v-if="expandedRows.includes(order.order_no)" class="expanded-row">
+              <td colspan="15">
+                <div class="expanded-content">
+                  <table class="items-detail-table">
+                    <thead>
+                      <tr>
+                        <th>品牌名</th>
+                        <th>规格编号</th>
+                        <th>产品名称</th>
+                        <th>规格</th>
+                        <th>包装单位</th>
+                        <th style="text-align: right">数量</th>
+                        <th style="text-align: right">原价</th>
+                        <th style="text-align: right">退货数量</th>
+                        <th style="text-align: right">换货数量</th>
+                        <th style="text-align: right">补货数量</th>
+                        <th style="text-align: right">含税单价</th>
+                        <th style="text-align: right">合计</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="item in order.items" :key="item.id">
+                        <td>{{ item.brand_name || '-' }}</td>
+                        <td>{{ item.spec_code || '-' }}</td>
+                        <td>{{ item.product_name || '-' }}</td>
+                        <td>{{ item.sales_spec || '-' }}</td>
+                        <td>{{ item.packaging || '-' }}</td>
+                        <td style="text-align: right">{{ item.qty }}</td>
+                        <td style="text-align: right">{{ formatAmount(item.price) }}</td>
+                        <td style="text-align: right">{{ item.return_qty }}</td>
+                        <td style="text-align: right">{{ item.exchange_qty }}</td>
+                        <td style="text-align: right">{{ item.supplement_qty }}</td>
+                        <td style="text-align: right">{{ formatAmount(item.price * (1 + (order.tax_rate || 0.13))) }}</td>
+                        <td style="text-align: right">{{ formatAmount(item.amt || 0) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
     </div>
@@ -1898,6 +2092,110 @@ onMounted(() => {
   font-size: 14px;
   color: var(--text-primary);
   margin: 0;
+}
+
+/* 展开行样式 */
+.expand-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 12px;
+}
+
+.expand-btn:hover {
+  color: var(--accent-blue);
+}
+
+.expanded-row {
+  background-color: var(--bg-secondary);
+}
+
+.expanded-content {
+  padding: 12px 20px;
+}
+
+.items-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--bg-card);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.items-detail-table th,
+.items-detail-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+}
+
+.items-detail-table th {
+  color: var(--text-muted);
+  background-color: var(--bg-secondary);
+}
+
+.items-detail-table td {
+  color: var(--text-primary);
+}
+
+/* 选中行样式 */
+.selected-row {
+  background-color: rgba(0, 120, 212, 0.05) !important;
+}
+
+/* 利润样式 */
+.profit-positive {
+  color: var(--accent-green);
+}
+
+.profit-negative {
+  color: var(--accent-red);
+}
+
+/* 批量操作样式 */
+.batch-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: rgba(0, 120, 212, 0.1);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.selected-count {
+  font-size: 14px;
+  color: var(--accent-blue);
+  font-weight: 500;
+}
+
+.batch-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  background-color: var(--accent-blue);
+  color: white;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.batch-btn:hover {
+  background-color: var(--accent-blue-hover);
+}
+
+.batch-btn.secondary {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.batch-btn.secondary:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
 }
 
 @media (max-width: 768px) {

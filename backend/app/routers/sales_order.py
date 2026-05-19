@@ -185,3 +185,51 @@ async def push_to_purchase(
     )
 
     return generated_orders
+
+
+# ============ 成本明细管理 ============
+
+@sales_order_router.get("/{order_no}/cost-items", response_model=dict, description="获取成本明细列表")
+@wrap_response
+async def list_cost_items(
+    order_no: str,
+    _: dict = Depends(require_permission("order.view"))
+):
+    items = await sales_order_service.list_cost_items(order_no)
+    return items
+
+
+@sales_order_router.post("/{order_no}/cost-items", response_model=dict, description="手动添加成本明细")
+@wrap_response
+async def create_cost_item(
+    order_no: str,
+    data: Dict[str, Any],
+    current_user: dict = Depends(require_permission("order.edit"))
+):
+    result = await sales_order_service.create_cost_item(order_no, data, current_user)
+    return result
+
+
+@sales_order_router.delete("/{order_no}/cost-items/{item_id}", response_model=dict, description="删除成本明细")
+@wrap_response
+async def delete_cost_item(
+    order_no: str,
+    item_id: int,
+    current_user: dict = Depends(require_permission("order.edit"))
+):
+    await sales_order_service.delete_cost_item(order_no, item_id)
+    return "成本明细删除成功"
+
+
+@sales_order_router.put("/{order_no}/finance-status", response_model=dict, description="更新财务状态")
+@wrap_response
+async def update_finance_status(
+    order_no: str,
+    data: Dict[str, Any],
+    current_user: dict = Depends(require_permission("order.edit"))
+):
+    finance_status = data.get("finance_status")
+    if not finance_status:
+        raise ValueError("请提供财务状态")
+    await sales_order_service.update_finance_status(order_no, finance_status)
+    return "财务状态更新成功"

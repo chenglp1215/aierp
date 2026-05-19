@@ -385,12 +385,32 @@ export const salesOrderApi = {
   // 下推采购
   pushToPurchase: (orderNo: string, items: { row_no: number }[]) => {
     return apiService.post<any>(`/sales-orders/${orderNo}/push-to-purchase`, { items })
+  },
+
+  // 获取成本明细列表
+  getCostItems: (orderNo: string) => {
+    return apiService.get<any>(`/sales-orders/${orderNo}/cost-items`)
+  },
+
+  // 手动添加成本明细
+  createCostItem: (orderNo: string, data: { cost_type: string; amount: number; remark?: string }) => {
+    return apiService.post<any>(`/sales-orders/${orderNo}/cost-items`, data)
+  },
+
+  // 删除成本明细
+  deleteCostItem: (orderNo: string, itemId: number) => {
+    return apiService.delete<any>(`/sales-orders/${orderNo}/cost-items/${itemId}`)
+  },
+
+  // 更新财务状态
+  updateFinanceStatus: (orderNo: string, financeStatus: string) => {
+    return apiService.put<any>(`/sales-orders/${orderNo}/finance-status`, { finance_status: financeStatus })
   }
 }
 
 export const purchaseOrderApi = {
   // 获取采购单列表
-  list: (params: { page?: number; page_size?: number; status?: string; purchase_type?: string; brand_id?: string; supplier_id?: string; purchase_no?: string; source_sale_order_no?: string }) => {
+  list: (params: { page?: number; page_size?: number; purchase_status?: string; purchase_type?: string; brand_id?: string | number; supplier_id?: string | number; purchase_no?: string; source_sale_order_no?: string }) => {
     return apiService.get<any>('/purchase-orders/', params)
   },
 
@@ -505,24 +525,49 @@ export const purchaseOrderApi = {
     return apiService.post<any>(`/purchase-orders/${purchaseNo}/recall`, {})
   },
 
-  // 结案采购单
-  close: (purchaseNo: string) => {
-    return apiService.post<any>(`/purchase-orders/${purchaseNo}/close`, {})
+  // 开始采购
+  startPurchase: (purchaseNo: string) => {
+    return apiService.post<any>(`/purchase-orders/${purchaseNo}/start-purchase`, {})
   },
 
-  // 重审采购单（撤回到草稿）
-  reaudit: (purchaseNo: string) => {
-    return apiService.post<any>(`/purchase-orders/${purchaseNo}/reaudit`, {})
+  // 采购完成
+  complete: (purchaseNo: string) => {
+    return apiService.post<any>(`/purchase-orders/${purchaseNo}/complete`, {})
   },
 
-  // 作废采购单
-  void: (purchaseNo: string) => {
-    return apiService.post<any>(`/purchase-orders/${purchaseNo}/void`, {})
+  // 状态回退
+  rollback: (purchaseNo: string) => {
+    return apiService.post<any>(`/purchase-orders/${purchaseNo}/rollback`, {})
+  },
+
+  // 获取可选供应商列表
+  getAvailableSuppliers: (purchaseNo: string) => {
+    return apiService.get<any>(`/purchase-orders/${purchaseNo}/available-suppliers`)
+  },
+
+  // 选择/修改供应商
+  updateSupplier: (purchaseNo: string, supplierId: number) => {
+    return apiService.put<any>(`/purchase-orders/${purchaseNo}/supplier`, { supplier_id: supplierId })
+  },
+
+  // 更新物流信息
+  updateLogistics: (purchaseNo: string, data: {
+    logistics_company?: string
+    logistics_no?: string
+    source_purchase_order_id?: string
+    expect_arrive_date?: string
+  }) => {
+    return apiService.put<any>(`/purchase-orders/${purchaseNo}/logistics`, data)
   },
 
   // 获取状态流转记录
   getStatusFlows: (purchaseNo: string) => {
     return apiService.get<any>(`/purchase-orders/${purchaseNo}/status-flows`)
+  },
+
+  // 付款完成
+  completePayment: (purchaseNo: string) => {
+    return apiService.post<any>(`/purchase-orders/${purchaseNo}/complete-payment`)
   }
 }
 
@@ -1060,16 +1105,16 @@ export const llmApi = {
   list: (params?: { page?: number; page_size?: number }) => {
     return apiService.get<any>('/llm/models', params)
   },
-  getById: (id: string) => {
+  getById: (id: number) => {
     return apiService.get<any>(`/llm/models/${id}`)
   },
   create: (data: any) => {
     return apiService.post<any>('/llm/models', data)
   },
-  update: (id: string, data: any) => {
+  update: (id: number, data: any) => {
     return apiService.put<any>(`/llm/models/${id}`, data)
   },
-  delete: (id: string) => {
+  delete: (id: number) => {
     return apiService.delete<any>(`/llm/models/${id}`)
   },
   getConfig: () => {
@@ -1078,7 +1123,7 @@ export const llmApi = {
   updateConfig: (data: any) => {
     return apiService.put<any>('/llm/config', data)
   },
-  testConnection: (id: string) => {
+  testConnection: (id: number) => {
     return apiService.post<any>(`/llm/models/${id}/test`)
   }
 }
@@ -1087,28 +1132,28 @@ export const knowledgeBaseApi = {
   list: (params?: { page?: number; page_size?: number; kb_type?: string }) => {
     return apiService.get<any>('/knowledge-base/collections', params)
   },
-  getById: (id: string) => {
+  getById: (id: number) => {
     return apiService.get<any>(`/knowledge-base/collections/${id}`)
   },
   create: (data: any) => {
     return apiService.post<any>('/knowledge-base/collections', data)
   },
-  update: (id: string, data: any) => {
+  update: (id: number, data: any) => {
     return apiService.put<any>(`/knowledge-base/collections/${id}`, data)
   },
-  delete: (id: string) => {
+  delete: (id: number) => {
     return apiService.delete<any>(`/knowledge-base/collections/${id}`)
   },
-  getDocuments: (collectionId: string, params?: { page?: number; page_size?: number }) => {
+  getDocuments: (collectionId: number, params?: { page?: number; page_size?: number }) => {
     return apiService.get<any>(`/knowledge-base/collections/${collectionId}/documents`, params)
   },
-  addDocument: (collectionId: string, data: any) => {
+  addDocument: (collectionId: number, data: any) => {
     return apiService.post<any>(`/knowledge-base/collections/${collectionId}/documents`, data)
   },
-  deleteDocument: (collectionId: string, docId: string) => {
+  deleteDocument: (collectionId: number, docId: string) => {
     return apiService.delete<any>(`/knowledge-base/collections/${collectionId}/documents/${docId}`)
   },
-  rebuildIndex: (collectionId: string) => {
+  rebuildIndex: (collectionId: number) => {
     return apiService.post<any>(`/knowledge-base/collections/${collectionId}/rebuild`)
   }
 }
@@ -1117,22 +1162,22 @@ export const mcpApi = {
   list: (params?: { page?: number; page_size?: number; status?: string }) => {
     return apiService.get<any>('/mcp/servers', params)
   },
-  getById: (id: string) => {
+  getById: (id: number) => {
     return apiService.get<any>(`/mcp/servers/${id}`)
   },
   create: (data: any) => {
     return apiService.post<any>('/mcp/servers', data)
   },
-  update: (id: string, data: any) => {
+  update: (id: number, data: any) => {
     return apiService.put<any>(`/mcp/servers/${id}`, data)
   },
-  delete: (id: string) => {
+  delete: (id: number) => {
     return apiService.delete<any>(`/mcp/servers/${id}`)
   },
-  getTools: (serverId: string) => {
+  getTools: (serverId: number) => {
     return apiService.get<any>(`/mcp/servers/${serverId}/tools`)
   },
-  testConnection: (serverId: string) => {
+  testConnection: (serverId: number) => {
     return apiService.post<any>(`/mcp/servers/${serverId}/test`)
   }
 }
@@ -1141,22 +1186,22 @@ export const skillApi = {
   list: (params?: { page?: number; page_size?: number; category?: string }) => {
     return apiService.get<any>('/skills', params)
   },
-  getById: (id: string) => {
+  getById: (id: number) => {
     return apiService.get<any>(`/skills/${id}`)
   },
   create: (data: any) => {
     return apiService.post<any>('/skills', data)
   },
-  update: (id: string, data: any) => {
+  update: (id: number, data: any) => {
     return apiService.put<any>(`/skills/${id}`, data)
   },
-  delete: (id: string) => {
+  delete: (id: number) => {
     return apiService.delete<any>(`/skills/${id}`)
   },
-  enable: (id: string) => {
+  enable: (id: number) => {
     return apiService.patch<any>(`/skills/${id}/enable`)
   },
-  disable: (id: string) => {
+  disable: (id: number) => {
     return apiService.patch<any>(`/skills/${id}/disable`)
   }
 }
@@ -1165,16 +1210,16 @@ export const agentApi = {
   list: (params?: { page?: number; page_size?: number }) => {
     return apiService.get<any>('/agents', params)
   },
-  getById: (id: string) => {
+  getById: (id: number) => {
     return apiService.get<any>(`/agents/${id}`)
   },
   create: (data: any) => {
     return apiService.post<any>('/agents', data)
   },
-  update: (id: string, data: any) => {
+  update: (id: number, data: any) => {
     return apiService.put<any>(`/agents/${id}`, data)
   },
-  delete: (id: string) => {
+  delete: (id: number) => {
     return apiService.delete<any>(`/agents/${id}`)
   }
 }

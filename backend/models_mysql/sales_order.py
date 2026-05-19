@@ -38,6 +38,28 @@ class InvoiceStatus(str, Enum):
     FULL = "full"
 
 
+class CostType(str, Enum):
+    """成本类型枚举"""
+    PURCHASE = "purchase"      # 采购成本
+    FREIGHT = "freight"        # 运费
+    TRANSFER = "transfer"      # 调货费
+    OTHER = "other"            # 其他
+
+
+class CostSourceType(str, Enum):
+    """成本来源类型枚举"""
+    PURCHASE_ORDER = "purchase_order"  # 采购单
+    MANUAL = "manual"                  # 手动添加
+
+
+class FinanceStatus(str, Enum):
+    """财务状态枚举"""
+    UNPAID = "unpaid"                  # 未付款
+    PARTIAL_PAID = "partial_paid"      # 部分付款
+    PAID = "paid"                      # 已付款
+    RECONCILED = "reconciled"          # 已对账
+
+
 class ShippingMethod(str, Enum):
     """发货方式枚举"""
     DIRECT = "direct"      # 直运
@@ -57,6 +79,7 @@ class SalesOrder(Model):
     delivery_status = fields.CharEnumField(DeliveryStatus, default=DeliveryStatus.NONE, description="发货状态")
     receive_status = fields.CharEnumField(ReceiveStatus, default=ReceiveStatus.NONE, description="收货状态")
     invoice_status = fields.CharEnumField(InvoiceStatus, default=InvoiceStatus.NONE, description="开票状态")
+    finance_status = fields.CharEnumField(FinanceStatus, default=FinanceStatus.UNPAID, description="财务状态")
     total_amt = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="商品总金额（未税）")
     tax_rate = fields.DecimalField(max_digits=5, decimal_places=4, default=0.13, description="税率")
     tax_amt = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="税额")
@@ -90,6 +113,7 @@ class SalesOrder(Model):
             "delivery_status": self.delivery_status.value if self.delivery_status else None,
             "receive_status": self.receive_status.value if self.receive_status else None,
             "invoice_status": self.invoice_status.value if self.invoice_status else None,
+            "finance_status": self.finance_status.value if self.finance_status else None,
             "total_amt": float(self.total_amt),
             "tax_rate": float(self.tax_rate),
             "tax_amt": float(self.tax_amt),
@@ -132,6 +156,8 @@ class SalesOrderItem(Model):
     pushed = fields.BooleanField(default=False, description="是否已下推采购")
     out_qty = fields.IntField(default=0, description="已发货数量")
     return_qty = fields.IntField(default=0, description="已退货数量")
+    exchange_qty = fields.IntField(default=0, description="换货数量")
+    supplement_qty = fields.IntField(default=0, description="补货数量")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
 
@@ -216,8 +242,44 @@ class SalesOrderItem(Model):
             "pushed": self.pushed,
             "out_qty": self.out_qty,
             "return_qty": self.return_qty,
+            "exchange_qty": self.exchange_qty,
+            "supplement_qty": self.supplement_qty,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class SalesOrderCostItem(Model):
+    """销售订单成本明细"""
+    id = fields.IntField(pk=True, description="成本明细ID")
+    sales_order = fields.ForeignKeyField("models.SalesOrder", related_name="cost_items", on_delete=fields.CASCADE)
+    cost_type = fields.CharEnumField(CostType, description="成本类型")
+    amount = fields.DecimalField(max_digits=12, decimal_places=2, description="金额（未税）")
+    source_type = fields.CharEnumField(CostSourceType, description="来源类型")
+    source_no = fields.CharField(max_length=50, null=True, description="来源单号")
+    purchase_order_id = fields.IntField(null=True, description="关联采购单ID")
+    remark = fields.TextField(null=True, description="备注")
+    creator_id = fields.IntField(null=True, description="创建人ID")
+    creator_name = fields.CharField(max_length=100, null=True, description="创建人名称")
+    created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
+
+    class Meta:
+        table = "sales_order_cost_items"
+        ordering = ["-created_at"]
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "sales_order_id": self.sales_order_id,
+            "cost_type": self.cost_type.value if self.cost_type else None,
+            "amount": float(self.amount),
+            "source_type": self.source_type.value if self.source_type else None,
+            "source_no": self.source_no,
+            "purchase_order_id": self.purchase_order_id,
+            "remark": self.remark,
+            "creator_id": self.creator_id,
+            "creator_name": self.creator_name,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 

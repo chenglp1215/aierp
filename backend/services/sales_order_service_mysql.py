@@ -7,11 +7,13 @@ from typing import Dict, Any, List, Optional, Tuple
 from decimal import Decimal
 
 from tortoise.expressions import Q
-from tortoise.functions import Count
+from tortoise.functions import Count, Sum
 
 from models_mysql.sales_order import (
     SalesOrder, SalesOrderItem, SalesDeliverInfo, SalesInvoiceInfo,
-    OrderStatus, DeliveryStatus, ReceiveStatus, InvoiceStatus, ShippingMethod
+    SalesOrderCostItem,
+    OrderStatus, DeliveryStatus, ReceiveStatus, InvoiceStatus, ShippingMethod,
+    CostType, CostSourceType, FinanceStatus
 )
 from models_mysql.order_status_flow import OrderStatusFlow
 
@@ -75,6 +77,18 @@ class SalesOrderService:
             "tax_amt": tax_amt,
             "total_tax_amt": total_tax_amt,
         }
+
+    async def _calculate_cost_amt(self, sales_order_id: int) -> float:
+        """计算销售单成本总额"""
+        result = await SalesOrderCostItem.filter(
+            sales_order_id=sales_order_id
+        ).annotate(total=Sum("amount")).first()
+        return float(result.total) if result and result.total else 0.0
+
+    async def _calculate_profit_amt(self, sales_order_id: int, total_amt: float) -> float:
+        """计算销售单利润"""
+        cost_amt = await self._calculate_cost_amt(sales_order_id)
+        return round(total_amt - cost_amt, 2)
 
     # ============ 状态转换验证 ============
 
@@ -270,7 +284,26 @@ class SalesOrderService:
         total = await query.count()
         orders = await query.offset((page - 1) * page_size).limit(page_size)
 
-        return [order.to_dict() for order in orders], total
+        # 获取每个订单的成本、利润和商品明细
+        result = []
+        for order in orders:
+            order_dict = order.to_dict()
+
+            # 计算成本和利润
+            cost_amt = await self._calculate_cost_amt(order.id)
+            order_dict["cost_amt"] = cost_amt
+            order_dict["profit_amt"] = round(float(order.total_amt) - cost_amt, 2)
+
+            # 获取商品明细（用于展开行）
+            items = await SalesOrderItem.filter(sales_order_id=order.id).select_related(
+                "spec__product__brand",
+                "warehouse"
+            ).order_by("row_no")
+            order_dict["items"] = [await item.to_dict() for item in items]
+
+            result.append(order_dict)
+
+        return result, total
 
     # ============ 更新订单 ============
 
@@ -558,6 +591,109 @@ class SalesOrderService:
             )
 
         logger.info(f"销售订单下推状态重置: {order_no} -> {order.order_status.value}")
+        return True
+
+    # ============ 成本明细管理 ============
+
+    async def create_cost_item(
+        self,
+        order_no: str,
+        data: Dict[str, Any],
+        current_user: Dict = None
+    ) -> Dict[str, Any]:
+        """手动创建成本明细"""
+        order = await SalesOrder.filter(order_no=order_no).first()
+        if not order:
+            raise ValueError(f"订单不存在: {order_no}")
+
+        current_user = current_user or {}
+        cost_item = await SalesOrderCostItem.create(
+            sales_order_id=order.id,
+            cost_type=data.get("cost_type"),
+            amount=data.get("amount"),
+            source_type=CostSourceType.MANUAL,
+            remark=data.get("remark"),
+            creator_id=current_user.get("id"),
+            creator_name=current_user.get("full_name") or current_user.get("username"),
+        )
+
+        logger.info(f"销售单 {order_no} 创建成本明细: {cost_item.id}")
+        return cost_item.to_dict()
+
+    async def create_cost_item_from_purchase(
+        self,
+        sales_order_id: int,
+        purchase_order_id: int,
+        purchase_no: str,
+        amount: float,
+        current_user: Dict = None
+    ) -> Optional[Dict[str, Any]]:
+        """从采购单创建成本明细（采购付款完成时调用）"""
+        # 检查是否已存在
+        existing = await SalesOrderCostItem.filter(
+            purchase_order_id=purchase_order_id
+        ).first()
+        if existing:
+            logger.info(f"采购单 {purchase_no} 成本明细已存在，跳过创建")
+            return None
+
+        current_user = current_user or {}
+        cost_item = await SalesOrderCostItem.create(
+            sales_order_id=sales_order_id,
+            cost_type=CostType.PURCHASE,
+            amount=amount,
+            source_type=CostSourceType.PURCHASE_ORDER,
+            source_no=purchase_no,
+            purchase_order_id=purchase_order_id,
+            creator_id=current_user.get("id"),
+            creator_name=current_user.get("full_name") or current_user.get("username"),
+        )
+
+        logger.info(f"销售单 {sales_order_id} 从采购单 {purchase_no} 创建成本明细")
+        return cost_item.to_dict()
+
+    async def list_cost_items(self, order_no: str) -> List[Dict[str, Any]]:
+        """获取销售单成本明细列表"""
+        order = await SalesOrder.filter(order_no=order_no).first()
+        if not order:
+            raise ValueError(f"订单不存在: {order_no}")
+
+        items = await SalesOrderCostItem.filter(
+            sales_order_id=order.id
+        ).order_by("-created_at")
+
+        return [item.to_dict() for item in items]
+
+    async def delete_cost_item(self, order_no: str, item_id: int) -> bool:
+        """删除成本明细（仅 manual 类型可删除）"""
+        order = await SalesOrder.filter(order_no=order_no).first()
+        if not order:
+            raise ValueError(f"订单不存在: {order_no}")
+
+        cost_item = await SalesOrderCostItem.filter(
+            id=item_id,
+            sales_order_id=order.id
+        ).first()
+        if not cost_item:
+            raise ValueError("成本明细不存在")
+
+        if cost_item.source_type == CostSourceType.PURCHASE_ORDER:
+            raise ValueError("采购成本不可手动删除")
+
+        await cost_item.delete()
+        logger.info(f"销售单 {order_no} 删除成本明细: {item_id}")
+        return True
+
+    async def update_finance_status(self, order_no: str, finance_status: str) -> bool:
+        """更新财务状态"""
+        order = await SalesOrder.filter(order_no=order_no).first()
+        if not order:
+            raise ValueError(f"订单不存在: {order_no}")
+
+        order.finance_status = FinanceStatus(finance_status)
+        await order.save()
+
+        logger.info(f"销售单 {order_no} 财务状态更新为: {finance_status}")
         return True
 
 
