@@ -1467,12 +1467,12 @@ onBeforeUnmount(() => {
         @checkbox-change="handleCheckboxChange"
       >
         <vxe-column type="checkbox" width="50" fixed="left" class-name="col--center" />
-        <vxe-column field="order_no" title="订单编号" width="160" fixed="left" class-name="col--center">
+        <vxe-column field="order_no" title="订单编号" width="160" class-name="col--center">
           <template #default="{ row }">
             <span class="order-link" @click="emit('navigate', 'sales-order-detail', { orderNo: row.order_no })">{{ row.order_no }}</span>
           </template>
         </vxe-column>
-        <vxe-column type="expand" width="50" fixed="left" class-name="col--center">
+        <vxe-column type="expand" width="50" class-name="col--center">
           <template #content="{ row }">
             <div class="expand-items-panel">
               <table class="expand-items-table">
@@ -3309,6 +3309,7 @@ onBeforeUnmount(() => {
 .expand-items-panel {
   padding: 12px 16px;
   background-color: var(--bg-card);
+  margin-left: 50px;
 }
 
 /* 固定列遮盖展开内容 */
