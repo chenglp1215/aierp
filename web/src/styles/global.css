@@ -17,6 +17,7 @@
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
   --shadow-hover: 0 6px 24px rgba(0, 0, 0, 0.5);
   --sidebar-width: 260px;
+  --sidebar-width-collapsed: 60px;
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s ease;
 }
