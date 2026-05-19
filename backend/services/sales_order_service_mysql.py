@@ -79,16 +79,16 @@ class SalesOrderService:
         }
 
     async def _calculate_cost_amt(self, sales_order_id: int) -> float:
-        """计算销售单成本总额"""
+        """计算销售单成本总额（含税）"""
         result = await SalesOrderCostItem.filter(
             sales_order_id=sales_order_id
         ).annotate(total=Sum("amount")).first()
         return float(result.total) if result and result.total else 0.0
 
-    async def _calculate_profit_amt(self, sales_order_id: int, total_amt: float) -> float:
-        """计算销售单利润"""
+    async def _calculate_profit_amt(self, sales_order_id: int, total_tax_amt: float) -> float:
+        """计算销售单利润（含税销售额 - 含税成本）"""
         cost_amt = await self._calculate_cost_amt(sales_order_id)
-        return round(total_amt - cost_amt, 2)
+        return round(total_tax_amt - cost_amt, 2)
 
     # ============ 状态转换验证 ============
 
@@ -289,10 +289,10 @@ class SalesOrderService:
         for order in orders:
             order_dict = order.to_dict()
 
-            # 计算成本和利润
+            # 计算成本和利润（含税销售额 - 含税成本）
             cost_amt = await self._calculate_cost_amt(order.id)
             order_dict["cost_amt"] = cost_amt
-            order_dict["profit_amt"] = round(float(order.total_amt) - cost_amt, 2)
+            order_dict["profit_amt"] = round(float(order.total_tax_amt) - cost_amt, 2)
 
             # 获取商品明细（用于展开行）
             items = await SalesOrderItem.filter(sales_order_id=order.id).select_related(
@@ -626,30 +626,34 @@ class SalesOrderService:
         purchase_order_id: int,
         purchase_no: str,
         amount: float,
+        cost_type: str = "purchase",
+        remark: str = None,
         current_user: Dict = None
     ) -> Optional[Dict[str, Any]]:
-        """从采购单创建成本明细（采购付款完成时调用）"""
-        # 检查是否已存在
+        """从采购单创建成本明细（采购单审核通过时调用）"""
+        # 检查是否已存在相同类型的成本明细
         existing = await SalesOrderCostItem.filter(
-            purchase_order_id=purchase_order_id
+            purchase_order_id=purchase_order_id,
+            cost_type=cost_type
         ).first()
         if existing:
-            logger.info(f"采购单 {purchase_no} 成本明细已存在，跳过创建")
+            logger.info(f"采购单 {purchase_no} {cost_type} 成本明细已存在，跳过创建")
             return None
 
         current_user = current_user or {}
         cost_item = await SalesOrderCostItem.create(
             sales_order_id=sales_order_id,
-            cost_type=CostType.PURCHASE,
+            cost_type=cost_type,
             amount=amount,
             source_type=CostSourceType.PURCHASE_ORDER,
             source_no=purchase_no,
             purchase_order_id=purchase_order_id,
+            remark=remark,
             creator_id=current_user.get("id"),
             creator_name=current_user.get("full_name") or current_user.get("username"),
         )
 
-        logger.info(f"销售单 {sales_order_id} 从采购单 {purchase_no} 创建成本明细")
+        logger.info(f"销售单 {sales_order_id} 从采购单 {purchase_no} 创建 {cost_type} 成本明细")
         return cost_item.to_dict()
 
     async def list_cost_items(self, order_no: str) -> List[Dict[str, Any]]:

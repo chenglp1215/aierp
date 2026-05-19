@@ -102,7 +102,7 @@ async def approve_purchase_order(
     current_user: dict = Depends(require_permission("purchase.edit"))
 ):
     operator = current_user.get("username", current_user.get("full_name", "system"))
-    await purchase_order_service.approve_order(purchase_no, operator)
+    await purchase_order_service.approve_order(purchase_no, operator, current_user)
     return "采购单审核通过"
 
 

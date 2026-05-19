@@ -202,8 +202,8 @@ class PurchaseOrderService:
 
     # ============ 状态操作 ============
 
-    async def approve_order(self, purchase_no: str, operator: str = "system") -> bool:
-        """审核通过"""
+    async def approve_order(self, purchase_no: str, operator: str = "system", current_user: Dict = None) -> bool:
+        """审核通过 - 创建成本明细"""
         order = await PurchaseOrder.filter(purchase_no=purchase_no).first()
         if not order:
             raise ValueError(f"采购单不存在: {purchase_no}")
@@ -224,6 +224,29 @@ class PurchaseOrderService:
             operator=operator,
             remark="审核通过",
         )
+
+        # 创建成本明细（如果有关联销售单）
+        if order.source_sale_order_id:
+            # 创建采购成本（含税金额）
+            await sales_order_service.create_cost_item_from_purchase(
+                sales_order_id=order.source_sale_order_id,
+                purchase_order_id=order.id,
+                purchase_no=purchase_no,
+                amount=float(order.total_tax_amt),  # 含税金额
+                cost_type="purchase",
+                current_user=current_user
+            )
+            # 创建运费成本（如果有运费）
+            if order.freight_amt and float(order.freight_amt) > 0:
+                await sales_order_service.create_cost_item_from_purchase(
+                    sales_order_id=order.source_sale_order_id,
+                    purchase_order_id=order.id,
+                    purchase_no=purchase_no,
+                    amount=float(order.freight_amt),
+                    cost_type="freight",
+                    remark=f"采购单 {purchase_no} 运费",
+                    current_user=current_user
+                )
 
         logger.info(f"采购单审核通过: {purchase_no}")
         return True
@@ -490,7 +513,7 @@ class PurchaseOrderService:
         purchase_no: str,
         current_user: Dict = None
     ) -> Dict[str, Any]:
-        """付款完成 - 更新付款状态并创建成本明细"""
+        """付款完成 - 更新付款状态"""
         purchase = await PurchaseOrder.filter(purchase_no=purchase_no).first()
         if not purchase:
             raise ValueError(f"采购单不存在: {purchase_no}")
@@ -502,23 +525,10 @@ class PurchaseOrderService:
         purchase.pay_status = PayStatus.FULL
         await purchase.save()
 
-        # 创建成本明细（如果有关联销售单）
-        cost_item_created = False
-        if purchase.source_sale_order_id:
-            result = await sales_order_service.create_cost_item_from_purchase(
-                sales_order_id=purchase.source_sale_order_id,
-                purchase_order_id=purchase.id,
-                purchase_no=purchase_no,
-                amount=float(purchase.total_amt),
-                current_user=current_user
-            )
-            cost_item_created = result is not None
-
         logger.info(f"采购单 {purchase_no} 付款完成")
         return {
             "purchase_no": purchase_no,
-            "pay_status": PayStatus.FULL.value,
-            "cost_item_created": cost_item_created
+            "pay_status": PayStatus.FULL.value
         }
 
 
