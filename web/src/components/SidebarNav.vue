@@ -120,6 +120,10 @@ const toggleExpand = (id: string) => {
 
 const handleMenuClick = (item: MenuItem) => {
   if (item.children) {
+    // 收起状态下点击有子菜单的项，先展开侧边栏
+    if (isCollapsed.value) {
+      toggleSidebar()
+    }
     toggleExpand(item.id)
   } else {
     activeMenu.value = item.id
@@ -176,6 +180,7 @@ const handleStorageChange = async (event: StorageEvent) => {
           class="nav-item"
           :class="{ active: isActive(item.id), expanded: isExpanded(item.id) }"
           @click="handleMenuClick(item)"
+          :title="isCollapsed ? item.label : ''"
         >
           <span class="nav-icon">
             <svg v-if="item.icon === 'dashboard'" viewBox="0 0 24 24" fill="currentColor">
@@ -226,6 +231,7 @@ const handleStorageChange = async (event: StorageEvent) => {
             class="nav-item submenu-item"
             :class="{ active: isActive(child.id) }"
             @click="handleMenuClick(child)"
+            :title="isCollapsed ? child.label : ''"
           >
             <span class="nav-icon small">
               <svg v-if="child.icon === 'order'" viewBox="0 0 24 24" fill="currentColor">
