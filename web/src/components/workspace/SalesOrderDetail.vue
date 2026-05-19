@@ -384,61 +384,6 @@ const getFlowFieldName = (field: string) => {
   return map[field] || field
 }
 
-// 获取进度步骤样式类
-const getProgressStepClass = (type: 'order' | 'delivery' | 'receive' | 'invoice') => {
-  if (!order.value) return ''
-
-  const statusMap = {
-    order: order.value.order_status,
-    delivery: order.value.delivery_status,
-    receive: order.value.receive_status,
-    invoice: order.value.invoice_status
-  }
-
-  const status = statusMap[type]
-
-  // 订单状态特殊处理
-  if (type === 'order') {
-    if (['audited', 'partially_pushed_to_purchase', 'pushed_to_purchase', 'closed'].includes(status)) {
-      return 'completed'
-    }
-    return 'pending'
-  }
-
-  // 其他状态
-  if (status === 'full') return 'completed'
-  if (status === 'partial') return 'partial'
-  return 'pending'
-}
-
-// 获取进度连接线样式类
-const getProgressLineClass = (type: 'order' | 'delivery' | 'receive') => {
-  const stepClass = getProgressStepClass(type)
-  return stepClass === 'completed' ? 'completed' : ''
-}
-
-// 获取进度步骤状态文本
-const getProgressStepStatus = (type: 'order' | 'delivery' | 'receive' | 'invoice') => {
-  if (!order.value) return '-'
-
-  const statusMap = {
-    order: order.value.order_status,
-    delivery: order.value.delivery_status,
-    receive: order.value.receive_status,
-    invoice: order.value.invoice_status
-  }
-
-  const labelMap = {
-    order: orderStatusMap,
-    delivery: deliveryStatusMap,
-    receive: receiveStatusMap,
-    invoice: invoiceStatusMap
-  }
-
-  const status = statusMap[type]
-  return labelMap[type][status]?.label || status || '-'
-}
-
 // ============ 初始化 ============
 onMounted(() => { loadOrder() })
 onActivated(() => { loadOrder() })
@@ -508,32 +453,39 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
           </div>
         </div>
 
-        <!-- 状态进度条 -->
+        <!-- 状态卡片网格 -->
         <div class="section-card">
-          <h3 class="section-title">订单进度</h3>
-          <div class="status-progress">
-            <div class="progress-step" :class="getProgressStepClass('order')">
-              <div class="step-dot"></div>
-              <div class="step-label">订单</div>
-              <div class="step-status">{{ getProgressStepStatus('order') }}</div>
+          <h3 class="section-title">状态信息</h3>
+          <div class="status-cards">
+            <div class="status-card">
+              <div class="status-card-label">订单状态</div>
+              <span class="status-tag" :class="getStatusClass(orderStatusMap, order.order_status)">
+                {{ getStatusLabel(orderStatusMap, order.order_status) }}
+              </span>
             </div>
-            <div class="progress-line" :class="getProgressLineClass('order')"></div>
-            <div class="progress-step" :class="getProgressStepClass('delivery')">
-              <div class="step-dot"></div>
-              <div class="step-label">发货</div>
-              <div class="step-status">{{ getProgressStepStatus('delivery') }}</div>
+            <div class="status-card">
+              <div class="status-card-label">发货状态</div>
+              <span class="status-tag" :class="getStatusClass(deliveryStatusMap, order.delivery_status)">
+                {{ getStatusLabel(deliveryStatusMap, order.delivery_status) }}
+              </span>
             </div>
-            <div class="progress-line" :class="getProgressLineClass('delivery')"></div>
-            <div class="progress-step" :class="getProgressStepClass('receive')">
-              <div class="step-dot"></div>
-              <div class="step-label">收货</div>
-              <div class="step-status">{{ getProgressStepStatus('receive') }}</div>
+            <div class="status-card">
+              <div class="status-card-label">收货状态</div>
+              <span class="status-tag" :class="getStatusClass(receiveStatusMap, order.receive_status)">
+                {{ getStatusLabel(receiveStatusMap, order.receive_status) }}
+              </span>
             </div>
-            <div class="progress-line" :class="getProgressLineClass('receive')"></div>
-            <div class="progress-step" :class="getProgressStepClass('invoice')">
-              <div class="step-dot"></div>
-              <div class="step-label">开票</div>
-              <div class="step-status">{{ getProgressStepStatus('invoice') }}</div>
+            <div class="status-card">
+              <div class="status-card-label">开票状态</div>
+              <span class="status-tag" :class="getStatusClass(invoiceStatusMap, order.invoice_status)">
+                {{ getStatusLabel(invoiceStatusMap, order.invoice_status) }}
+              </span>
+            </div>
+            <div class="status-card">
+              <div class="status-card-label">财务状态</div>
+              <span class="status-tag" :class="getStatusClass(financeStatusMap, order.finance_status)">
+                {{ getStatusLabel(financeStatusMap, order.finance_status) }}
+              </span>
             </div>
           </div>
         </div>
@@ -970,72 +922,28 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
   font-weight: 500;
 }
 
-/* 状态进度条 */
-.status-progress {
+/* 状态卡片网格 */
+.status-cards {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 12px 0;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
-.progress-step {
+.status-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex: 0 0 auto;
-  min-width: 60px;
-}
-
-.step-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid var(--border-color);
+  gap: 8px;
+  padding: 12px 16px;
   background-color: var(--bg-secondary);
-  margin-bottom: 6px;
-  position: relative;
-}
-
-.progress-step.completed .step-dot {
-  background-color: var(--accent-blue);
-  border-color: var(--accent-blue);
-}
-
-.progress-step.partial .step-dot {
-  background: linear-gradient(135deg, var(--accent-blue) 50%, var(--bg-secondary) 50%);
-  border-color: var(--accent-blue);
-}
-
-.progress-step.pending .step-dot {
-  background-color: var(--bg-secondary);
-  border-color: var(--text-muted);
-}
-
-.step-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-  margin-bottom: 2px;
-}
-
-.step-status {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.progress-step.completed .step-status {
-  color: var(--accent-blue);
-}
-
-.progress-line {
+  border-radius: var(--radius-sm);
+  min-width: 100px;
   flex: 1;
-  height: 2px;
-  background-color: var(--border-color);
-  margin: 23px 8px 0;
 }
 
-.progress-line.completed {
-  background-color: var(--accent-blue);
+.status-card-label {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 /* 金额网格 */
