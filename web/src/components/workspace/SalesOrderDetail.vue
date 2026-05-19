@@ -937,6 +937,145 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
   gap: 8px;
 }
 
+/* 顶部区域 */
+.top-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* 基本信息横向布局 */
+.info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.info-item-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+}
+
+.info-item-inline label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.info-item-inline span {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* 状态进度条 */
+.status-progress {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 60px;
+}
+
+.step-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  margin-bottom: 6px;
+  position: relative;
+}
+
+.progress-step.completed .step-dot {
+  background-color: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+.progress-step.partial .step-dot {
+  background: linear-gradient(135deg, var(--accent-blue) 50%, var(--bg-secondary) 50%);
+  border-color: var(--accent-blue);
+}
+
+.progress-step.pending .step-dot {
+  background-color: var(--bg-secondary);
+  border-color: var(--text-muted);
+}
+
+.step-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.step-status {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.progress-step.completed .step-status {
+  color: var(--accent-blue);
+}
+
+.progress-line {
+  flex: 1;
+  height: 2px;
+  background-color: var(--border-color);
+  margin: 23px 8px 0;
+}
+
+.progress-line.completed {
+  background-color: var(--accent-blue);
+}
+
+/* 金额网格 */
+.amount-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.amount-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 100px;
+}
+
+.amount-item .amount-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.amount-item .amount-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.amount-item.highlight .amount-value {
+  color: var(--accent-blue);
+  font-size: 17px;
+}
+
+.amount-item.profit .amount-value {
+  color: var(--accent-green);
+}
+
+.amount-item.loss .amount-value {
+  color: var(--accent-red);
+}
+
 /* 双栏布局 */
 .two-col-row {
   display: grid;
@@ -1194,6 +1333,37 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
   color: var(--text-muted);
 }
 
+/* 主 Tab */
+.main-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* 成本汇总 */
+.cost-summary {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  margin-top: 12px;
+}
+
+.cost-summary-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.cost-summary-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent-blue);
+}
+
 /* 空状态 */
 .empty-state {
   padding: 28px;
@@ -1250,6 +1420,38 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
 .flow-new { color: var(--accent-blue); font-weight: 500; }
 .flow-operator { font-size: 12px; color: var(--text-muted); }
 .flow-remark { font-size: 12px; color: var(--text-muted); font-style: italic; }
+
+/* 折叠区块 */
+.collapsible-section .section-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapsible-section .section-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.collapse-icon {
+  transition: transform 0.2s ease;
+  color: var(--text-muted);
+}
+
+.collapse-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.record-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: normal;
+  margin-left: 4px;
+}
+
+.collapsible-content {
+  padding-top: 14px;
+}
 
 /* 按钮 */
 .btn-primary {
