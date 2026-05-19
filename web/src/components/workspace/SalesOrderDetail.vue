@@ -587,101 +587,90 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
         </div>
       </div>
 
-      <!-- 商品明细 -->
+      <!-- 主 Tab 区域 -->
       <div class="section-card">
-        <h3 class="section-title">商品明细 ({{ order.items?.length || 0 }})</h3>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>行号</th>
-                <th>商品</th>
-                <th>品牌</th>
-                <th>规格</th>
-                <th>仓库</th>
-                <th class="col-num">数量</th>
-                <th class="col-num">库存</th>
-                <th>库存状态</th>
-                <th class="col-num">单价</th>
-                <th class="col-num">金额</th>
-                <th>发货方式</th>
-                <th>下推状态</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in order.items" :key="item.row_no" :class="{ 'row-pushed': item.pushed }">
-                <td>{{ item.row_no }}</td>
-                <td>{{ item.product_name || item.product_id }}</td>
-                <td>{{ item.brand_name || '-' }}</td>
-                <td>{{ item.spec_code || '-' }}</td>
-                <td>{{ item.shipping_method === '直运' ? '--' : (item.warehouse_name || '-') }}</td>
-                <td class="col-num">{{ item.qty }}</td>
-                <td class="col-num">{{ item.stock_quantity ?? '-' }}</td>
-                <td>
-                  <span v-if="item.stock_status" class="status-tag" :class="getStatusClass(stockStatusMap, item.stock_status)">
-                    {{ getStatusLabel(stockStatusMap, item.stock_status) }}
-                  </span>
-                  <span v-else class="text-muted">-</span>
-                </td>
-                <td class="col-num">{{ item.price?.toFixed(2) }}</td>
-                <td class="col-num">{{ item.amt?.toFixed(2) }}</td>
-                <td>{{ item.shipping_method }}</td>
-                <td>
-                  <span v-if="item.shipping_method !== '直运' && (item.stock_quantity ?? 0) >= item.qty" class="status-tag stock-sufficient">库存发货，无需采购</span>
-                  <span v-else-if="item.pushed" class="status-tag pushed">已下推</span>
-                  <span v-else class="status-tag pending">待下推</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- 双栏：金额 + 备注 -->
-      <div class="two-col-row">
-        <div class="col-left">
-          <div class="section-card">
-            <h3 class="section-title">金额信息</h3>
-            <div class="amount-list">
-              <div class="amount-row">
-                <span class="amount-label">不含税总额</span>
-                <span class="amount-value">¥{{ order.total_amt?.toFixed(2) }}</span>
-              </div>
-              <div class="amount-row">
-                <span class="amount-label">税额</span>
-                <span class="amount-value">¥{{ order.tax_amt?.toFixed(2) }}</span>
-              </div>
-              <div class="amount-row highlight">
-                <span class="amount-label">含税总额</span>
-                <span class="amount-value">¥{{ order.total_tax_amt?.toFixed(2) }}</span>
-              </div>
-              <div class="amount-row" v-if="order.total_discount_amt">
-                <span class="amount-label">整单折扣</span>
-                <span class="amount-value">¥{{ order.total_discount_amt?.toFixed(2) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-right">
-          <div class="section-card" v-if="order.remark">
-            <h3 class="section-title">备注</h3>
-            <p class="remarks-text">{{ order.remark }}</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 关联单据 Tab -->
-      <div class="section-card">
-        <div class="related-tabs">
-          <button class="tab-btn" :class="{ active: activeRelatedTab === 'purchase' }" @click="activeRelatedTab = 'purchase'">
-            采购单 <span class="tab-count">{{ purchaseOrders.length }}</span>
+        <div class="main-tabs">
+          <button
+            class="tab-btn"
+            :class="{ active: activeMainTab === 'items' }"
+            @click="activeMainTab = 'items'"
+          >
+            商品明细 <span class="tab-count">({{ order.items?.length || 0 }})</span>
           </button>
-          <button class="tab-btn" :class="{ active: activeRelatedTab === 'receivable' }" @click="activeRelatedTab = 'receivable'">
-            收款单 <span class="tab-count">{{ receivables.length }}</span>
+          <button
+            class="tab-btn"
+            :class="{ active: activeMainTab === 'purchase' }"
+            @click="activeMainTab = 'purchase'"
+          >
+            采购单 <span class="tab-count">({{ purchaseOrders.length }})</span>
+          </button>
+          <button
+            class="tab-btn"
+            :class="{ active: activeMainTab === 'receivable' }"
+            @click="activeMainTab = 'receivable'"
+          >
+            收款单 <span class="tab-count">({{ receivables.length }})</span>
+          </button>
+          <button
+            class="tab-btn"
+            :class="{ active: activeMainTab === 'cost' }"
+            @click="activeMainTab = 'cost'"
+          >
+            成本明细 <span class="tab-count">({{ costItems.length }})</span>
           </button>
         </div>
 
-        <div v-if="activeRelatedTab === 'purchase'">
+        <!-- 商品明细 Tab -->
+        <div v-if="activeMainTab === 'items'">
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>行号</th>
+                  <th>商品</th>
+                  <th>品牌</th>
+                  <th>规格</th>
+                  <th>仓库</th>
+                  <th class="col-num">数量</th>
+                  <th class="col-num">库存</th>
+                  <th>库存状态</th>
+                  <th class="col-num">单价</th>
+                  <th class="col-num">金额</th>
+                  <th>发货方式</th>
+                  <th>下推状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in order.items" :key="item.row_no" :class="{ 'row-pushed': item.pushed }">
+                  <td>{{ item.row_no }}</td>
+                  <td>{{ item.product_name || item.product_id }}</td>
+                  <td>{{ item.brand_name || '-' }}</td>
+                  <td>{{ item.spec_code || '-' }}</td>
+                  <td>{{ item.shipping_method === '直运' ? '--' : (item.warehouse_name || '-') }}</td>
+                  <td class="col-num">{{ item.qty }}</td>
+                  <td class="col-num">{{ item.stock_quantity ?? '-' }}</td>
+                  <td>
+                    <span v-if="item.stock_status" class="status-tag" :class="getStatusClass(stockStatusMap, item.stock_status)">
+                      {{ getStatusLabel(stockStatusMap, item.stock_status) }}
+                    </span>
+                    <span v-else class="text-muted">-</span>
+                  </td>
+                  <td class="col-num">{{ item.price?.toFixed(2) }}</td>
+                  <td class="col-num">{{ item.amt?.toFixed(2) }}</td>
+                  <td>{{ item.shipping_method }}</td>
+                  <td>
+                    <span v-if="item.shipping_method !== '直运' && (item.stock_quantity ?? 0) >= item.qty" class="status-tag stock-sufficient">库存发货，无需采购</span>
+                    <span v-else-if="item.pushed" class="status-tag pushed">已下推</span>
+                    <span v-else class="status-tag pending">待下推</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 采购单 Tab -->
+        <div v-if="activeMainTab === 'purchase'">
           <div v-if="purchaseOrders.length === 0" class="empty-state">暂无关联采购单</div>
           <div v-else class="table-wrapper">
             <table class="data-table">
@@ -709,7 +698,8 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
           </div>
         </div>
 
-        <div v-if="activeRelatedTab === 'receivable'">
+        <!-- 收款单 Tab -->
+        <div v-if="activeMainTab === 'receivable'">
           <div v-if="receivables.length === 0" class="empty-state">暂无关联收款单</div>
           <div v-else class="table-wrapper">
             <table class="data-table">
@@ -733,6 +723,39 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
               </tbody>
             </table>
           </div>
+        </div>
+
+        <!-- 成本明细 Tab -->
+        <div v-if="activeMainTab === 'cost'">
+          <div v-if="costItems.length === 0" class="empty-state">暂无成本明细，采购单审核后自动生成</div>
+          <template v-else>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>成本类型</th>
+                    <th class="col-num">金额</th>
+                    <th>来源</th>
+                    <th>来源单号</th>
+                    <th>备注</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in costItems" :key="item.id">
+                    <td>{{ costTypeMap[item.cost_type] || item.cost_type }}</td>
+                    <td class="col-num">¥{{ item.amount?.toFixed(2) }}</td>
+                    <td>{{ sourceTypeMap[item.source_type] || item.source_type }}</td>
+                    <td>{{ item.source_no || '-' }}</td>
+                    <td>{{ item.remark || '-' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="cost-summary">
+              <span class="cost-summary-label">成本合计</span>
+              <span class="cost-summary-value">¥{{ totalCostAmount.toFixed(2) }}</span>
+            </div>
+          </template>
         </div>
       </div>
 
