@@ -142,6 +142,36 @@ async def delete_sales_order(
     return "订单删除成功"
 
 
+@sales_order_router.post("/{order_no}/test-update-status", response_model=dict, description="测试用：手动修改订单业务状态")
+@wrap_response
+async def test_update_status(
+    order_no: str,
+    data: Dict[str, Any] = Body(...),
+    current_user: dict = Depends(require_permission("order.edit"))
+):
+    """
+    测试用接口：手动修改发货、收货、财务、开票状态。
+
+    注意：此接口仅用于测试自动完成机制，后续版本删除。
+
+    参数：
+    - delivery_status: 发货状态 (none/partial/full)
+    - receive_status: 收货状态 (none/partial/full)
+    - finance_status: 财务状态 (unpaid/partial_paid/paid/reconciled)
+    - invoice_status: 开票状态 (none/partial/full)
+    """
+    operator = current_user.get("username", current_user.get("full_name", "system"))
+    result = await sales_order_service.test_update_status(
+        order_no=order_no,
+        delivery_status=data.get("delivery_status"),
+        receive_status=data.get("receive_status"),
+        finance_status=data.get("finance_status"),
+        invoice_status=data.get("invoice_status"),
+        operator=operator
+    )
+    return result
+
+
 @sales_order_router.post("/{order_no}/push-to-purchase", response_model=dict, description="下推采购")
 @wrap_response
 async def push_to_purchase(

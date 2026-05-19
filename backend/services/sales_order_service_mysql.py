@@ -576,6 +576,60 @@ class SalesOrderService:
         logger.info(f"销售订单自动完成: {order_no}, {old_status.value} → closed")
         return True
 
+    async def test_update_status(
+        self,
+        order_no: str,
+        delivery_status: Optional[str] = None,
+        receive_status: Optional[str] = None,
+        finance_status: Optional[str] = None,
+        invoice_status: Optional[str] = None,
+        operator: str = "system"
+    ) -> dict:
+        """测试用：手动修改订单业务状态
+
+        注意：此接口仅用于测试自动完成机制，后续版本删除。
+        """
+        order = await SalesOrder.filter(order_no=order_no).first()
+        if not order:
+            raise ValueError(f"订单不存在: {order_no}")
+
+        updates = []
+
+        if delivery_status:
+            order.delivery_status = DeliveryStatus(delivery_status)
+            updates.append(f"delivery_status: {delivery_status}")
+
+        if receive_status:
+            order.receive_status = ReceiveStatus(receive_status)
+            updates.append(f"receive_status: {receive_status}")
+
+        if finance_status:
+            order.finance_status = FinanceStatus(finance_status)
+            updates.append(f"finance_status: {finance_status}")
+
+        if invoice_status:
+            order.invoice_status = InvoiceStatus(invoice_status)
+            updates.append(f"invoice_status: {invoice_status}")
+
+        await order.save()
+
+        logger.info(f"测试状态修改: {order_no}, {', '.join(updates)}, operator={operator}")
+
+        # 检查是否触发自动完成
+        auto_completed = await self.check_and_auto_complete(order_no, operator)
+
+        # 重新获取订单返回最新状态
+        order = await SalesOrder.filter(order_no=order_no).first()
+        return {
+            "order_no": order_no,
+            "delivery_status": order.delivery_status.value,
+            "receive_status": order.receive_status.value,
+            "finance_status": order.finance_status.value,
+            "invoice_status": order.invoice_status.value,
+            "order_status": order.order_status.value,
+            "auto_completed": auto_completed
+        }
+
     # ============ 下推采购相关 ============
 
     async def update_push_status(
