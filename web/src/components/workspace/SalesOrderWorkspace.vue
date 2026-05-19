@@ -593,6 +593,15 @@ const syncTopScroll = () => {
   }
 }
 
+// 监听表格滚动，同步展开内容位置
+const handleTableScroll = ({ scrollLeft }: { scrollLeft: number }) => {
+  // 获取所有展开内容的 div，设置它们的 scrollLeft
+  const panels = document.querySelectorAll('.expand-items-panel')
+  panels.forEach((panel: Element) => {
+    (panel as HTMLElement).scrollLeft = scrollLeft
+  })
+}
+
 const resetFilters = () => {
   filterStatus.value = ''
   filterCustomerId.value = ''
@@ -1465,6 +1474,7 @@ onBeforeUnmount(() => {
         :scroll-x="{ enabled: true, gt: 0 }"
         :checkbox-config="{ reserve: true }"
         @checkbox-change="handleCheckboxChange"
+        @scroll="handleTableScroll"
       >
         <vxe-column type="checkbox" width="50" fixed="left" class-name="col--center" />
         <vxe-column field="order_no" title="订单编号" width="160" class-name="col--center">
@@ -3309,6 +3319,9 @@ onBeforeUnmount(() => {
 .expand-items-panel {
   padding: 12px 16px;
   background-color: var(--bg-card);
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-left: 50px;
 }
 
 /* 展开行跟随表格主体滚动 */
@@ -3318,11 +3331,6 @@ onBeforeUnmount(() => {
 
 :deep(.vxe-table--expanded .vxe-body--column) {
   position: relative !important;
-}
-
-:deep(.vxe-table--expanded .expand-items-panel) {
-  margin-left: 50px;
-  margin-right: 240px;
 }
 
 /* 固定列遮盖展开内容 */
