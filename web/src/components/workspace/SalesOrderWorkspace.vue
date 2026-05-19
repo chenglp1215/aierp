@@ -196,6 +196,7 @@ const pageSize = ref(20)
 const filterStatus = ref('')
 const filterCustomerId = ref('')
 const filterKeyword = ref('')
+const selectedRows = ref<SalesOrder[]>([])
 
 // Modals
 const showOrderModal = ref(false)
@@ -554,6 +555,30 @@ const handlePageChange = ({ currentPage, pageSize: newPageSize }: { currentPage:
   page.value = currentPage
   pageSize.value = newPageSize
   loadOrders()
+}
+
+const handleCheckboxChange = ({ records }: { records: SalesOrder[] }) => {
+  selectedRows.value = records
+}
+
+const handleBatchSubmit = async () => {
+  const draftOrders = selectedRows.value.filter(o => o.order_status === 'draft')
+  if (draftOrders.length === 0) {
+    window.showToast('请选择草稿状态的订单', 'error')
+    return
+  }
+
+  try {
+    for (const order of draftOrders) {
+      await salesOrderApi.submit(order.order_no)
+    }
+    window.showToast(`成功提交 ${draftOrders.length} 个订单`, 'success')
+    selectedRows.value = []
+    loadOrders()
+  } catch (error) {
+    console.error('批量提交失败:', error)
+    window.showToast('批量提交失败', 'error')
+  }
 }
 
 const resetFilters = () => {
@@ -1400,6 +1425,13 @@ onBeforeUnmount(() => {
         </div>
         <button class="filter-btn" @click="handleSearch">搜索</button>
         <button class="filter-btn reset-btn" @click="resetFilters" v-if="hasActiveFilters">重置</button>
+        <button
+          class="filter-btn primary-btn"
+          @click="handleBatchSubmit"
+          v-if="selectedRows.length > 0"
+        >
+          批量提交审核 ({{ selectedRows.length }})
+        </button>
       </div>
     </div>
 
@@ -1407,70 +1439,81 @@ onBeforeUnmount(() => {
       <div v-if="loading" class="table-loading-overlay">
         <div class="table-loading-content">加载中...</div>
       </div>
-      
+
       <vxe-table
         :data="orders"
         :column-config="{ resizable: true }"
-        :seq-config="{ seqMethod: ({ rowIndex }) => rowIndex + 1 + (page - 1) * pageSize }"
         :row-config="{ isHover: true }"
         :expand-config="{}"
+        :scroll-x="{ enabled: true }"
+        :checkbox-config="{ reserve: true }"
+        @checkbox-change="handleCheckboxChange"
       >
-        <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
-        <vxe-column field="order_no" title="订单编号" width="160" fixed="left" class-name="col--center">
+        <vxe-column type="checkbox" width="50" fixed="left" class-name="col--center" />
+        <vxe-column field="order_date" title="订单日期" width="120" fixed="left" class-name="col--center">
           <template #default="{ row }">
-            <span class="order-link" @click="emit('navigate', 'sales-order-detail', { orderNo: row.order_no })">{{ row.order_no }}</span>
+            {{ formatDate(row.order_date) }}
           </template>
         </vxe-column>
-        <vxe-column type="expand" width="50" class-name="col--center">
+        <vxe-column type="expand" width="50" fixed="left" class-name="col--center">
           <template #content="{ row }">
             <div class="expand-items-panel">
               <table class="expand-items-table">
                 <thead>
                   <tr>
-                    <th style="width: 50px">行号</th>
-                    <th>商品名称</th>
-                    <th style="width: 100px">规格编码</th>
-                    <th style="width: 120px">包装和包装单位</th>
+                    <th style="width: 120px">品牌名</th>
+                    <th style="width: 100px">规格编号</th>
+                    <th>产品名称</th>
+                    <th style="width: 100px">规格</th>
+                    <th style="width: 100px">包装单位</th>
                     <th style="width: 80px; text-align: right">数量</th>
-                    <th style="width: 100px; text-align: right">单价</th>
-                    <th style="width: 100px; text-align: right">折后价</th>
-                    <th style="width: 100px; text-align: right">金额</th>
-                    <th style="width: 120px">仓库</th>
-                    <th style="width: 80px">发货方式</th>
+                    <th style="width: 100px; text-align: right">原价</th>
+                    <th style="width: 100px; text-align: right">退/换/补货数量</th>
+                    <th style="width: 100px; text-align: right">含税单价</th>
+                    <th style="width: 100px; text-align: right">合计</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(item, idx) in row.items" :key="idx">
-                    <td class="col--center">{{ item.row_no }}</td>
-                    <td><span v-if="item.brand_name">[{{ item.brand_name }}] </span>{{ item.product_name || '-' }}</td>
+                    <td>{{ item.brand_name || '-' }}</td>
                     <td>{{ item.spec_code || '-' }}</td>
-                    <td>{{ (item.packaging && item.sales_spec) ? item.packaging + ' - ' + item.sales_spec : (item.packaging || item.sales_spec || '-') }}</td>
+                    <td>{{ item.product_name || '-' }}</td>
+                    <td>{{ item.sales_spec || '-' }}</td>
+                    <td>{{ item.packaging || '-' }}</td>
                     <td style="text-align: right">{{ item.qty }}</td>
                     <td style="text-align: right">{{ formatAmount(item.price) }}</td>
+                    <td style="text-align: right">
+                      <span v-if="item.return_qty || item.exchange_qty || item.supplement_qty">
+                        <span v-if="item.return_qty">退{{ item.return_qty }}</span>
+                        <span v-if="item.exchange_qty"> 换{{ item.exchange_qty }}</span>
+                        <span v-if="item.supplement_qty"> 补{{ item.supplement_qty }}</span>
+                      </span>
+                      <span v-else>-</span>
+                    </td>
                     <td style="text-align: right">{{ formatAmount(item.discounted_price) }}</td>
                     <td style="text-align: right">{{ formatAmount(item.amt) }}</td>
-                    <td>{{ item.warehouse_name || '-' }}</td>
-                    <td>{{ item.shipping_method }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </template>
         </vxe-column>
+        <vxe-column field="order_no" title="订单编号" width="160" fixed="left" class-name="col--center">
+          <template #default="{ row }">
+            <span class="order-link" @click="emit('navigate', 'sales-order-detail', { orderNo: row.order_no })">{{ row.order_no }}</span>
+          </template>
+        </vxe-column>
         <vxe-column field="customer_name" title="客户名称" min-width="150" class-name="col--center" />
-        <vxe-column field="order_date" title="订单日期" width="120" class-name="col--center">
-          <template #default="{ row }">
-            {{ formatDate(row.order_date) }}
-          </template>
-        </vxe-column>
-        <vxe-column field="total_amt" title="商品总金额" width="120" class-name="col--right">
-          <template #default="{ row }">
-            {{ formatAmount(row.total_amt) }}
-          </template>
-        </vxe-column>
-        <vxe-column field="total_tax_amt" title="含税总金额" width="120" class-name="col--right">
+        <vxe-column field="total_tax_amt" title="订单金额" width="120" class-name="col--right">
           <template #default="{ row }">
             {{ formatAmount(row.total_tax_amt) }}
+          </template>
+        </vxe-column>
+        <vxe-column field="order_status" title="订单状态" width="100" class-name="col--center">
+          <template #default="{ row }">
+            <span class="status-tag" :class="getOrderStatusInfo(row.order_status).class">
+              {{ getOrderStatusInfo(row.order_status).label }}
+            </span>
           </template>
         </vxe-column>
         <vxe-column field="cost_amt" title="成本" width="100" class-name="col--right">
@@ -1485,17 +1528,17 @@ onBeforeUnmount(() => {
             </span>
           </template>
         </vxe-column>
-        <vxe-column field="order_status" title="订单状态" width="100" class-name="col--center">
-          <template #default="{ row }">
-            <span class="status-tag" :class="getOrderStatusInfo(row.order_status).class">
-              {{ getOrderStatusInfo(row.order_status).label }}
-            </span>
-          </template>
-        </vxe-column>
         <vxe-column field="finance_status" title="财务状态" width="100" class-name="col--center">
           <template #default="{ row }">
             <span class="status-tag" :class="getFinanceStatusInfo(row.finance_status).class">
               {{ getFinanceStatusInfo(row.finance_status).label }}
+            </span>
+          </template>
+        </vxe-column>
+        <vxe-column field="invoice_status" title="发票状态" width="100" class-name="col--center">
+          <template #default="{ row }">
+            <span class="status-tag" :class="getInvoiceStatusInfo(row.invoice_status).class">
+              {{ getInvoiceStatusInfo(row.invoice_status).label }}
             </span>
           </template>
         </vxe-column>
@@ -1513,19 +1556,11 @@ onBeforeUnmount(() => {
             </span>
           </template>
         </vxe-column>
-        <vxe-column field="invoice_status" title="开票状态" width="100" class-name="col--center">
-          <template #default="{ row }">
-            <span class="status-tag" :class="getInvoiceStatusInfo(row.invoice_status).class">
-              {{ getInvoiceStatusInfo(row.invoice_status).label }}
-            </span>
-          </template>
-        </vxe-column>
         <vxe-column field="sale_user_name" title="业务员" width="100" class-name="col--center">
           <template #default="{ row }">
             {{ row.sale_user_name || '-' }}
           </template>
         </vxe-column>
-        <vxe-column field="settle_type" title="结算方式" width="100" class-name="col--center" />
         <vxe-column title="操作" width="240" fixed="right" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
@@ -3232,7 +3267,7 @@ onBeforeUnmount(() => {
 
 /* Expand items panel */
 .expand-items-panel {
-  padding: 12px 16px;
+  padding: 12px 16px 12px 60px;
   background-color: var(--bg-card);
 }
 
@@ -3260,10 +3295,13 @@ onBeforeUnmount(() => {
 }
 
 .expand-items-table {
-  width: 100%;
+  width: calc(100% - 40px);
+  margin: 0 auto;
   border-collapse: collapse;
   font-size: 13px;
   background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
 }
 
 .expand-items-table th {
@@ -3285,5 +3323,12 @@ onBeforeUnmount(() => {
 
 .expand-items-table tr:last-child td {
   border-bottom: none;
+}
+
+.expand-items-table td:nth-child(3) {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
