@@ -610,6 +610,29 @@ const handleTableScroll = (params: any) => {
   })
 }
 
+// 顶部滚动条滚动时同步主表格
+const handleTopScroll = (params: any) => {
+  const left = params.scrollLeft || 0
+
+  // 同步主表格
+  if (tableRef.value) {
+    const mainTableEl = tableRef.value.$el
+    if (mainTableEl) {
+      const scrollContainer = mainTableEl.querySelector('.vxe-table--body-wrapper')
+      if (scrollContainer) {
+        scrollContainer.scrollLeft = left
+      }
+    }
+  }
+
+  // 同步展开内容
+  scrollLeft.value = left
+  const panels = document.querySelectorAll('.expand-items-panel')
+  panels.forEach((panel: Element) => {
+    (panel as HTMLElement).style.transform = `translateX(-${left}px)`
+  })
+}
+
 const resetFilters = () => {
   filterStatus.value = ''
   filterCustomerId.value = ''
@@ -1478,6 +1501,7 @@ onBeforeUnmount(() => {
           :scrollbar-config="{ x: { position: 'top' } }"
           :show-header="false"
           height="20"
+          @scroll="handleTopScroll"
         >
           <vxe-column width="50" />
           <vxe-column width="160" />
