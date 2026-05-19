@@ -3309,7 +3309,20 @@ onBeforeUnmount(() => {
 .expand-items-panel {
   padding: 12px 16px;
   background-color: var(--bg-card);
+}
+
+/* 展开行跟随表格主体滚动 */
+:deep(.vxe-table--expanded) {
+  position: relative !important;
+}
+
+:deep(.vxe-table--expanded .vxe-body--column) {
+  position: relative !important;
+}
+
+:deep(.vxe-table--expanded .expand-items-panel) {
   margin-left: 50px;
+  margin-right: 240px;
 }
 
 /* 固定列遮盖展开内容 */
