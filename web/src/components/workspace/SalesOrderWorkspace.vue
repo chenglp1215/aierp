@@ -198,8 +198,6 @@ const filterCustomerId = ref('')
 const filterKeyword = ref('')
 const selectedRows = ref<SalesOrder[]>([])
 const tableRef = ref<any>(null)
-const topScrollbarRef = ref<any>(null)
-const tableWidth = ref(1500)
 
 // Modals
 const showOrderModal = ref(false)
@@ -581,15 +579,6 @@ const handleBatchSubmit = async () => {
   } catch (error) {
     console.error('批量提交失败:', error)
     window.showToast('批量提交失败', 'error')
-  }
-}
-
-const syncTopScroll = () => {
-  if (topScrollbarRef.value && tableRef.value) {
-    const tableBody = tableRef.value.$el.querySelector('.vxe-table--body-wrapper')
-    if (tableBody) {
-      tableBody.scrollLeft = topScrollbarRef.value.scrollLeft
-    }
   }
 }
 
@@ -1467,10 +1456,6 @@ onBeforeUnmount(() => {
         <div class="table-loading-content">加载中...</div>
       </div>
 
-      <div class="top-scrollbar" ref="topScrollbarRef" @scroll="syncTopScroll">
-        <div :style="{ width: tableWidth + 'px', height: '1px' }"></div>
-      </div>
-
       <vxe-table
         ref="tableRef"
         :data="orders"
@@ -1478,6 +1463,7 @@ onBeforeUnmount(() => {
         :row-config="{ isHover: true }"
         :expand-config="{}"
         :scroll-x="{ enabled: true, gt: 0 }"
+        :scrollbar-config="{ x: { position: 'top' } }"
         :checkbox-config="{ reserve: true }"
         @checkbox-change="handleCheckboxChange"
         @scroll="handleTableScroll"
@@ -2415,30 +2401,6 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-card);
-}
-
-/* 顶部滚动条容器 */
-.top-scrollbar {
-  overflow-x: auto;
-  background-color: var(--bg-secondary);
-  border-radius: 4px 4px 0 0;
-}
-
-.top-scrollbar::-webkit-scrollbar {
-  height: 8px;
-}
-
-.top-scrollbar::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
-}
-
-.top-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-}
-
-.top-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
 }
 
 .order-link {
