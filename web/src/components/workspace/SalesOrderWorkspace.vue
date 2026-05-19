@@ -1619,17 +1619,17 @@ onBeforeUnmount(() => {
             {{ row.sale_user_name || '-' }}
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="240" fixed="right" class-name="col--center">
+        <vxe-column title="操作" width="200" fixed="right" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
               <button class="btn-link" @click="emit('navigate', 'sales-order-detail', { orderNo: row.order_no })">详情</button>
               <button class="btn-link" @click="openEditOrder(row)" v-if="row.order_status === 'draft'">编辑</button>
               <button class="btn-link success" @click="handleSubmitOrder(row.order_no)" v-if="row.order_status === 'draft'">提交审核</button>
+              <!-- 兼容历史数据：pending 状态显示审核通过按钮 -->
               <button class="btn-link success" @click="confirmAudit(row.order_no)" v-if="row.order_status === 'pending'">审核通过</button>
-              <button class="btn-link warning" @click="confirmReject(row.order_no)" v-if="row.order_status === 'pending'">驳回</button>
               <button class="btn-link primary" @click="confirmPushPurchase(row.order_no)" v-if="row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase'">下推采购</button>
-              <button class="btn-link warning" @click="confirmClose(row.order_no)" v-if="row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase'">关闭</button>
-              <button class="btn-link danger" @click="confirmCancel(row.order_no)" v-if="['draft', 'pending', 'audited', 'partially_pushed_to_purchase'].includes(row.order_status)">取消</button>
+              <!-- 取消按钮仅限草稿状态 -->
+              <button class="btn-link danger" @click="confirmCancel(row.order_no)" v-if="row.order_status === 'draft'">取消</button>
               <button class="btn-link danger" @click="confirmDelete(row.order_no)" v-if="row.order_status === 'draft'">删除</button>
             </span>
           </template>

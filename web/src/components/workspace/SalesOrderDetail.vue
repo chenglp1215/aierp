@@ -313,11 +313,14 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
         </div>
         <div class="header-actions">
           <button v-if="order.order_status === 'draft'" class="btn-primary" @click="handleSubmit" :disabled="actionLoading">提交审核</button>
+          <!-- 兼容历史数据：pending 状态显示审核通过和驳回按钮 -->
           <button v-if="order.order_status === 'pending'" class="btn-primary" @click="handleAudit" :disabled="actionLoading">审核通过</button>
           <button v-if="order.order_status === 'pending'" class="btn-warning" @click="handleReject" :disabled="actionLoading">驳回</button>
           <button v-if="canPushPurchase" class="btn-primary" @click="handlePushPurchase" :disabled="actionLoading">下推采购</button>
-          <button v-if="order.order_status === 'audited'" class="btn-warning" @click="handleClose" :disabled="actionLoading">关闭订单</button>
-          <button v-if="order.order_status === 'draft' || order.order_status === 'pending' || order.order_status === 'audited'" class="btn-danger" @click="handleCancel" :disabled="actionLoading">取消订单</button>
+          <!-- 取消订单仅限草稿状态 -->
+          <button v-if="order.order_status === 'draft'" class="btn-danger" @click="handleCancel" :disabled="actionLoading">取消订单</button>
+          <!-- 测试修改状态按钮 -->
+          <button class="btn-secondary" @click="openTestStatusModal" :disabled="actionLoading">测试修改状态</button>
         </div>
       </div>
 
