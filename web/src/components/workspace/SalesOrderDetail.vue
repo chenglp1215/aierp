@@ -384,6 +384,61 @@ const getFlowFieldName = (field: string) => {
   return map[field] || field
 }
 
+// 获取进度步骤样式类
+const getProgressStepClass = (type: 'order' | 'delivery' | 'receive' | 'invoice') => {
+  if (!order.value) return ''
+
+  const statusMap = {
+    order: order.value.order_status,
+    delivery: order.value.delivery_status,
+    receive: order.value.receive_status,
+    invoice: order.value.invoice_status
+  }
+
+  const status = statusMap[type]
+
+  // 订单状态特殊处理
+  if (type === 'order') {
+    if (['audited', 'partially_pushed_to_purchase', 'pushed_to_purchase', 'closed'].includes(status)) {
+      return 'completed'
+    }
+    return 'pending'
+  }
+
+  // 其他状态
+  if (status === 'full') return 'completed'
+  if (status === 'partial') return 'partial'
+  return 'pending'
+}
+
+// 获取进度连接线样式类
+const getProgressLineClass = (type: 'order' | 'delivery' | 'receive') => {
+  const stepClass = getProgressStepClass(type)
+  return stepClass === 'completed' ? 'completed' : ''
+}
+
+// 获取进度步骤状态文本
+const getProgressStepStatus = (type: 'order' | 'delivery' | 'receive' | 'invoice') => {
+  if (!order.value) return '-'
+
+  const statusMap = {
+    order: order.value.order_status,
+    delivery: order.value.delivery_status,
+    receive: order.value.receive_status,
+    invoice: order.value.invoice_status
+  }
+
+  const labelMap = {
+    order: orderStatusMap,
+    delivery: deliveryStatusMap,
+    receive: receiveStatusMap,
+    invoice: invoiceStatusMap
+  }
+
+  const status = statusMap[type]
+  return labelMap[type][status]?.label || status || '-'
+}
+
 // ============ 初始化 ============
 onMounted(() => { loadOrder() })
 onActivated(() => { loadOrder() })
@@ -425,55 +480,87 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
         </div>
       </div>
 
-      <!-- 双栏：基本信息 + 状态信息 -->
-      <div class="two-col-row">
-        <div class="col-left">
-          <div class="section-card">
-            <h3 class="section-title">基本信息</h3>
-            <div class="info-grid">
-              <div class="info-item"><label>订单编号</label><span>{{ order.order_no }}</span></div>
-              <div class="info-item"><label>订单日期</label><span>{{ order.order_date }}</span></div>
-              <div class="info-item"><label>客户</label><span>{{ order.customer_name || order.customer_id }}</span></div>
-              <div class="info-item"><label>销售员</label><span>{{ order.sale_user_name || order.sale_user_id || '-' }}</span></div>
-              <div class="info-item"><label>结算方式</label><span>{{ order.settle_type }}</span></div>
-              <div class="info-item"><label>期望交货日</label><span>{{ order.expect_deliver_date || '-' }}</span></div>
+      <!-- 基本信息 + 状态进度 + 金额信息 -->
+      <div class="top-section">
+        <!-- 基本信息横向布局 -->
+        <div class="section-card">
+          <div class="info-row">
+            <div class="info-item-inline">
+              <label>客户</label>
+              <span>{{ order.customer_name || order.customer_id || '-' }}</span>
+            </div>
+            <div class="info-item-inline">
+              <label>销售员</label>
+              <span>{{ order.sale_user_name || order.sale_user_id || '-' }}</span>
+            </div>
+            <div class="info-item-inline">
+              <label>订单日期</label>
+              <span>{{ order.order_date || '-' }}</span>
+            </div>
+            <div class="info-item-inline">
+              <label>结算方式</label>
+              <span>{{ order.settle_type || '-' }}</span>
+            </div>
+            <div class="info-item-inline">
+              <label>期望交货日</label>
+              <span>{{ order.expect_deliver_date || '-' }}</span>
             </div>
           </div>
         </div>
-        <div class="col-right">
-          <div class="section-card">
-            <h3 class="section-title">状态信息</h3>
-            <div class="status-list">
-              <div class="status-row">
-                <label>订单状态</label>
-                <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(orderStatusMap, order.order_status)">{{ getStatusLabel(orderStatusMap, order.order_status) }}</span>
-                </div>
-              </div>
-              <div class="status-row">
-                <label>发货状态</label>
-                <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(deliveryStatusMap, order.delivery_status)">{{ getStatusLabel(deliveryStatusMap, order.delivery_status) }}</span>
-                </div>
-              </div>
-              <div class="status-row">
-                <label>收货状态</label>
-                <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(receiveStatusMap, order.receive_status)">{{ getStatusLabel(receiveStatusMap, order.receive_status) }}</span>
-                </div>
-              </div>
-              <div class="status-row">
-                <label>开票状态</label>
-                <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(invoiceStatusMap, order.invoice_status)">{{ getStatusLabel(invoiceStatusMap, order.invoice_status) }}</span>
-                </div>
-              </div>
-              <div class="status-row">
-                <label>财务状态</label>
-                <div class="status-control">
-                  <span class="status-tag" :class="getStatusClass(financeStatusMap, order.finance_status)">{{ getStatusLabel(financeStatusMap, order.finance_status) }}</span>
-                </div>
-              </div>
+
+        <!-- 状态进度条 -->
+        <div class="section-card">
+          <h3 class="section-title">订单进度</h3>
+          <div class="status-progress">
+            <div class="progress-step" :class="getProgressStepClass('order')">
+              <div class="step-dot"></div>
+              <div class="step-label">订单</div>
+              <div class="step-status">{{ getProgressStepStatus('order') }}</div>
+            </div>
+            <div class="progress-line" :class="getProgressLineClass('order')"></div>
+            <div class="progress-step" :class="getProgressStepClass('delivery')">
+              <div class="step-dot"></div>
+              <div class="step-label">发货</div>
+              <div class="step-status">{{ getProgressStepStatus('delivery') }}</div>
+            </div>
+            <div class="progress-line" :class="getProgressLineClass('delivery')"></div>
+            <div class="progress-step" :class="getProgressStepClass('receive')">
+              <div class="step-dot"></div>
+              <div class="step-label">收货</div>
+              <div class="step-status">{{ getProgressStepStatus('receive') }}</div>
+            </div>
+            <div class="progress-line" :class="getProgressLineClass('receive')"></div>
+            <div class="progress-step" :class="getProgressStepClass('invoice')">
+              <div class="step-dot"></div>
+              <div class="step-label">开票</div>
+              <div class="step-status">{{ getProgressStepStatus('invoice') }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 金额信息 -->
+        <div class="section-card">
+          <h3 class="section-title">金额信息</h3>
+          <div class="amount-grid">
+            <div class="amount-item">
+              <span class="amount-label">不含税总额</span>
+              <span class="amount-value">¥{{ order.total_amt?.toFixed(2) || '0.00' }}</span>
+            </div>
+            <div class="amount-item">
+              <span class="amount-label">税额</span>
+              <span class="amount-value">¥{{ order.tax_amt?.toFixed(2) || '0.00' }}</span>
+            </div>
+            <div class="amount-item highlight">
+              <span class="amount-label">含税总额</span>
+              <span class="amount-value">¥{{ order.total_tax_amt?.toFixed(2) || '0.00' }}</span>
+            </div>
+            <div class="amount-item">
+              <span class="amount-label">成本合计</span>
+              <span class="amount-value">¥{{ totalCostAmount.toFixed(2) }}</span>
+            </div>
+            <div class="amount-item" :class="{ profit: estimatedProfit > 0, loss: estimatedProfit < 0 }">
+              <span class="amount-label">预估利润</span>
+              <span class="amount-value">¥{{ estimatedProfit.toFixed(2) }}</span>
             </div>
           </div>
         </div>
