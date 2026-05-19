@@ -255,6 +255,21 @@ class SalesOrderService:
         result["deliver_info"] = order.deliver_infos[0].to_dict() if order.deliver_infos else {}
         # invoice_infos 已通过 prefetch_related 预加载
         result["invoice_info"] = order.invoice_infos[0].to_dict() if order.invoice_infos else {}
+
+        # 批量获取品牌采购员信息
+        brand_ids = list(set(item.get("brand_id") for item in items_data if item.get("brand_id")))
+        brand_purchasers = {}
+        if brand_ids:
+            from models_mysql.product import Brand
+            brands = await Brand.filter(id__in=brand_ids).all()
+            for brand in brands:
+                if brand.purchaser_id:
+                    brand_purchasers[str(brand.id)] = {
+                        "purchaser_id": brand.purchaser_id,
+                        "purchaser_name": brand.purchaser_name
+                    }
+        result["brand_purchasers"] = brand_purchasers
+
         return result
 
     async def list_orders(

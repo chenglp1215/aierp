@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch, onBeforeUnmount, nextTick } from 'vue'
-import { salesOrderApi, customerApi, productApi, warehouseApi, customerDiscountApi, brandApi, type Customer } from '../../services/api'
+import { salesOrderApi, customerApi, productApi, warehouseApi, customerDiscountApi, type Customer } from '../../services/api'
 import { useProvinceCity } from '../../hooks/useProvinceCity'
 import PushPurchaseItemSelectModal from './PushPurchaseItemSelectModal.vue'
 
@@ -1245,44 +1245,30 @@ const confirmPushPurchase = async (orderNo: string) => {
     const fullOrder = await salesOrderApi.getByOrderNo(orderNo)
     const items = fullOrder.items || []
 
-    // 补充 brand_name 和 brand_id
-    const productIds: string[] = [...new Set(items.map((item: any) => item.product_id).filter(Boolean) as string[])]
-    const brandMap: Record<string, string> = {}
-    const brandIdMap: Record<string, string> = {}
-    for (const pid of productIds) {
-      try {
-        const prodRes = await productApi.getById(pid)
-        if (prodRes) {
-          brandMap[pid] = prodRes.brand_name || ''
-          brandIdMap[pid] = prodRes.brand_id || ''
-        }
-      } catch {}
-    }
+    // 订单明细已包含 brand_id 和 brand_name，无需再调用产品详情接口
+    // 从订单详情返回的 brand_purchasers 获取采购员信息
+    const brandPurchasers = fullOrder.brand_purchasers || {}
 
     const enrichedItems = items.map((item: any) => ({
       ...item,
-      brand_name: item.brand_name || brandMap[item.product_id] || '',
-      brand_id: item.brand_id || brandIdMap[item.product_id] || ''
+      purchaser_name: item.brand_id && brandPurchasers[item.brand_id]
+        ? brandPurchasers[item.brand_id].purchaser_name || ''
+        : ''
     }))
 
-    // 批量获取品牌的采购人信息
-    const uniqueBrandIds = [...new Set(enrichedItems.map((item: any) => item.brand_id).filter(Boolean))] as string[]
-    if (uniqueBrandIds.length > 0) {
-      try {
-        const purchaserRes = await brandApi.batchGetPurchasers(uniqueBrandIds)
-        const purchaserMap: Record<string, { purchaser_id: string; purchaser_name: string }> = purchaserRes || {}
-        enrichedItems.forEach((item: any) => {
-          if (item.brand_id && purchaserMap[item.brand_id]) {
-            item.purchaser_name = purchaserMap[item.brand_id].purchaser_name || ''
-          }
-        })
-      } catch {}
+    // 筛选可下推的明细（未下推）
+    pushableItems.value = enrichedItems.filter((item: any) => !item.pushed)
+
+    if (pushableItems.value.length === 0) {
+      window.showToast('没有可下推采购的商品明细', 'warning')
+      actionLoading.value = false
+      actionTargetOrderNo.value = null
+      return
     }
 
-    pushableItems.value = enrichedItems
     showPushItemSelect.value = true
   } catch (error: any) {
-    window.showToast(error.message || '加载商品数据失败', 'error')
+    window.showToast(error.message || '获取订单详情失败', 'error')
   } finally {
     actionLoading.value = false
   }
