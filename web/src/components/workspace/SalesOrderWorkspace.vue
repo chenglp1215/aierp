@@ -198,6 +198,8 @@ const filterCustomerId = ref('')
 const filterKeyword = ref('')
 const selectedRows = ref<SalesOrder[]>([])
 const tableRef = ref<any>(null)
+const topTableRef = ref<any>(null)
+const topDummyData = ref([{}])
 
 // Modals
 const showOrderModal = ref(false)
@@ -589,6 +591,17 @@ const handleTableScroll = (params: any) => {
   // vxe-table scroll 事件参数
   const left = params.scrollLeft || 0
   scrollLeft.value = left
+
+  // 同步顶部滚动条
+  if (topTableRef.value) {
+    const topTableEl = topTableRef.value.$el
+    if (topTableEl) {
+      const scrollContainer = topTableEl.querySelector('.vxe-table--body-wrapper')
+      if (scrollContainer) {
+        scrollContainer.scrollLeft = left
+      }
+    }
+  }
 
   // 使用 transform 移动展开内容
   const panels = document.querySelectorAll('.expand-items-panel')
@@ -1456,6 +1469,35 @@ onBeforeUnmount(() => {
         <div class="table-loading-content">加载中...</div>
       </div>
 
+      <!-- 顶部滚动条表格 -->
+      <div class="top-scrollbar-area">
+        <vxe-table
+          ref="topTableRef"
+          :data="topDummyData"
+          :scroll-x="{ enabled: true }"
+          :scrollbar-config="{ x: { position: 'top' } }"
+          :show-header="false"
+          height="20"
+        >
+          <vxe-column width="50" />
+          <vxe-column width="160" />
+          <vxe-column width="50" />
+          <vxe-column width="120" />
+          <vxe-column min-width="150" />
+          <vxe-column width="120" />
+          <vxe-column width="100" />
+          <vxe-column width="100" />
+          <vxe-column width="100" />
+          <vxe-column width="100" />
+          <vxe-column width="100" />
+          <vxe-column width="100" />
+          <vxe-column width="100" />
+          <vxe-column width="100" />
+          <vxe-column width="240" />
+        </vxe-table>
+      </div>
+
+      <!-- 主表格 -->
       <vxe-table
         ref="tableRef"
         :data="orders"
@@ -1463,7 +1505,6 @@ onBeforeUnmount(() => {
         :row-config="{ isHover: true }"
         :expand-config="{}"
         :scroll-x="{ enabled: true, gt: 0 }"
-        :scrollbar-config="{ x: { position: 'top' } }"
         :checkbox-config="{ reserve: true }"
         @checkbox-change="handleCheckboxChange"
         @scroll="handleTableScroll"
@@ -2401,6 +2442,28 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-card);
+}
+
+/* 顶部滚动条区域 */
+.top-scrollbar-area {
+  margin-bottom: 0;
+}
+
+.top-scrollbar-area :deep(.vxe-table) {
+  border-bottom: none;
+}
+
+.top-scrollbar-area :deep(.vxe-table--body-wrapper) {
+  overflow-y: hidden !important;
+  height: 20px !important;
+}
+
+.top-scrollbar-area :deep(.vxe-table--body) {
+  display: none;
+}
+
+.top-scrollbar-area :deep(.vxe-table--main-wrapper) {
+  height: 20px !important;
 }
 
 .order-link {
