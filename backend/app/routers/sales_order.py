@@ -42,7 +42,7 @@ async def submit_order(
 ):
     operator = current_user.get("username", current_user.get("full_name", "system"))
     await sales_order_service.submit_order(order_no, operator)
-    return "订单已提交审核"
+    return "订单提交审核成功，已直接审核通过"
 
 
 @sales_order_router.post("/{order_no}/approve", response_model=dict, description="审核通过")

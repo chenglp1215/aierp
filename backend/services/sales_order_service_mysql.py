@@ -419,16 +419,17 @@ class SalesOrderService:
     # ============ 状态操作 ============
 
     async def submit_order(self, order_no: str, operator: str = "system") -> bool:
-        """提交审核（draft → pending）"""
+        """提交审核（draft → audited，跳过 pending）"""
         order = await SalesOrder.filter(order_no=order_no).first()
         if not order:
             raise ValueError(f"订单不存在: {order_no}")
 
-        if not self._can_transition_status(order.order_status, OrderStatus.PENDING):
-            raise ValueError(f"订单状态不允许从 {order.order_status.value} 变更为 pending")
+        # 检查是否可以从当前状态流转到 audited
+        if order.order_status != OrderStatus.DRAFT:
+            raise ValueError(f"只有草稿状态的订单可以提交审核，当前状态: {order.order_status.value}")
 
         old_status = order.order_status
-        order.order_status = OrderStatus.PENDING
+        order.order_status = OrderStatus.AUDITED
         await order.save()
 
         await OrderStatusFlow.create(
@@ -436,12 +437,12 @@ class SalesOrderService:
             order_type="sales",
             field="order_status",
             old_value=old_status.value,
-            new_value=OrderStatus.PENDING.value,
+            new_value=OrderStatus.AUDITED.value,
             operator=operator,
-            remark="提交审核",
+            remark="提交审核（直接审核通过）",
         )
 
-        logger.info(f"销售订单提交审核: {order_no}")
+        logger.info(f"销售订单提交审核成功: {order_no}, {old_status.value} → audited")
         return True
 
     async def approve_order(self, order_no: str, operator: str = "system") -> bool:
