@@ -22,7 +22,11 @@ const receivables = ref<any[]>([])
 const actionLoading = ref(false)
 const showPushItemSelect = ref(false)
 const pushableItems = ref<any[]>([])
-const activeRelatedTab = ref<'purchase' | 'receivable'>('purchase')
+
+// 成本明细相关
+const costItems = ref<any[]>([])
+const activeMainTab = ref<'items' | 'purchase' | 'receivable' | 'cost'>('items')
+const flowExpanded = ref(false)
 
 // ============ 状态映射 ============
 const orderStatusMap: Record<string, { label: string; class: string }> = {
@@ -79,6 +83,20 @@ const stockStatusMap: Record<string, { label: string; class: string }> = {
   low_stock: { label: '偏低', class: 'stock-low' },
   out_of_stock: { label: '缺货', class: 'stock-out' },
   overstock: { label: '积压', class: 'stock-over' }
+}
+
+// 成本类型映射
+const costTypeMap: Record<string, string> = {
+  purchase: '采购成本',
+  freight: '运费',
+  transfer: '调货费',
+  other: '其他'
+}
+
+// 来源类型映射
+const sourceTypeMap: Record<string, string> = {
+  purchase_order: '采购单',
+  manual: '手动添加'
 }
 
 // ============ 测试状态修改弹窗 ============
@@ -148,6 +166,17 @@ const canPushPurchase = computed(() => {
   return s === 'audited' || s === 'partially_pushed_to_purchase'
 })
 
+// 成本合计
+const totalCostAmount = computed(() => {
+  return costItems.value.reduce((sum, item) => sum + (item.amount || 0), 0)
+})
+
+// 预估利润
+const estimatedProfit = computed(() => {
+  if (!order.value) return 0
+  return (order.value.total_tax_amt || 0) - totalCostAmount.value
+})
+
 // ============ 数据加载 ============
 const loadOrder = async () => {
   if (!props.orderNo) return
@@ -159,7 +188,7 @@ const loadOrder = async () => {
     ])
     order.value = orderData
     flows.value = flowsData || []
-    await Promise.all([loadPurchaseOrders(), loadReceivables()])
+    await Promise.all([loadPurchaseOrders(), loadReceivables(), loadCostItems()])
   } catch (e) {
     console.error('加载订单详情失败:', e)
   } finally {
@@ -184,6 +213,17 @@ const loadReceivables = async () => {
     receivables.value = res?.items || []
   } catch (e) {
     console.error('加载关联收款单失败:', e)
+  }
+}
+
+const loadCostItems = async () => {
+  if (!props.orderNo) return
+  try {
+    const res = await salesOrderApi.getCostItems(props.orderNo)
+    costItems.value = res?.items || []
+  } catch (e) {
+    console.error('加载成本明细失败:', e)
+    costItems.value = []
   }
 }
 
