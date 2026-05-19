@@ -594,11 +594,17 @@ const syncTopScroll = () => {
 }
 
 // 监听表格滚动，同步展开内容位置
-const handleTableScroll = ({ scrollLeft }: { scrollLeft: number }) => {
-  // 获取所有展开内容的 div，设置它们的 scrollLeft
+const scrollLeft = ref(0)
+
+const handleTableScroll = (params: any) => {
+  // vxe-table scroll 事件参数
+  const left = params.scrollLeft || 0
+  scrollLeft.value = left
+
+  // 使用 transform 移动展开内容
   const panels = document.querySelectorAll('.expand-items-panel')
   panels.forEach((panel: Element) => {
-    (panel as HTMLElement).scrollLeft = scrollLeft
+    (panel as HTMLElement).style.transform = `translateX(-${left}px)`
   })
 }
 
@@ -3319,9 +3325,13 @@ onBeforeUnmount(() => {
 .expand-items-panel {
   padding: 12px 16px;
   background-color: var(--bg-card);
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
   margin-left: 50px;
+}
+
+.expand-items-panel .expand-items-table {
+  min-width: max-content;
 }
 
 /* 展开行跟随表格主体滚动 */
