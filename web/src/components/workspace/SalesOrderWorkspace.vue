@@ -197,6 +197,9 @@ const filterStatus = ref('')
 const filterCustomerId = ref('')
 const filterKeyword = ref('')
 const selectedRows = ref<SalesOrder[]>([])
+const tableRef = ref<any>(null)
+const topScrollbarRef = ref<any>(null)
+const tableWidth = ref(1500)
 
 // Modals
 const showOrderModal = ref(false)
@@ -578,6 +581,15 @@ const handleBatchSubmit = async () => {
   } catch (error) {
     console.error('批量提交失败:', error)
     window.showToast('批量提交失败', 'error')
+  }
+}
+
+const syncTopScroll = () => {
+  if (topScrollbarRef.value && tableRef.value) {
+    const tableBody = tableRef.value.$el.querySelector('.vxe-table--body-wrapper')
+    if (tableBody) {
+      tableBody.scrollLeft = topScrollbarRef.value.scrollLeft
+    }
   }
 }
 
@@ -1440,19 +1452,24 @@ onBeforeUnmount(() => {
         <div class="table-loading-content">加载中...</div>
       </div>
 
+      <div class="top-scrollbar" ref="topScrollbarRef" @scroll="syncTopScroll">
+        <div :style="{ width: tableWidth + 'px', height: '1px' }"></div>
+      </div>
+
       <vxe-table
+        ref="tableRef"
         :data="orders"
         :column-config="{ resizable: true }"
         :row-config="{ isHover: true }"
         :expand-config="{}"
-        :scroll-x="{ enabled: true }"
+        :scroll-x="{ enabled: true, gt: 0 }"
         :checkbox-config="{ reserve: true }"
         @checkbox-change="handleCheckboxChange"
       >
         <vxe-column type="checkbox" width="50" fixed="left" class-name="col--center" />
-        <vxe-column field="order_date" title="订单日期" width="120" fixed="left" class-name="col--center">
+        <vxe-column field="order_no" title="订单编号" width="160" fixed="left" class-name="col--center">
           <template #default="{ row }">
-            {{ formatDate(row.order_date) }}
+            <span class="order-link" @click="emit('navigate', 'sales-order-detail', { orderNo: row.order_no })">{{ row.order_no }}</span>
           </template>
         </vxe-column>
         <vxe-column type="expand" width="50" fixed="left" class-name="col--center">
@@ -1461,16 +1478,16 @@ onBeforeUnmount(() => {
               <table class="expand-items-table">
                 <thead>
                   <tr>
-                    <th style="width: 120px">品牌名</th>
+                    <th style="width: 100px">品牌名</th>
                     <th style="width: 100px">规格编号</th>
-                    <th>产品名称</th>
-                    <th style="width: 100px">规格</th>
-                    <th style="width: 100px">包装单位</th>
-                    <th style="width: 80px; text-align: right">数量</th>
-                    <th style="width: 100px; text-align: right">原价</th>
+                    <th style="width: 100px">产品名称</th>
+                    <th style="width: 80px">规格</th>
+                    <th style="width: 80px">包装单位</th>
+                    <th style="width: 60px; text-align: right">数量</th>
+                    <th style="width: 80px; text-align: right">原价</th>
                     <th style="width: 100px; text-align: right">退/换/补货数量</th>
-                    <th style="width: 100px; text-align: right">含税单价</th>
-                    <th style="width: 100px; text-align: right">合计</th>
+                    <th style="width: 80px; text-align: right">含税单价</th>
+                    <th style="width: 80px; text-align: right">合计</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1498,9 +1515,9 @@ onBeforeUnmount(() => {
             </div>
           </template>
         </vxe-column>
-        <vxe-column field="order_no" title="订单编号" width="160" fixed="left" class-name="col--center">
+        <vxe-column field="order_date" title="订单日期" width="120" class-name="col--center">
           <template #default="{ row }">
-            <span class="order-link" @click="emit('navigate', 'sales-order-detail', { orderNo: row.order_no })">{{ row.order_no }}</span>
+            {{ formatDate(row.order_date) }}
           </template>
         </vxe-column>
         <vxe-column field="customer_name" title="客户名称" min-width="150" class-name="col--center" />
@@ -2382,7 +2399,30 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-card);
+}
+
+/* 顶部滚动条容器 */
+.top-scrollbar {
   overflow-x: auto;
+  background-color: var(--bg-secondary);
+  border-radius: 4px 4px 0 0;
+}
+
+.top-scrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+
+.top-scrollbar::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.top-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.top-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .order-link {
@@ -3267,8 +3307,9 @@ onBeforeUnmount(() => {
 
 /* Expand items panel */
 .expand-items-panel {
-  padding: 12px 16px 12px 60px;
+  padding: 12px 16px;
   background-color: var(--bg-card);
+  margin-left: 260px;
 }
 
 :deep(.vxe-body--column) {
@@ -3295,8 +3336,7 @@ onBeforeUnmount(() => {
 }
 
 .expand-items-table {
-  width: calc(100% - 40px);
-  margin: 0 auto;
+  width: 100%;
   border-collapse: collapse;
   font-size: 13px;
   background-color: var(--bg-card);
@@ -3326,7 +3366,7 @@ onBeforeUnmount(() => {
 }
 
 .expand-items-table td:nth-child(3) {
-  max-width: 200px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
