@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
+import type { Ref } from 'vue'
 import { usePermission, refreshPermissions, MENU_PERMISSION_MAP } from '../hooks'
 
 interface MenuItem {
@@ -14,6 +15,10 @@ const emit = defineEmits<{
   navigate: [id: string]
   'warehouse-navigate': [id: string, extraData?: Record<string, any>]
 }>()
+
+// 注入侧边栏收起状态
+const isCollapsed = inject<Ref<boolean>>('sidebarCollapsed', ref(false))
+const toggleSidebar = inject<() => void>('toggleSidebar', () => {})
 
 const { loadPermissions, hasPermission } = usePermission()
 const activeMenu = ref('dashboard')
@@ -148,15 +153,21 @@ const handleStorageChange = async (event: StorageEvent) => {
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ collapsed: isCollapsed }">
     <div class="sidebar-header">
       <div class="brand">
         <svg class="brand-icon" viewBox="0 0 24 24" fill="currentColor">
           <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
         </svg>
-        <span class="brand-text">ERP</span>
+        <span class="brand-text" v-show="!isCollapsed">ERP</span>
       </div>
-      <div class="user-role">Administrator</div>
+      <div class="user-role" v-show="!isCollapsed">Administrator</div>
+      <button class="collapse-btn" @click="toggleSidebar" :title="isCollapsed ? '展开菜单' : '收起菜单'">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path v-if="!isCollapsed" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+          <path v-else d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+        </svg>
+      </button>
     </div>
 
     <nav class="sidebar-nav">
@@ -298,11 +309,17 @@ const handleStorageChange = async (event: StorageEvent) => {
   left: 0;
   top: 0;
   z-index: 100;
+  transition: width var(--transition-normal);
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-width-collapsed);
 }
 
 .sidebar-header {
   padding: 20px;
   border-bottom: 1px solid var(--border-color);
+  position: relative;
 }
 
 .brand {
@@ -474,5 +491,65 @@ const handleStorageChange = async (event: StorageEvent) => {
   .sidebar.open {
     transform: translateX(0);
   }
+
+  .collapse-btn {
+    display: none;
+  }
+}
+
+.collapse-btn {
+  position: absolute;
+  top: 20px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  z-index: 10;
+}
+
+.collapse-btn:hover {
+  background-color: var(--accent-blue);
+  color: white;
+  border-color: var(--accent-blue);
+}
+
+.collapse-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-arrow,
+.sidebar.collapsed .nav-badge,
+.sidebar.collapsed .user-role,
+.sidebar.collapsed .search-text,
+.sidebar.collapsed .search-shortcut {
+  display: none;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 12px;
+}
+
+.sidebar.collapsed .submenu {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  padding: 12px;
+}
+
+.sidebar.collapsed .search-box {
+  justify-content: center;
+  padding: 10px;
 }
 </style>
