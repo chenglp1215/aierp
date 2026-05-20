@@ -13,9 +13,11 @@ from models_mysql.sales_order import (
     SalesOrder, SalesOrderItem, SalesDeliverInfo, SalesInvoiceInfo,
     SalesOrderCostItem,
     OrderStatus, DeliveryStatus, ReceiveStatus, InvoiceStatus, ShippingMethod,
-    CostType, CostSourceType, FinanceStatus
+    CostType, CostSourceType, FinanceStatus, PushStatus
 )
 from models_mysql.order_status_flow import OrderStatusFlow
+from models_mysql.pending_outbound import PendingOutboundOrder, PendingOutboundStatus
+from models_mysql.warehouse import Stock
 
 logger = logging.getLogger(__name__)
 
@@ -97,22 +99,86 @@ class SalesOrderService:
         transitions = {
             OrderStatus.DRAFT: [OrderStatus.PENDING, OrderStatus.CANCELLED],
             OrderStatus.PENDING: [OrderStatus.AUDITED, OrderStatus.DRAFT],
-            OrderStatus.AUDITED: [
-                OrderStatus.PARTIALLY_PUSHED_TO_PURCHASE,
-                OrderStatus.PUSHED_TO_PURCHASE,
-                OrderStatus.CLOSED,
-                OrderStatus.CANCELLED,
-            ],
-            OrderStatus.PARTIALLY_PUSHED_TO_PURCHASE: [
-                OrderStatus.PUSHED_TO_PURCHASE,
-                OrderStatus.CLOSED,
-                OrderStatus.CANCELLED,
-            ],
-            OrderStatus.PUSHED_TO_PURCHASE: [OrderStatus.CLOSED, OrderStatus.CANCELLED],
-            OrderStatus.CLOSED: [],
+            OrderStatus.AUDITED: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+            OrderStatus.COMPLETED: [],
             OrderStatus.CANCELLED: [],
         }
         return target in transitions.get(current, [])
+
+    async def _calculate_push_status(self, order_id: int) -> PushStatus:
+        """计算订单下推状态"""
+        items = await SalesOrderItem.filter(sales_order_id=order_id).all()
+
+        has_pending = False  # 有待下推
+        has_pushed = False   # 有已下推
+        all_not_needed = True  # 全部无需采购
+
+        for item in items:
+            if item.purchase_qty > 0:
+                all_not_needed = False
+                if item.pushed_qty < item.purchase_qty:
+                    has_pending = True
+                elif item.pushed_qty >= item.purchase_qty:
+                    has_pushed = True
+
+        if all_not_needed:
+            return PushStatus.NOT_NEEDED
+        if has_pending and has_pushed:
+            return PushStatus.PARTIAL
+        if has_pending:
+            return PushStatus.NONE
+        return PushStatus.FULL
+
+    async def _process_audit_pass(self, order: SalesOrder, operator: str = "system") -> None:
+        """审核通过后处理：计算采购数量、生成待出库单、更新下推状态"""
+        from services.pending_outbound_service import pending_outbound_service
+
+        items = await SalesOrderItem.filter(sales_order_id=order.id).select_related(
+            "spec__product__brand",
+            "warehouse"
+        ).all()
+
+        for item in items:
+            if item.shipping_method == ShippingMethod.DIRECT:
+                # 直运：全部走采购
+                item.purchase_qty = item.qty
+            else:
+                # 仓库发货：库存优先
+                stock = await Stock.filter(
+                    warehouse_id=item.warehouse_id,
+                    spec_id=item.spec_id
+                ).first()
+
+                available_qty = int(stock.quantity) if stock else 0
+                stock_out_qty = min(available_qty, item.qty)
+                item.purchase_qty = item.qty - stock_out_qty
+
+                # 生成待出库单
+                if stock_out_qty > 0:
+                    warehouse = item.warehouse
+                    warehouse_name = warehouse.name if warehouse else ""
+                    spec = item.spec
+                    product_code = spec.product.product_code if spec and spec.product else ""
+                    spec_code = spec.spec_code if spec else ""
+
+                    await pending_outbound_service.create_pending_outbound(
+                        sales_order_id=order.id,
+                        sales_order_no=order.order_no,
+                        sales_order_item_id=item.id,
+                        row_no=item.row_no,
+                        warehouse_id=item.warehouse_id,
+                        warehouse_name=warehouse_name,
+                        spec_id=item.spec_id,
+                        product_code=product_code,
+                        spec_code=spec_code,
+                        locked_qty=stock_out_qty
+                    )
+
+            await item.save()
+
+        # 更新订单下推状态
+        order.push_status = await self._calculate_push_status(order.id)
+        await order.save()
 
     # ============ 创建订单 ============
 
@@ -420,7 +486,7 @@ class SalesOrderService:
 
     async def submit_order(self, order_no: str, operator: str = "system") -> bool:
         """提交审核（draft → audited，跳过 pending）"""
-        order = await SalesOrder.filter(order_no=order_no).first()
+        order = await SalesOrder.filter(order_no=order_no).prefetch_related("items").first()
         if not order:
             raise ValueError(f"订单不存在: {order_no}")
 
@@ -431,6 +497,9 @@ class SalesOrderService:
         old_status = order.order_status
         order.order_status = OrderStatus.AUDITED
         await order.save()
+
+        # 审核通过后处理
+        await self._process_audit_pass(order, operator)
 
         await OrderStatusFlow.create(
             order_no=order_no,
@@ -447,16 +516,19 @@ class SalesOrderService:
 
     async def approve_order(self, order_no: str, operator: str = "system") -> bool:
         """审核通过（pending → audited）"""
-        order = await SalesOrder.filter(order_no=order_no).first()
+        order = await SalesOrder.filter(order_no=order_no).prefetch_related("items").first()
         if not order:
             raise ValueError(f"订单不存在: {order_no}")
 
-        if not self._can_transition_status(order.order_status, OrderStatus.AUDITED):
+        if order.order_status != OrderStatus.PENDING:
             raise ValueError(f"订单状态不允许从 {order.order_status.value} 变更为 audited")
 
         old_status = order.order_status
         order.order_status = OrderStatus.AUDITED
         await order.save()
+
+        # 审核通过后处理
+        await self._process_audit_pass(order, operator)
 
         await OrderStatusFlow.create(
             order_no=order_no,
@@ -526,7 +598,7 @@ class SalesOrderService:
     async def check_and_auto_complete(self, order_no: str, operator: str = "system") -> bool:
         """检查并触发订单自动完成
 
-        当发货、收货、财务、开票状态均为最终状态时，自动将订单状态更新为 closed。
+        当发货、收货、财务、开票状态均为最终状态时，自动将订单状态更新为 completed。
         最终状态条件：
         - delivery_status = full
         - receive_status = full
@@ -539,7 +611,7 @@ class SalesOrderService:
             return False
 
         # 已完成或已取消的订单不再处理
-        if order.order_status in [OrderStatus.CLOSED, OrderStatus.CANCELLED]:
+        if order.order_status in [OrderStatus.COMPLETED, OrderStatus.CANCELLED]:
             return False
 
         # 检查是否满足自动完成条件
@@ -560,7 +632,7 @@ class SalesOrderService:
 
         # 满足条件，自动完成
         old_status = order.order_status
-        order.order_status = OrderStatus.CLOSED
+        order.order_status = OrderStatus.COMPLETED
         await order.save()
 
         await OrderStatusFlow.create(
@@ -568,12 +640,12 @@ class SalesOrderService:
             order_type="sales",
             field="order_status",
             old_value=old_status.value,
-            new_value=OrderStatus.CLOSED.value,
+            new_value=OrderStatus.COMPLETED.value,
             operator=operator,
             remark="自动完成（发货、收货、财务、开票均为最终状态）",
         )
 
-        logger.info(f"销售订单自动完成: {order_no}, {old_status.value} → closed")
+        logger.info(f"销售订单自动完成: {order_no}, {old_status.value} → completed")
         return True
 
     async def test_update_status(
@@ -643,37 +715,18 @@ class SalesOrderService:
         if not order:
             raise ValueError(f"订单不存在: {order_no}")
 
-        # 更新明细的 pushed 标志
+        # 更新明细的 pushed_qty
         for item in order.items:
             if item.row_no in pushed_row_nos:
-                item.pushed = True
+                # 累加已下推数量（这里假设每次下推的数量为 purchase_qty）
+                item.pushed_qty = item.purchase_qty
                 await item.save()
 
-        # 重新计算订单状态
-        all_items = order.items
-        all_pushed = all(item.pushed for item in all_items)
-        any_pushed = any(item.pushed for item in all_items)
-
-        old_status = order.order_status
-        if all_pushed:
-            order.order_status = OrderStatus.PUSHED_TO_PURCHASE
-        elif any_pushed:
-            order.order_status = OrderStatus.PARTIALLY_PUSHED_TO_PURCHASE
-
+        # 重新计算订单下推状态
+        order.push_status = await self._calculate_push_status(order.id)
         await order.save()
 
-        if order.order_status != old_status:
-            await OrderStatusFlow.create(
-                order_no=order_no,
-                order_type="sales",
-                field="order_status",
-                old_value=old_status.value,
-                new_value=order.order_status.value,
-                operator=operator,
-                remark="下推采购",
-            )
-
-        logger.info(f"销售订单下推状态更新: {order_no} -> {order.order_status.value}")
+        logger.info(f"销售订单下推状态更新: {order_no} -> {order.push_status.value}")
         return True
 
     async def reset_push_status(self, order_no: str, row_nos: List[int], operator: str = "system") -> bool:
@@ -682,38 +735,17 @@ class SalesOrderService:
         if not order:
             raise ValueError(f"订单不存在: {order_no}")
 
-        # 重置明细的 pushed 标志
+        # 重置明细的 pushed_qty
         for item in order.items:
             if item.row_no in row_nos:
-                item.pushed = False
+                item.pushed_qty = 0
                 await item.save()
 
-        # 重新计算订单状态
-        all_items = order.items
-        any_pushed = any(item.pushed for item in all_items)
-
-        old_status = order.order_status
-        if not any_pushed:
-            order.order_status = OrderStatus.AUDITED
-        elif all(item.pushed for item in all_items):
-            order.order_status = OrderStatus.PUSHED_TO_PURCHASE
-        else:
-            order.order_status = OrderStatus.PARTIALLY_PUSHED_TO_PURCHASE
-
+        # 重新计算订单下推状态
+        order.push_status = await self._calculate_push_status(order.id)
         await order.save()
 
-        if order.order_status != old_status:
-            await OrderStatusFlow.create(
-                order_no=order_no,
-                order_type="sales",
-                field="order_status",
-                old_value=old_status.value,
-                new_value=order.order_status.value,
-                operator=operator,
-                remark="采购单撤销回退",
-            )
-
-        logger.info(f"销售订单下推状态重置: {order_no} -> {order.order_status.value}")
+        logger.info(f"销售订单下推状态重置: {order_no} -> {order.push_status.value}")
         return True
 
     # ============ 成本明细管理 ============
