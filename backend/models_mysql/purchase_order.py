@@ -149,6 +149,7 @@ class PurchaseOrderItem(Model):
     in_qty = fields.IntField(default=0, description="已入库数量")
     return_qty = fields.IntField(default=0, description="已退货数量")
     source_sale_row_no = fields.IntField(null=True, description="关联源销售单明细行号")
+    source_sale_order_item_id = fields.IntField(null=True, description="关联销售订单明细ID")
     shipping_method = fields.CharField(max_length=50, null=True, description="发货方式")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")

@@ -8,13 +8,19 @@ from enum import Enum
 
 class OrderStatus(str, Enum):
     """订单状态枚举"""
-    DRAFT = "draft"
-    PENDING = "pending"  # 新增：待审核
-    AUDITED = "audited"
-    PARTIALLY_PUSHED_TO_PURCHASE = "partially_pushed_to_purchase"
-    PUSHED_TO_PURCHASE = "pushed_to_purchase"
-    CLOSED = "closed"
-    CANCELLED = "cancelled"
+    DRAFT = "draft"  # 草稿
+    PENDING = "pending"  # 待审核
+    AUDITED = "audited"  # 审核通过
+    COMPLETED = "completed"  # 已完成
+    CANCELLED = "cancelled"  # 已取消
+
+
+class PushStatus(str, Enum):
+    """下推状态枚举"""
+    NONE = "none"  # 未下推
+    PARTIAL = "partial"  # 部分下推
+    FULL = "full"  # 已下推
+    NOT_NEEDED = "not_needed"  # 无需下推
 
 
 class DeliveryStatus(str, Enum):
@@ -80,6 +86,7 @@ class SalesOrder(Model):
     receive_status = fields.CharEnumField(ReceiveStatus, default=ReceiveStatus.NONE, description="收货状态")
     invoice_status = fields.CharEnumField(InvoiceStatus, default=InvoiceStatus.NONE, description="开票状态")
     finance_status = fields.CharEnumField(FinanceStatus, default=FinanceStatus.UNPAID, description="财务状态")
+    push_status = fields.CharEnumField(PushStatus, null=True, description="下推状态")
     total_amt = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="商品总金额（未税）")
     tax_rate = fields.DecimalField(max_digits=5, decimal_places=4, default=0.13, description="税率")
     tax_amt = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="税额")
@@ -114,6 +121,7 @@ class SalesOrder(Model):
             "receive_status": self.receive_status.value if self.receive_status else None,
             "invoice_status": self.invoice_status.value if self.invoice_status else None,
             "finance_status": self.finance_status.value if self.finance_status else None,
+            "push_status": self.push_status.value if self.push_status else None,
             "total_amt": float(self.total_amt),
             "tax_rate": float(self.tax_rate),
             "tax_amt": float(self.tax_amt),
@@ -153,7 +161,8 @@ class SalesOrderItem(Model):
     discounted_price = fields.DecimalField(max_digits=12, decimal_places=2, null=True, description="折后单价")
     amt = fields.DecimalField(max_digits=12, decimal_places=2, null=True, description="行金额")
     shipping_method = fields.CharEnumField(ShippingMethod, description="发货方式")
-    pushed = fields.BooleanField(default=False, description="是否已下推采购")
+    purchase_qty = fields.IntField(default=0, description="需要采购的数量")
+    pushed_qty = fields.IntField(default=0, description="已下推采购的数量")
     out_qty = fields.IntField(default=0, description="已发货数量")
     return_qty = fields.IntField(default=0, description="已退货数量")
     exchange_qty = fields.IntField(default=0, description="换货数量")
@@ -239,7 +248,8 @@ class SalesOrderItem(Model):
             "discounted_price": float(self.discounted_price) if self.discounted_price else None,
             "amt": float(self.amt) if self.amt else None,
             "shipping_method": shipping_method_cn,
-            "pushed": self.pushed,
+            "purchase_qty": self.purchase_qty,
+            "pushed_qty": self.pushed_qty,
             "out_qty": self.out_qty,
             "return_qty": self.return_qty,
             "exchange_qty": self.exchange_qty,
