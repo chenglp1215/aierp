@@ -126,6 +126,7 @@ class PurchaseOrderService:
                     discount=item.discount,
                     amt=amt,
                     source_sale_row_no=item.row_no,
+                    source_sale_order_item_id=item.id,
                     shipping_method=item.shipping_method.value if item.shipping_method else None,
                 )
 
