@@ -5,9 +5,7 @@ from fastapi import APIRouter, Query, Depends, Body
 from typing import Optional, List, Dict, Any
 
 from services.sales_order_service_mysql import sales_order_service_mysql as sales_order_service
-from services.purchase_order_service_mysql import purchase_order_service_mysql as purchase_order_service
 from services.order_status_flow_service import order_status_flow_service
-from models_mysql.sales_order import SalesOrder, SalesOrderItem
 from .auth import require_permission
 from app.decorators import wrap_response
 
@@ -180,41 +178,50 @@ async def push_to_purchase(
     current_user: dict = Depends(require_permission("order.edit"))
 ):
     """下推采购：将选中的销售订单明细生成采购单"""
-    # 获取销售订单
-    order = await SalesOrder.filter(order_no=order_no).prefetch_related("items").first()
-    if not order:
-        raise ValueError(f"销售订单不存在: {order_no}")
-
     # 获取选中的明细行号
     items_data = data.get("items", [])
     selected_row_nos = [item.get("row_no") for item in items_data if item.get("row_no")]
 
-    # 筛选选中的明细
-    selected_items = [item for item in order.items if item.row_no in selected_row_nos]
-
-    # 预加载选中明细的关联数据
-    if selected_items:
-        item_ids = [item.id for item in selected_items]
-        selected_items = list(await SalesOrderItem.filter(id__in=item_ids).select_related(
-            "spec__product__brand",
-            "warehouse"
-        ).all())
-
-    if not selected_items:
+    if not selected_row_nos:
         raise ValueError("请选择要下推采购的商品明细")
 
-    # 调用采购单服务创建采购单
+    result = await sales_order_service.push_to_purchase(order_no, selected_row_nos, current_user)
+    return result
+
+
+@sales_order_router.get("/{order_no}/can-revoke", response_model=dict, description="检查是否可撤销审核")
+@wrap_response
+async def check_can_revoke(
+    order_no: str,
+    _: dict = Depends(require_permission("order.view"))
+):
+    """检查订单是否可以撤销审核"""
+    result = await sales_order_service.check_can_revoke(order_no)
+    return result
+
+
+@sales_order_router.post("/{order_no}/revoke-audit", response_model=dict, description="撤销审核")
+@wrap_response
+async def revoke_audit(
+    order_no: str,
+    current_user: dict = Depends(require_permission("order.edit"))
+):
+    """撤销审核"""
     operator = current_user.get("username", current_user.get("full_name", "system"))
-    generated_orders = await purchase_order_service.create_from_sales_order(
-        order, selected_items, current_user
-    )
+    await sales_order_service.revoke_audit(order_no, operator)
+    return "撤销审核成功"
 
-    # 更新销售订单的下推状态
-    await sales_order_service.update_push_status(
-        order_no, selected_row_nos, operator
-    )
 
-    return generated_orders
+@sales_order_router.get("/{order_no}/pending-outbounds", response_model=dict, description="获取订单关联的待出库单")
+@wrap_response
+async def get_pending_outbounds(
+    order_no: str,
+    _: dict = Depends(require_permission("order.view"))
+):
+    """获取订单关联的待出库单"""
+    from services.pending_outbound_service import pending_outbound_service
+    items = await pending_outbound_service.get_by_sales_order(order_no)
+    return items
 
 
 # ============ 成本明细管理 ============

@@ -704,6 +704,133 @@ class SalesOrderService:
 
     # ============ 下推采购相关 ============
 
+    async def push_to_purchase(
+        self,
+        order_no: str,
+        item_row_nos: List[int],
+        current_user: Dict = None
+    ) -> List[Dict]:
+        """下推采购：将选中的销售订单明细生成采购单"""
+        from services.purchase_order_service_mysql import purchase_order_service_mysql
+
+        order = await SalesOrder.filter(order_no=order_no).prefetch_related("items").first()
+        if not order:
+            raise ValueError(f"订单不存在: {order_no}")
+
+        if order.order_status != OrderStatus.AUDITED:
+            raise ValueError("只有已审核订单可以下推采购")
+
+        # 筛选待下推明细
+        selected_items = []
+        for item in order.items:
+            if item.row_no in item_row_nos:
+                if item.pushed_qty >= item.purchase_qty:
+                    raise ValueError(f"行 {item.row_no} 已全部下推")
+                selected_items.append(item)
+
+        if not selected_items:
+            raise ValueError("没有待下推的明细")
+
+        # 预加载关联数据
+        item_ids = [item.id for item in selected_items]
+        selected_items = list(await SalesOrderItem.filter(id__in=item_ids).select_related(
+            "spec__product__brand",
+            "warehouse"
+        ).all())
+
+        # 生成采购单
+        operator = current_user.get("username", "system") if current_user else "system"
+        generated_orders = await purchase_order_service_mysql.create_from_sales_order(
+            order, selected_items, current_user
+        )
+
+        # 更新明细的 pushed_qty
+        for item in selected_items:
+            item.pushed_qty = item.purchase_qty
+            await item.save()
+
+        # 更新订单下推状态
+        order.push_status = await self._calculate_push_status(order.id)
+        await order.save()
+
+        logger.info(f"销售订单 {order_no} 下推采购成功，生成 {len(generated_orders)} 张采购单")
+        return generated_orders
+
+    async def check_can_revoke(self, order_no: str) -> Dict[str, Any]:
+        """检查订单是否可以撤销审核"""
+        from models_mysql.purchase_order import PurchaseOrder, PurchaseStatus
+
+        order = await SalesOrder.filter(order_no=order_no).first()
+        if not order:
+            raise ValueError(f"订单不存在: {order_no}")
+
+        if order.order_status != OrderStatus.AUDITED:
+            return {"can_revoke": False, "reason": "只有已审核订单可以撤销"}
+
+        # 检查待出库单
+        pendings = await PendingOutboundOrder.filter(sales_order_no=order_no).all()
+        for p in pendings:
+            if p.status not in [PendingOutboundStatus.PENDING, PendingOutboundStatus.CANCELLED]:
+                return {"can_revoke": False, "reason": "存在已出库的待出库单"}
+
+        # 检查采购单
+        purchase_orders = await PurchaseOrder.filter(source_sale_order_no=order_no).all()
+        for po in purchase_orders:
+            if po.purchase_status != PurchaseStatus.PENDING_REVIEW:
+                return {"can_revoke": False, "reason": "存在已处理的采购单"}
+
+        return {"can_revoke": True, "reason": ""}
+
+    async def revoke_audit(self, order_no: str, operator: str = "system") -> bool:
+        """撤销审核"""
+        from services.pending_outbound_service import pending_outbound_service
+        from models_mysql.purchase_order import PurchaseOrder, PurchaseOrderItem
+
+        order = await SalesOrder.filter(order_no=order_no).prefetch_related("items").first()
+        if not order:
+            raise ValueError(f"订单不存在: {order_no}")
+
+        if order.order_status != OrderStatus.AUDITED:
+            raise ValueError("只有已审核订单可以撤销")
+
+        # 检查是否可撤销
+        check_result = await self.check_can_revoke(order_no)
+        if not check_result["can_revoke"]:
+            raise ValueError(check_result["reason"])
+
+        # 取消待出库单并释放库存
+        await pending_outbound_service.cancel_pending_outbounds(order_no, operator)
+
+        # 删除采购单
+        purchase_orders = await PurchaseOrder.filter(source_sale_order_no=order_no).all()
+        for po in purchase_orders:
+            await PurchaseOrderItem.filter(purchase_order_id=po.id).delete()
+            await po.delete()
+
+        # 清空明细的采购数量
+        for item in order.items:
+            item.purchase_qty = 0
+            item.pushed_qty = 0
+            await item.save()
+
+        # 清空下推状态，回退到草稿
+        order.push_status = None
+        order.order_status = OrderStatus.DRAFT
+        await order.save()
+
+        await OrderStatusFlow.create(
+            order_no=order_no,
+            order_type="sales",
+            field="order_status",
+            old_value=OrderStatus.AUDITED.value,
+            new_value=OrderStatus.DRAFT.value,
+            operator=operator,
+            remark="撤销审核",
+        )
+
+        logger.info(f"销售订单撤销审核: {order_no}")
+        return True
+
     async def update_push_status(
         self,
         order_no: str,
