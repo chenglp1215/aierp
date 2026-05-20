@@ -71,6 +71,12 @@ const routes = [
     name: 'Crm',
     component: () => import('../components/DashboardLayout.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/pending-outbound',
+    name: 'PendingOutbound',
+    component: () => import('../components/DashboardLayout.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

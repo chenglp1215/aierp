@@ -27,6 +27,7 @@ import PurchaseOrderWorkspace from './workspace/PurchaseOrderWorkspace.vue'
 import PurchaseOrderDetail from './workspace/PurchaseOrderDetail.vue'
 import SalesOrderDetail from './workspace/SalesOrderDetail.vue'
 import SupplierWorkspace from './workspace/SupplierWorkspace.vue'
+import PendingOutboundWorkspace from './workspace/PendingOutboundWorkspace.vue'
 import { authApi } from '../services/api'
 import { usePermission, MENU_PERMISSION_MAP } from '../hooks'
 
@@ -159,7 +160,8 @@ const handleNavigate = (id: string, extraData?: Record<string, any>) => {
       'system-account': '账号管理',
       'system-intelligent': '智能设置',
       'sales-order-workspace': '销售订单管理',
-      'supplier': '供应商管理'
+      'supplier': '供应商管理',
+      'pending-outbound': '待出库'
     }
     const label = labelMap[id] || id
     openTabs.value.push({ id, label, closable: true })
@@ -280,6 +282,7 @@ const currentWorkspace = computed(() => {
   if (id === 'customer-discount-drilldown') return CustomerDiscountWorkspace
   if (id === 'sales-order-create-drilldown') return SalesOrderCreate
   if (id === 'supplier') return SupplierWorkspace
+  if (id === 'pending-outbound') return PendingOutboundWorkspace
   return DashboardWorkspace
 })
 
@@ -288,7 +291,7 @@ const currentBreadcrumb = computed(() => {
 })
 
 const keepAliveList = computed(() => {
-  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderWorkspace', 'PurchaseOrderWorkspace', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'BrandWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace', 'CustomerDiscountWorkspace', 'SalesOrderCreate', 'SalesOrderDetail', 'PurchaseOrderDetail', 'SupplierWorkspace']
+  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderWorkspace', 'PurchaseOrderWorkspace', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'BrandWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace', 'CustomerDiscountWorkspace', 'SalesOrderCreate', 'SalesOrderDetail', 'PurchaseOrderDetail', 'SupplierWorkspace', 'PendingOutboundWorkspace']
   return names
 })
 

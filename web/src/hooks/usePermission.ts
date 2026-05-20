@@ -157,6 +157,7 @@ export const MENU_PERMISSION_MAP: Record<string, string> = {
   'warehouse-list': 'warehouse.view',
   'stock': 'stock.menu',
   'stock-list': 'stock.view',
+  'pending-outbound': 'warehouse.view',
   'finance': 'finance.menu',
   'finance-invoice': 'finance.invoice.view',
   'finance-payment': 'finance.payment.view',
