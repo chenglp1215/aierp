@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 
 from tortoise.expressions import Q
+from tortoise.transactions import in_transaction
 
 from models_mysql.pending_outbound import PendingOutboundOrder, PendingOutboundStatus
 from models_mysql.warehouse import Stock
@@ -42,16 +43,16 @@ class PendingOutboundService:
         pending_no = await self.generate_pending_no()
 
         # 使用数据库事务和行锁确保并发安全
-        async with Stock._meta.db.transaction():
+        async with in_transaction() as conn:
             # 使用 select_for_update 锁定库存行，防止并发冲突
             stock = await Stock.filter(
                 warehouse_id=warehouse_id,
                 spec_id=spec_id
-            ).select_for_update().first()
+            ).using_db(conn).select_for_update().first()
 
             if stock:
                 stock.quantity -= locked_qty
-                await stock.save()
+                await stock.save(using_db=conn)
 
             # 创建待出库单
             pending = await PendingOutboundOrder.create(
@@ -67,7 +68,8 @@ class PendingOutboundService:
                 spec_code=spec_code,
                 locked_qty=locked_qty,
                 out_qty=0,
-                status=PendingOutboundStatus.PENDING
+                status=PendingOutboundStatus.PENDING,
+                using_db=conn
             )
 
         logger.info(f"创建待出库单: {pending_no}, 锁定库存: {locked_qty}")
@@ -137,6 +139,14 @@ class PendingOutboundService:
         if item:
             item.out_qty += out_qty
             await item.save()
+
+        # 同步更新销售订单发货状态
+        from services.sales_order_service_mysql import sales_order_service_mysql
+        await sales_order_service_mysql.update_order_status(
+            order_id=pending.sales_order_id,
+            status_types=["delivery"],
+            operator=operator
+        )
 
         logger.info(f"待出库单 {pending.pending_no} 出库: {out_qty}, 操作人: {operator}")
         return pending.to_dict()

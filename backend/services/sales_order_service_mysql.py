@@ -345,9 +345,12 @@ class SalesOrderService:
 
             await item.save()
 
-        # 更新订单下推状态
-        order.push_status = await self._calculate_push_status(order.id)
-        await order.save()
+        # 更新订单状态
+        await self.update_order_status(
+            order_id=order.id,
+            status_types=["push"],
+            operator=operator
+        )
 
     # ============ 创建订单 ============
 
@@ -919,8 +922,11 @@ class SalesOrderService:
             await item.save()
 
         # 更新订单下推状态
-        order.push_status = await self._calculate_push_status(order.id)
-        await order.save()
+        await self.update_order_status(
+            order_id=order.id,
+            status_types=["push"],
+            operator=operator
+        )
 
         logger.info(f"销售订单 {order_no} 下推采购成功，生成 {len(generated_orders)} 张采购单")
         return generated_orders
@@ -1038,10 +1044,13 @@ class SalesOrderService:
                 await item.save()
 
         # 重新计算订单下推状态
-        order.push_status = await self._calculate_push_status(order.id)
-        await order.save()
+        result = await self.update_order_status(
+            order_id=order.id,
+            status_types=["push"],
+            operator=operator
+        )
 
-        logger.info(f"销售订单下推状态重置: {order_no} -> {order.push_status.value}")
+        logger.info(f"销售订单下推状态重置: {order_no} -> {result['updated']['push']['new']}")
         return True
 
     # ============ 成本明细管理 ============
