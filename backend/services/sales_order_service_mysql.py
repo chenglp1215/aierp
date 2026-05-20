@@ -129,6 +129,54 @@ class SalesOrderService:
             return PushStatus.NONE
         return PushStatus.FULL
 
+    async def _calculate_delivery_status(self, order_id: int) -> DeliveryStatus:
+        """计算发货状态（仅仓库发货）
+
+        根据仓库发货明细的待出库单出库数量计算订单发货状态。
+        直运明细不参与计算。
+        """
+        # 获取仓库发货方式的明细
+        items = await SalesOrderItem.filter(
+            sales_order_id=order_id,
+            shipping_method=ShippingMethod.WAREHOUSE
+        ).all()
+
+        if not items:
+            return DeliveryStatus.NONE  # 无仓库发货明细
+
+        # 批量获取所有待出库单（优化性能）
+        item_ids = [item.id for item in items]
+        all_pendings = await PendingOutboundOrder.filter(
+            sales_order_item_id__in=item_ids
+        ).all()
+
+        # 按明细ID分组
+        pendings_by_item = {}
+        for p in all_pendings:
+            if p.sales_order_item_id not in pendings_by_item:
+                pendings_by_item[p.sales_order_item_id] = []
+            pendings_by_item[p.sales_order_item_id].append(p)
+
+        has_none = False  # 有未出库
+        has_full = False  # 有已出库
+
+        for item in items:
+            pendings = pendings_by_item.get(item.id, [])
+            out_qty = sum(p.out_qty for p in pendings)
+
+            if out_qty == 0:
+                has_none = True
+            elif out_qty >= item.qty:
+                has_full = True
+            else:
+                has_none = True  # 部分出库视为未完成
+
+        if has_none and has_full:
+            return DeliveryStatus.PARTIAL
+        if has_full and not has_none:
+            return DeliveryStatus.FULL
+        return DeliveryStatus.NONE
+
     async def _process_audit_pass(self, order: SalesOrder, operator: str = "system") -> None:
         """审核通过后处理：计算采购数量、生成待出库单、更新下推状态"""
         from services.pending_outbound_service import pending_outbound_service
