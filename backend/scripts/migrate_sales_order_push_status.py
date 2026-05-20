@@ -22,8 +22,9 @@ from models_mysql.purchase_order import PurchaseOrderItem
 async def migrate_push_status():
     """迁移销售订单下推状态"""
     # 初始化数据库连接
+    # 密码中的 @ 需要编码为 %40
     await Tortoise.init(
-        db_url="mysql://admin:Chenglp1215!@#@132.232.212.151:58901/erp_test",
+        db_url="mysql://admin:Chenglp1215%21%40%23@132.232.212.151:58901/erp_test",
         modules={"models": [
             "models_mysql.sales_order",
             "models_mysql.purchase_order",
