@@ -415,6 +415,21 @@ export const salesOrderApi = {
     invoice_status?: string
   }) => {
     return apiService.post<any>(`/sales-orders/${orderNo}/test-update-status`, data)
+  },
+
+  // 检查订单是否可撤销审核
+  checkCanRevoke: (orderNo: string) => {
+    return apiService.get<any>(`/sales-orders/${orderNo}/can-revoke`)
+  },
+
+  // 撤销审核
+  revokeAudit: (orderNo: string) => {
+    return apiService.post<any>(`/sales-orders/${orderNo}/revoke-audit`)
+  },
+
+  // 获取订单关联的待出库单
+  getPendingOutbounds: (orderNo: string) => {
+    return apiService.get<any>(`/sales-orders/${orderNo}/pending-outbounds`)
   }
 }
 
@@ -1793,5 +1808,32 @@ export const stockCheckApi = {
   // 获取批次详情
   getBatchDetail: (batchId: string) => {
     return apiService.get<any>(`/stock-checks/batches/${batchId}`)
+  }
+}
+
+export const pendingOutboundApi = {
+  // 获取待出库单列表
+  list: (params: { page?: number; page_size?: number; warehouse_id?: number; sales_order_no?: string; status?: string }) => {
+    return apiService.get<any>('/pending-outbounds/', params)
+  },
+
+  // 获取待出库单详情
+  getById: (pendingId: number) => {
+    return apiService.get<any>(`/pending-outbounds/${pendingId}`)
+  },
+
+  // 执行出库
+  execute: (pendingId: number, outQty: number) => {
+    return apiService.post<any>(`/pending-outbounds/${pendingId}/execute`, { out_qty: outQty })
+  },
+
+  // 批量执行出库
+  batchExecute: (items: { pending_id: number; out_qty: number }[]) => {
+    return apiService.post<any>('/pending-outbounds/batch-execute', { items })
+  },
+
+  // 按销售订单查询待出库单
+  getBySalesOrder: (salesOrderNo: string) => {
+    return apiService.get<any>(`/pending-outbounds/by-order/${salesOrderNo}`)
   }
 }
