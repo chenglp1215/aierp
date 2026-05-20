@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
-import { salesOrderApi, purchaseOrderApi, receivableApi, brandApi } from '../../services/api'
+import { salesOrderApi, purchaseOrderApi, receivableApi, brandApi, pendingOutboundApi } from '../../services/api'
 import PushPurchaseItemSelectModal from './PushPurchaseItemSelectModal.vue'
 
 interface Props {
@@ -25,7 +25,8 @@ const pushableItems = ref<any[]>([])
 
 // 成本明细相关
 const costItems = ref<any[]>([])
-const activeMainTab = ref<'items' | 'purchase' | 'receivable' | 'cost'>('items')
+const pendingOutbounds = ref<any[]>([])
+const activeMainTab = ref<'items' | 'purchase' | 'receivable' | 'cost' | 'outbound'>('items')
 const flowExpanded = ref(false)
 
 // ============ 状态映射 ============
@@ -83,6 +84,13 @@ const stockStatusMap: Record<string, { label: string; class: string }> = {
   low_stock: { label: '偏低', class: 'stock-low' },
   out_of_stock: { label: '缺货', class: 'stock-out' },
   overstock: { label: '积压', class: 'stock-over' }
+}
+
+const pendingOutboundStatusMap: Record<string, { label: string; class: string }> = {
+  pending: { label: '待出库', class: 'pending' },
+  partial: { label: '部分出库', class: 'partial' },
+  full: { label: '已出库', class: 'full' },
+  cancelled: { label: '已取消', class: 'cancelled' }
 }
 
 // 成本类型映射
@@ -188,7 +196,7 @@ const loadOrder = async () => {
     ])
     order.value = orderData
     flows.value = flowsData || []
-    await Promise.all([loadPurchaseOrders(), loadReceivables(), loadCostItems()])
+    await Promise.all([loadPurchaseOrders(), loadReceivables(), loadCostItems(), loadPendingOutbounds()])
   } catch (e) {
     console.error('加载订单详情失败:', e)
   } finally {
@@ -224,6 +232,17 @@ const loadCostItems = async () => {
   } catch (e) {
     console.error('加载成本明细失败:', e)
     costItems.value = []
+  }
+}
+
+const loadPendingOutbounds = async () => {
+  if (!props.orderNo) return
+  try {
+    const res = await pendingOutboundApi.getBySalesOrder(props.orderNo)
+    pendingOutbounds.value = res || []
+  } catch (e) {
+    console.error('加载待出库单失败:', e)
+    pendingOutbounds.value = []
   }
 }
 
@@ -580,6 +599,13 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
           >
             成本明细 <span class="tab-count">({{ costItems.length }})</span>
           </button>
+          <button
+            class="tab-btn"
+            :class="{ active: activeMainTab === 'outbound' }"
+            @click="activeMainTab = 'outbound'"
+          >
+            出库单 <span class="tab-count">({{ pendingOutbounds.length }})</span>
+          </button>
         </div>
 
         <!-- 商品明细 Tab -->
@@ -718,6 +744,45 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
               <span class="cost-summary-value">¥{{ totalCostAmount.toFixed(2) }}</span>
             </div>
           </template>
+        </div>
+
+        <!-- 出库单 Tab -->
+        <div v-if="activeMainTab === 'outbound'">
+          <div v-if="pendingOutbounds.length === 0" class="empty-state">暂无待出库单，审核通过后仓库发货商品将生成待出库单</div>
+          <div v-else class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>待出库单号</th>
+                  <th>商品编码</th>
+                  <th>规格编码</th>
+                  <th>仓库</th>
+                  <th class="col-num">锁定数量</th>
+                  <th class="col-num">已出库数量</th>
+                  <th class="col-num">待出库数量</th>
+                  <th>状态</th>
+                  <th>创建时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in pendingOutbounds" :key="item.id">
+                  <td>{{ item.pending_no }}</td>
+                  <td>{{ item.product_code || '-' }}</td>
+                  <td>{{ item.spec_code || '-' }}</td>
+                  <td>{{ item.warehouse_name || '-' }}</td>
+                  <td class="col-num">{{ item.locked_qty }}</td>
+                  <td class="col-num">{{ item.out_qty }}</td>
+                  <td class="col-num">{{ item.locked_qty - item.out_qty }}</td>
+                  <td>
+                    <span class="status-tag" :class="getStatusClass(pendingOutboundStatusMap, item.status)">
+                      {{ getStatusLabel(pendingOutboundStatusMap, item.status) }}
+                    </span>
+                  </td>
+                  <td>{{ item.created_at }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
