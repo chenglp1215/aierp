@@ -225,6 +225,7 @@ class PurchaseOrderItem(Model):
             "in_qty": self.in_qty,
             "return_qty": self.return_qty,
             "source_sale_row_no": self.source_sale_row_no,
+            "source_sale_order_item_id": self.source_sale_order_item_id,
             "shipping_method": self.shipping_method,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
