@@ -187,6 +187,21 @@ async def migrate_push_status():
     print(f"FULL: {full_count}")
     print(f"NOT_NEEDED: {not_needed_count}")
 
+    # 迁移旧状态：pushed_to_purchase -> audited + push_status=full
+    # 部分下推 -> audited + push_status=partial
+    print("\n迁移旧订单状态...")
+
+    # 使用原生 SQL 更新，因为 ORM 会校验枚举值
+    pushed_count = await conn.execute_query(
+        "UPDATE sales_orders SET order_status = 'audited', push_status = 'full' WHERE order_status = 'pushed_to_purchase'"
+    )
+    print(f"已迁移 pushed_to_purchase -> audited + full: {pushed_count[0]} 条")
+
+    partial_count = await conn.execute_query(
+        "UPDATE sales_orders SET order_status = 'audited', push_status = 'partial' WHERE order_status = 'partially_pushed_to_purchase'"
+    )
+    print(f"已迁移 partially_pushed_to_purchase -> audited + partial: {partial_count[0]} 条")
+
     await Tortoise.close_connections()
     print("\n迁移完成!")
 
