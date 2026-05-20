@@ -41,32 +41,34 @@ class PendingOutboundService:
         """创建待出库单并锁定库存"""
         pending_no = await self.generate_pending_no()
 
-        # 锁定库存
-        stock = await Stock.filter(
-            warehouse_id=warehouse_id,
-            spec_id=spec_id
-        ).first()
+        # 使用数据库事务和行锁确保并发安全
+        async with Stock._meta.db.transaction():
+            # 使用 select_for_update 锁定库存行，防止并发冲突
+            stock = await Stock.filter(
+                warehouse_id=warehouse_id,
+                spec_id=spec_id
+            ).select_for_update().first()
 
-        if stock:
-            stock.quantity -= locked_qty
-            await stock.save()
+            if stock:
+                stock.quantity -= locked_qty
+                await stock.save()
 
-        # 创建待出库单
-        pending = await PendingOutboundOrder.create(
-            pending_no=pending_no,
-            sales_order_id=sales_order_id,
-            sales_order_no=sales_order_no,
-            sales_order_item_id=sales_order_item_id,
-            row_no=row_no,
-            warehouse_id=warehouse_id,
-            warehouse_name=warehouse_name,
-            spec_id=spec_id,
-            product_code=product_code,
-            spec_code=spec_code,
-            locked_qty=locked_qty,
-            out_qty=0,
-            status=PendingOutboundStatus.PENDING
-        )
+            # 创建待出库单
+            pending = await PendingOutboundOrder.create(
+                pending_no=pending_no,
+                sales_order_id=sales_order_id,
+                sales_order_no=sales_order_no,
+                sales_order_item_id=sales_order_item_id,
+                row_no=row_no,
+                warehouse_id=warehouse_id,
+                warehouse_name=warehouse_name,
+                spec_id=spec_id,
+                product_code=product_code,
+                spec_code=spec_code,
+                locked_qty=locked_qty,
+                out_qty=0,
+                status=PendingOutboundStatus.PENDING
+            )
 
         logger.info(f"创建待出库单: {pending_no}, 锁定库存: {locked_qty}")
         return pending
