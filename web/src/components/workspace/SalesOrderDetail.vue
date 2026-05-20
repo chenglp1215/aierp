@@ -625,11 +625,14 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
                   <th class="col-num">单价</th>
                   <th class="col-num">金额</th>
                   <th>发货方式</th>
-                  <th>下推状态</th>
+                  <th class="col-num">库存发货</th>
+                  <th class="col-num">采购数量</th>
+                  <th class="col-num">已下推</th>
+                  <th class="col-num">待下推</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in order.items" :key="item.row_no" :class="{ 'row-pushed': item.pushed }">
+                <tr v-for="item in order.items" :key="item.row_no">
                   <td>{{ item.row_no }}</td>
                   <td>{{ item.product_name || item.product_id }}</td>
                   <td>{{ item.brand_name || '-' }}</td>
@@ -646,10 +649,18 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
                   <td class="col-num">{{ item.price?.toFixed(2) }}</td>
                   <td class="col-num">{{ item.amt?.toFixed(2) }}</td>
                   <td>{{ item.shipping_method }}</td>
-                  <td>
-                    <span v-if="item.shipping_method !== '直运' && (item.stock_quantity ?? 0) >= item.qty" class="status-tag stock-sufficient">库存发货，无需采购</span>
-                    <span v-else-if="item.pushed" class="status-tag pushed">已下推</span>
-                    <span v-else class="status-tag pending">待下推</span>
+                  <td class="col-num">
+                    <span v-if="item.shipping_method === '仓库发货' && (item.stock_quantity ?? 0) > 0">
+                      {{ Math.min(item.qty, item.stock_quantity ?? 0) }}
+                    </span>
+                    <span v-else class="text-muted">-</span>
+                  </td>
+                  <td class="col-num">{{ item.purchase_qty ?? 0 }}</td>
+                  <td class="col-num">{{ item.pushed_qty ?? 0 }}</td>
+                  <td class="col-num">
+                    <span :class="{ 'text-warning': (item.purchase_qty ?? 0) - (item.pushed_qty ?? 0) > 0 }">
+                      {{ (item.purchase_qty ?? 0) - (item.pushed_qty ?? 0) }}
+                    </span>
                   </td>
                 </tr>
               </tbody>
@@ -1188,6 +1199,8 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
 .status-tag.stock-over { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
 
 .text-muted { color: var(--text-muted); font-size: 13px; }
+
+.text-warning { color: var(--accent-yellow); font-weight: 500; }
 
 /* 表格 */
 .table-wrapper {
