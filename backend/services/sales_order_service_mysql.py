@@ -177,6 +177,127 @@ class SalesOrderService:
             return DeliveryStatus.FULL
         return DeliveryStatus.NONE
 
+    async def update_order_status(
+        self,
+        order_id: int,
+        status_types: List[str] = None,
+        operator: str = "system"
+    ) -> Dict[str, Any]:
+        """更新销售订单状态
+
+        统一的状态更新方法，支持选择性更新特定状态。
+
+        Args:
+            order_id: 订单ID
+            status_types: 要更新的状态类型列表，可选值:
+                - "push": 更新下推状态
+                - "delivery": 更新发货状态
+                - "receive": 更新收货状态（预留，暂不支持）
+                - "invoice": 更新开票状态（预留，暂不支持）
+                - "finance": 更新财务状态（预留，暂不支持）
+                - None: 更新全部可计算状态（push, delivery）
+            operator: 操作人
+
+        Returns:
+            更新后的状态字典
+        """
+        order = await SalesOrder.filter(id=order_id).first()
+        if not order:
+            raise ValueError(f"订单不存在: {order_id}")
+
+        # 默认更新全部可计算状态
+        if status_types is None:
+            status_types = ["push", "delivery"]
+
+        result = {
+            "order_id": order_id,
+            "order_no": order.order_no,
+            "updated": {}
+        }
+
+        # 支持的状态类型
+        supported_types = {
+            "push": self._update_push_status,
+            "delivery": self._update_delivery_status,
+        }
+        reserved_types = ["receive", "invoice", "finance"]
+
+        for status_type in status_types:
+            if status_type in supported_types:
+                # 调用对应的更新方法
+                update_result = await supported_types[status_type](order, operator)
+                result["updated"][status_type] = update_result
+            elif status_type in reserved_types:
+                # 预留状态，暂不支持计算
+                result["updated"][status_type] = {
+                    "status": "skipped",
+                    "reason": f"{status_type}_status 暂不支持自动计算"
+                }
+            else:
+                logger.warning(f"未知的状态类型: {status_type}")
+
+        await order.save()
+        logger.info(f"订单 {order.order_no} 状态更新完成: {result['updated']}")
+        return result
+
+    async def _update_push_status(
+        self,
+        order: SalesOrder,
+        operator: str
+    ) -> Dict[str, Any]:
+        """更新下推状态"""
+        old_status = order.push_status
+        new_status = await self._calculate_push_status(order.id)
+
+        if old_status != new_status:
+            order.push_status = new_status
+
+            # 记录状态变更
+            await OrderStatusFlow.create(
+                order_no=order.order_no,
+                order_type="sales",
+                field="push_status",
+                old_value=old_status.value if old_status else None,
+                new_value=new_status.value,
+                operator=operator,
+                remark="状态自动计算更新"
+            )
+
+        return {
+            "old": old_status.value if old_status else None,
+            "new": new_status.value,
+            "changed": old_status != new_status
+        }
+
+    async def _update_delivery_status(
+        self,
+        order: SalesOrder,
+        operator: str
+    ) -> Dict[str, Any]:
+        """更新发货状态"""
+        old_status = order.delivery_status
+        new_status = await self._calculate_delivery_status(order.id)
+
+        if old_status != new_status:
+            order.delivery_status = new_status
+
+            # 记录状态变更
+            await OrderStatusFlow.create(
+                order_no=order.order_no,
+                order_type="sales",
+                field="delivery_status",
+                old_value=old_status.value if old_status else None,
+                new_value=new_status.value,
+                operator=operator,
+                remark="状态自动计算更新"
+            )
+
+        return {
+            "old": old_status.value if old_status else None,
+            "new": new_status.value,
+            "changed": old_status != new_status
+        }
+
     async def _process_audit_pass(self, order: SalesOrder, operator: str = "system") -> None:
         """审核通过后处理：计算采购数量、生成待出库单、更新下推状态"""
         from services.pending_outbound_service import pending_outbound_service
