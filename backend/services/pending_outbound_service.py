@@ -272,8 +272,11 @@ class PendingOutboundService:
         await pending.save()
 
         # 更新销售订单明细出库数量（基于批次汇总）
+        sibling_ids = await PendingOutboundOrder.filter(
+            sales_order_item_id=pending.sales_order_item_id
+        ).values_list("id", flat=True)
         total_out_result = await OutboundBatch.filter(
-            pending_outbound__sales_order_item_id=pending.sales_order_item_id
+            pending_outbound_id__in=list(sibling_ids)
         ).annotate(total=Sum("quantity")).values_list("total", flat=True)
         item = await SalesOrderItem.filter(id=pending.sales_order_item_id).first()
         if item:
