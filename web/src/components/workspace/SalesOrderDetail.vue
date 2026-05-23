@@ -46,10 +46,11 @@ const deliveryStatusMap: Record<string, { label: string; class: string }> = {
   full: { label: '全部发货', class: 'full' }
 }
 
-const receiveStatusMap: Record<string, { label: string; class: string }> = {
-  none: { label: '未收货', class: 'none' },
-  partial: { label: '部分收货', class: 'partial' },
-  full: { label: '全部收货', class: 'full' }
+const pushStatusMap: Record<string, { label: string; class: string }> = {
+  none: { label: '未下推', class: 'none' },
+  partial: { label: '部分下推', class: 'partial' },
+  full: { label: '已下推', class: 'full' },
+  not_needed: { label: '无需下推', class: 'reconciled' }
 }
 
 const invoiceStatusMap: Record<string, { label: string; class: string }> = {
@@ -398,7 +399,7 @@ const getStatusClass = (map: Record<string, { label: string; class: string }>, v
 const getFlowFieldName = (field: string) => {
   const map: Record<string, string> = {
     order_status: '订单状态', delivery_status: '发货状态',
-    receive_status: '收货状态', invoice_status: '开票状态'
+    push_status: '下推状态', invoice_status: '开票状态'
   }
   return map[field] || field
 }
@@ -489,9 +490,9 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
               </span>
             </div>
             <div class="status-card">
-              <div class="status-card-label">收货状态</div>
-              <span class="status-tag" :class="getStatusClass(receiveStatusMap, order.receive_status)">
-                {{ getStatusLabel(receiveStatusMap, order.receive_status) }}
+              <div class="status-card-label">下推状态</div>
+              <span class="status-tag" :class="getStatusClass(pushStatusMap, order.push_status)">
+                {{ getStatusLabel(pushStatusMap, order.push_status) }}
               </span>
             </div>
             <div class="status-card">
@@ -520,6 +521,10 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
             <div class="amount-item">
               <span class="amount-label">税额</span>
               <span class="amount-value">¥{{ order.tax_amt?.toFixed(2) || '0.00' }}</span>
+            </div>
+            <div class="amount-item">
+              <span class="amount-label">运费</span>
+              <span class="amount-value">¥{{ order.freight_amt?.toFixed(2) || '0.00' }}</span>
             </div>
             <div class="amount-item highlight">
               <span class="amount-label">含税总额</span>
