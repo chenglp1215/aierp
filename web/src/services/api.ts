@@ -1883,5 +1883,18 @@ export const pendingOutboundApi = {
   // 获取可出库批次列表
   getAvailableBatches: (pendingId: number) => {
     return apiService.get<any>(`/pending-outbounds/${pendingId}/available-batches`)
+  },
+
+  // 发货
+  ship: (pendingId: number, shippingCompany?: string, trackingNo?: string) => {
+    const data: any = {}
+    if (shippingCompany) data.shipping_company = shippingCompany
+    if (trackingNo) data.tracking_no = trackingNo
+    return apiService.post<any>(`/pending-outbounds/${pendingId}/ship`, data)
+  },
+
+  // 撤销出库
+  revoke: (pendingId: number) => {
+    return apiService.post<any>(`/pending-outbounds/${pendingId}/revoke`, {})
   }
 }
