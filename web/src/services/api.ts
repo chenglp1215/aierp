@@ -1255,6 +1255,35 @@ export const aiToolsApi = {
   }
 }
 
+export const warehouseLocationApi = {
+  list: (params: { page?: number; page_size?: number; warehouse_id?: string | number }) => {
+    return apiService.get<any>('/warehouse-locations/', params)
+  },
+  getById: (id: string) => {
+    return apiService.get<any>(`/warehouse-locations/${id}`)
+  },
+  create: (data: {
+    warehouse_id: string | number
+    location_code: string
+    location_name?: string
+    status?: string
+    description?: string
+  }) => {
+    return apiService.post<any>('/warehouse-locations/', data)
+  },
+  update: (id: string, data: {
+    location_code?: string
+    location_name?: string
+    status?: string
+    description?: string
+  }) => {
+    return apiService.put<any>(`/warehouse-locations/${id}`, data)
+  },
+  delete: (id: string) => {
+    return apiService.delete<any>(`/warehouse-locations/${id}`)
+  }
+}
+
 export const warehouseApi = {
   list: (params: { page?: number; page_size?: number; status?: string; keyword?: string }) => {
     return apiService.get<any>('/warehouses/', params)
@@ -1343,6 +1372,11 @@ export interface InboundBatch {
   spec_code: string
   stock_id: string
   quantity: number
+  location_id?: number | null
+  location_code?: string | null
+  expiry_date?: string | null
+  current_quantity?: number
+  batch_no?: string | null
   user_id: string
   user_name: string
   created_at: string
@@ -1359,6 +1393,7 @@ export interface OutboundBatch {
   spec_code: string
   stock_id: string
   quantity: number
+  inbound_batch_id?: number | null
   user_id: string
   user_name: string
   created_at: string
@@ -1381,6 +1416,10 @@ export const inboundBatchApi = {
     spec_code: string
     stock_id?: string
     quantity: number
+    location_id?: number | null
+    location_code?: string | null
+    expiry_date?: string | null
+    batch_no?: string | null
     user_id: string
     user_name: string
   }) => {
@@ -1823,17 +1862,26 @@ export const pendingOutboundApi = {
   },
 
   // 执行出库
-  execute: (pendingId: number, outQty: number) => {
-    return apiService.post<any>(`/pending-outbounds/${pendingId}/execute`, { out_qty: outQty })
+  execute: (pendingId: number, outQty: number, batchItems?: Array<{ inbound_batch_id: number; quantity: number }>) => {
+    const data: any = { out_qty: outQty }
+    if (batchItems && batchItems.length > 0) {
+      data.batch_items = batchItems
+    }
+    return apiService.post<any>(`/pending-outbounds/${pendingId}/execute`, data)
   },
 
   // 批量执行出库
-  batchExecute: (items: { pending_id: number; out_qty: number }[]) => {
+  batchExecute: (items: { pending_id: number; out_qty: number; batch_items?: Array<{ inbound_batch_id: number; quantity: number }> }[]) => {
     return apiService.post<any>('/pending-outbounds/batch-execute', { items })
   },
 
   // 按销售订单查询待出库单
   getBySalesOrder: (salesOrderNo: string) => {
     return apiService.get<any>(`/pending-outbounds/by-order/${salesOrderNo}`)
+  },
+
+  // 获取可出库批次列表
+  getAvailableBatches: (pendingId: number) => {
+    return apiService.get<any>(`/pending-outbounds/${pendingId}/available-batches`)
   }
 }
