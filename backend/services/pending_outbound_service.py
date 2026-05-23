@@ -312,5 +312,112 @@ class PendingOutboundService:
         logger.info(f"取消待出库单: {sales_order_no}, 数量: {count}, 操作人: {operator}")
         return count
 
+    async def ship_outbound(
+        self,
+        pending_id: int,
+        operator: str = "system",
+        shipping_company: str = None,
+        tracking_no: str = None
+    ) -> Dict:
+        """发货操作：将已出库状态更新为已发货"""
+        pending = await PendingOutboundOrder.filter(id=pending_id).first()
+        if not pending:
+            raise ValueError("出库单不存在")
+
+        if pending.status == PendingOutboundStatus.CANCELLED:
+            raise ValueError("出库单已取消，无法发货")
+        if pending.status == PendingOutboundStatus.SHIPPED:
+            raise ValueError("出库单已发货")
+        if pending.status == PendingOutboundStatus.PENDING:
+            raise ValueError("只有已出库状态的单据可以发货")
+
+        pending.status = PendingOutboundStatus.SHIPPED
+        pending.shipped_at = datetime.now(timezone.utc)
+        if shipping_company:
+            pending.shipping_company = shipping_company
+        if tracking_no:
+            pending.tracking_no = tracking_no
+        await pending.save()
+
+        # 更新销售订单发货状态
+        from services.sales_order_service_mysql import sales_order_service_mysql
+        await sales_order_service_mysql.update_order_status(
+            order_id=pending.sales_order_id,
+            status_types=["delivery"],
+            operator=operator
+        )
+
+        logger.info(f"出库单 {pending.pending_no} 发货, 操作人: {operator}")
+        return pending.to_dict()
+
+    async def revoke_outbound(
+        self,
+        pending_id: int,
+        operator: str = "system"
+    ) -> Dict:
+        """撤销出库操作：将已出库状态回退为未出库，恢复库存数量"""
+        async with in_transaction() as conn:
+            pending = await PendingOutboundOrder.filter(
+                id=pending_id
+            ).using_db(conn).select_for_update().first()
+
+            if not pending:
+                raise ValueError("出库单不存在")
+
+            if pending.status != PendingOutboundStatus.OUTBOUND:
+                raise ValueError("只有已出库状态的单据可以撤销")
+
+            # 获取关联的出库批次记录
+            outbound_batches = await OutboundBatch.filter(
+                pending_outbound_id=pending.id
+            ).using_db(conn).all()
+
+            if not outbound_batches:
+                raise ValueError("该出库单缺少出库批次记录，无法自动撤销，请联系管理员")
+
+            # 检查是否所有出库批次都有入库批次关联
+            for ob in outbound_batches:
+                if not ob.inbound_batch_id:
+                    raise ValueError("该出库单存在无批次关联的出库记录，无法自动撤销，请联系管理员")
+
+            # 逐条恢复入库批次剩余数量，删除出库批次记录
+            revoked_qty = 0
+            for ob in outbound_batches:
+                inbound_batch = await InboundBatch.filter(
+                    id=ob.inbound_batch_id
+                ).using_db(conn).select_for_update().first()
+
+                if inbound_batch:
+                    inbound_batch.current_quantity += ob.quantity
+                    await inbound_batch.save(using_db=conn)
+
+                revoked_qty += ob.quantity
+                await ob.delete(using_db=conn)
+
+            # 回退出库单状态
+            pending.status = PendingOutboundStatus.PENDING
+            await pending.save(using_db=conn)
+
+            # 扣减销售订单明细出库数量
+            item = await SalesOrderItem.filter(
+                id=pending.sales_order_item_id
+            ).using_db(conn).first()
+            if item:
+                item.out_qty = max(0, item.out_qty - int(revoked_qty))
+                await item.save(using_db=conn)
+
+        # 更新销售订单发货状态（事务外执行，避免嵌套事务）
+        from services.sales_order_service_mysql import sales_order_service_mysql
+        await sales_order_service_mysql.update_order_status(
+            order_id=pending.sales_order_id,
+            status_types=["delivery"],
+            operator=operator
+        )
+
+        logger.info(f"出库单 {pending.pending_no} 撤销出库, 撤销数量: {revoked_qty}, 操作人: {operator}")
+        # 重新查询获取最新状态
+        pending = await PendingOutboundOrder.filter(id=pending_id).first()
+        return pending.to_dict()
+
 
 pending_outbound_service = PendingOutboundService()
