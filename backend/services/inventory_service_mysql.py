@@ -9,7 +9,8 @@ from typing import Optional, List, Dict, Any
 
 from tortoise.expressions import Q
 
-from models_mysql.warehouse import Warehouse, Stock, InboundBatch, OutboundBatch
+from models_mysql.warehouse import Warehouse, Stock, InboundBatch, OutboundBatch, WarehouseLocation
+from models_mysql.product import ProductSpec
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,8 @@ class WarehouseService:
         if "address" in warehouse_data:
             warehouse.address = warehouse_data["address"]
         if "manager_id" in warehouse_data:
-            warehouse.manager_id = warehouse_data["manager_id"]
+            val = warehouse_data["manager_id"]
+            warehouse.manager_id = None if val == "" or val is None else val
         if "manager_name" in warehouse_data:
             warehouse.manager_name = warehouse_data["manager_name"]
         if "status" in warehouse_data:
@@ -131,6 +133,129 @@ class StockService:
             return "overstock"
         return "normal"
 
+    async def _calculate_batch_total(self, warehouse_id: int, spec_id: int) -> float:
+        """计算指定库存的批次 current_quantity 之和"""
+        batches = await InboundBatch.filter(
+            warehouse_id=warehouse_id,
+            spec_id=spec_id
+        ).only("current_quantity").all()
+        return sum(float(b.current_quantity) for b in batches)
+
+    async def _calculate_locked_quantity(self, warehouse_id: int, spec_id: int) -> float:
+        """计算指定仓库+规格的锁定量"""
+        from models_mysql.pending_outbound import PendingOutboundOrder, PendingOutboundStatus
+        from models_mysql.warehouse import OutboundBatch
+        from tortoise.functions import Sum
+
+        pendings = await PendingOutboundOrder.filter(
+            warehouse_id=warehouse_id,
+            spec_id=spec_id,
+            status=PendingOutboundStatus.PENDING
+        ).all()
+
+        if not pendings:
+            return 0
+
+        pending_ids = [p.id for p in pendings]
+        locked_map = dict()
+        rows = await OutboundBatch.filter(
+            pending_outbound_id__in=pending_ids
+        ).group_by("pending_outbound_id").annotate(
+            total=Sum("quantity")
+        ).values_list("pending_outbound_id", "total")
+        for pid, total in rows:
+            locked_map[pid] = int(total) if total else 0
+
+        locked_total = 0
+        for p in pendings:
+            out_qty = locked_map.get(p.id, 0)
+            locked_total += (p.locked_qty - out_qty)
+        return locked_total
+
+    async def _batch_calculate_locked_quantities(
+        self, stock_list: List[Dict[str, Any]]
+    ) -> Dict[str, float]:
+        """批量计算锁定量，避免 N+1 查询"""
+        if not stock_list:
+            return {}
+
+        from models_mysql.pending_outbound import PendingOutboundOrder, PendingOutboundStatus
+        from models_mysql.warehouse import OutboundBatch
+        from tortoise.functions import Sum
+
+        # 收集所有 (warehouse_id, spec_id) 组合
+        pairs = set()
+        for s in stock_list:
+            wid = s.get("warehouse_id")
+            sid = s.get("spec_id")
+            if wid and sid:
+                pairs.add((int(wid), int(sid)))
+
+        if not pairs:
+            return {}
+
+        # 批量查询所有相关出库单（仅 pending 状态）
+        warehouse_ids = list(set(p[0] for p in pairs))
+        spec_ids = list(set(p[1] for p in pairs))
+
+        pendings = await PendingOutboundOrder.filter(
+            warehouse_id__in=warehouse_ids,
+            spec_id__in=spec_ids,
+            status=PendingOutboundStatus.PENDING
+        ).all()
+
+        if not pendings:
+            return {}
+
+        pending_ids = [p.id for p in pendings]
+
+        # 批量查询出库批次的 out_qty
+        out_qty_map: Dict[int, int] = {}
+        rows = await OutboundBatch.filter(
+            pending_outbound_id__in=pending_ids
+        ).group_by("pending_outbound_id").annotate(
+            total=Sum("quantity")
+        ).values_list("pending_outbound_id", "total")
+        for pid, total in rows:
+            out_qty_map[pid] = int(total) if total else 0
+
+        # 按 (warehouse_id, spec_id) 分组求和
+        locked_map: Dict[str, float] = {}
+        for p in pendings:
+            key = f"{p.warehouse_id}_{p.spec_id}"
+            out_qty = out_qty_map.get(p.id, 0)
+            locked_map[key] = locked_map.get(key, 0) + (p.locked_qty - out_qty)
+
+        return locked_map
+
+    async def _batch_calculate_batch_totals(self, stock_list: list) -> dict:
+        """批量计算各库存的批次 current_quantity 之和"""
+        if not stock_list:
+            return {}
+
+        # 收集所有 (warehouse_id, spec_id) 组合
+        pairs = set()
+        for s in stock_list:
+            wid = s.get("warehouse_id")
+            sid = s.get("spec_id")
+            if wid and sid:
+                pairs.add((wid, sid))
+
+        if not pairs:
+            return {}
+
+        # 批量查询所有相关入库批次的 current_quantity
+        batch_map = {}
+        for warehouse_id, spec_id in pairs:
+            batches = await InboundBatch.filter(
+                warehouse_id=warehouse_id,
+                spec_id=spec_id
+            ).only("current_quantity").all()
+            total = sum(float(b.current_quantity) for b in batches)
+            batch_map[f"{warehouse_id}_{spec_id}"] = total
+
+        return batch_map
+
     async def create_stock(self, stock_data: Dict[str, Any]) -> Dict[str, Any]:
         """创建库存"""
         warehouse_id = stock_data.get("warehouse_id")
@@ -186,6 +311,13 @@ class StockService:
             return None
 
         result = stock.to_dict()
+        # 当前库存 = 批次 current_quantity 之和
+        batch_total = await self._calculate_batch_total(stock.warehouse_id, stock.spec_id)
+        result["quantity"] = batch_total
+        # 计算锁定量
+        locked_qty = await self._calculate_locked_quantity(stock.warehouse_id, stock.spec_id)
+        result["locked_quantity"] = locked_qty
+        result["available_quantity"] = batch_total - locked_qty
         if is_formatted:
             result = await self._format_stock(result)
         return result
@@ -254,6 +386,19 @@ class StockService:
         stocks = await query.offset((page - 1) * page_size).limit(page_size)
 
         result = [s.to_dict() for s in stocks]
+
+        # 批量计算批次总数量和锁定量
+        locked_map = await self._batch_calculate_locked_quantities(result)
+        batch_total_map = await self._batch_calculate_batch_totals(result)
+        for stock_item in result:
+            key = f"{stock_item.get('warehouse_id')}_{stock_item.get('spec_id')}"
+            # 当前库存 = 批次 current_quantity 之和
+            batch_total = batch_total_map.get(key, 0)
+            stock_item["quantity"] = batch_total
+            locked_qty = locked_map.get(key, 0)
+            stock_item["locked_quantity"] = locked_qty
+            stock_item["available_quantity"] = batch_total - locked_qty
+
         if is_formatted:
             result = await self._format_stock_list(result)
         return result, total
@@ -348,13 +493,21 @@ class StockService:
             warehouse_id = stock.warehouse_id
             warehouse_name = warehouses.get(warehouse_id, {}).get("name", "")
 
+            # 当前库存 = 批次 current_quantity 之和
+            batch_total = await self._calculate_batch_total(warehouse_id, spec_id)
+            # 锁定量 = PENDING/PARTIAL 待出库单 (locked_qty - out_qty) 之和
+            locked_qty = await self._calculate_locked_quantity(warehouse_id, spec_id)
+            available_quantity = batch_total - locked_qty
+
             if spec_id not in result:
                 result[str(spec_id)] = []
 
             result[str(spec_id)].append({
                 "warehouse_id": warehouse_id,
                 "warehouse_name": warehouse_name,
-                "quantity": stock.quantity
+                "quantity": batch_total,
+                "locked_quantity": locked_qty,
+                "available_quantity": available_quantity
             })
 
         return result
@@ -375,6 +528,15 @@ class InboundBatchService:
         if not quantity or float(quantity) <= 0:
             raise ValueError("入库数量必须大于0")
 
+        # 如果提供了 location_id，校验库位存在性
+        location_id = inbound_data.get("location_id")
+        location_code = inbound_data.get("location_code")
+        if location_id:
+            location = await WarehouseLocation.get_or_none(id=int(location_id))
+            if not location:
+                raise ValueError("库位不存在")
+            location_code = location.location_code
+
         # 获取或创建库存
         stock, is_existing = await stock_service.get_or_create_stock_by_inbound(inbound_data)
 
@@ -388,7 +550,21 @@ class InboundBatchService:
                 )
                 await stock_obj.save()
 
-        # 创建入库批次记录
+        # 处理有效期
+        expiry_date = inbound_data.get("expiry_date")
+        if expiry_date and isinstance(expiry_date, str):
+            from datetime import datetime as dt
+            try:
+                expiry_date = dt.fromisoformat(expiry_date)
+            except ValueError:
+                expiry_date = None
+
+        # 处理批次编号：手动指定或自动生成
+        batch_no = inbound_data.get("batch_no")
+        if not batch_no:
+            batch_no = await self._generate_batch_no(int(warehouse_id), int(spec_id))
+
+        # 创建入库批次记录，初始 current_quantity = quantity
         inbound = await InboundBatch.create(
             warehouse_id=int(warehouse_id),
             product_id=int(product_id),
@@ -398,11 +574,39 @@ class InboundBatchService:
             spec_code=inbound_data.get("spec_code", ""),
             stock_id=stock["id"],
             quantity=float(quantity),
+            location_id=int(location_id) if location_id else None,
+            location_code=location_code or None,
+            expiry_date=expiry_date,
+            current_quantity=float(quantity),
+            batch_no=batch_no,
             user_id=int(inbound_data.get("user_id", 0)),
             user_name=inbound_data.get("user_name", ""),
             remarks=inbound_data.get("remarks"),
         )
         return inbound.to_dict()
+
+    async def _generate_batch_no(self, warehouse_id: int, spec_id: int) -> str:
+        """自动生成批次编号: 仓库编码-规格编码-日期-序号"""
+        warehouse = await Warehouse.filter(id=warehouse_id).first()
+        spec = await ProductSpec.filter(id=spec_id).first()
+
+        wh_code = warehouse.warehouse_code if warehouse else f"WH{warehouse_id}"
+        sp_code = spec.spec_code if spec else f"SPEC{spec_id}"
+        date_str = datetime.now().strftime("%Y%m%d")
+
+        prefix = f"{wh_code}-{sp_code}-{date_str}-"
+
+        # 查询当天同前缀的最大序号
+        last_batch = await InboundBatch.filter(batch_no__startswith=prefix).order_by("-batch_no").first()
+        if last_batch and last_batch.batch_no:
+            try:
+                seq = int(last_batch.batch_no[len(prefix):]) + 1
+            except ValueError:
+                seq = 1
+        else:
+            seq = 1
+
+        return f"{prefix}{seq:03d}"
 
     async def update_inbound(self, inbound_id: int, inbound_data: Dict[str, Any]) -> bool:
         """更新入库批次"""
@@ -517,8 +721,102 @@ class OutboundBatchService:
         return outbound.to_dict()
 
 
+class WarehouseLocationService:
+    """库位管理服务"""
+
+    async def create_location(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """创建库位，校验 warehouse_id + location_code 唯一性"""
+        warehouse_id = data.get("warehouse_id")
+        location_code = data.get("location_code")
+
+        if not warehouse_id or not location_code:
+            raise ValueError("仓库ID和库位编码不能为空")
+
+        # 校验仓库是否存在
+        warehouse = await Warehouse.get_or_none(id=int(warehouse_id))
+        if not warehouse:
+            raise ValueError("仓库不存在")
+
+        # 校验同仓库下库位编码唯一性
+        existing = await WarehouseLocation.filter(
+            warehouse_id=int(warehouse_id),
+            location_code=location_code
+        ).first()
+        if existing:
+            raise ValueError(f"仓库下已存在库位编码: {location_code}")
+
+        location = await WarehouseLocation.create(
+            warehouse_id=int(warehouse_id),
+            location_code=location_code,
+            location_name=data.get("location_name"),
+            status=data.get("status", "active"),
+            description=data.get("description"),
+        )
+        return location.to_dict()
+
+    async def update_location(self, location_id: int, data: Dict[str, Any]) -> bool:
+        """更新库位"""
+        location = await WarehouseLocation.get_or_none(id=location_id)
+        if not location:
+            raise ValueError("库位不存在")
+
+        # 如果修改了 location_code，需校验唯一性
+        if "location_code" in data and data["location_code"] != location.location_code:
+            existing = await WarehouseLocation.filter(
+                warehouse_id=location.warehouse_id,
+                location_code=data["location_code"]
+            ).first()
+            if existing:
+                raise ValueError(f"仓库下已存在库位编码: {data['location_code']}")
+            location.location_code = data["location_code"]
+
+        if "location_name" in data:
+            location.location_name = data["location_name"]
+        if "status" in data:
+            location.status = data["status"]
+        if "description" in data:
+            location.description = data["description"]
+
+        await location.save()
+        return True
+
+    async def delete_location(self, location_id: int) -> bool:
+        """删除库位"""
+        location = await WarehouseLocation.get_or_none(id=location_id)
+        if not location:
+            raise ValueError("库位不存在")
+
+        await location.delete()
+        return True
+
+    async def get_location_by_id(self, location_id: int) -> Optional[Dict[str, Any]]:
+        """获取库位详情"""
+        location = await WarehouseLocation.get_or_none(id=location_id)
+        if not location:
+            return None
+        return location.to_dict()
+
+    async def list_locations(
+        self,
+        warehouse_id: Optional[int] = None,
+        page: int = 1,
+        page_size: int = 20
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """获取库位列表，支持 warehouse_id 筛选"""
+        query = WarehouseLocation.all()
+
+        if warehouse_id:
+            query = query.filter(warehouse_id=int(warehouse_id))
+
+        total = await query.count()
+        locations = await query.offset((page - 1) * page_size).limit(page_size)
+
+        return [loc.to_dict() for loc in locations], total
+
+
 # 创建服务实例
 warehouse_service = WarehouseService()
 stock_service = StockService()
 inbound_batch_service = InboundBatchService()
 outbound_batch_service = OutboundBatchService()
+warehouse_location_service = WarehouseLocationService()

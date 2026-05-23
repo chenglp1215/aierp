@@ -342,13 +342,26 @@ class SalesOrderService:
                 ).only("current_quantity").all()
                 batch_sum = sum(float(b.current_quantity) for b in batch_total) if batch_total else 0
 
-                # 锁定量 = PENDING/PARTIAL 待出库单的 (locked_qty - out_qty) 之和
+                # 锁定量 = PENDING 待出库单的 locked_qty 之和（out_qty 动态计算）
                 pendings = await PendingOutboundOrder.filter(
                     warehouse_id=item.warehouse_id,
                     spec_id=item.spec_id,
-                    status__in=["pending", "partial"]
-                ).only("locked_qty", "out_qty").all()
-                locked = sum(float(p.locked_qty) - float(p.out_qty) for p in pendings)
+                    status=PendingOutboundStatus.PENDING
+                ).only("id", "locked_qty").all()
+                pending_ids = [p.id for p in pendings]
+
+                locked = 0
+                if pending_ids:
+                    from models_mysql.warehouse import OutboundBatch as _OutboundBatch
+                    from tortoise.functions import Sum as _Sum
+                    out_rows = await _OutboundBatch.filter(
+                        pending_outbound_id__in=pending_ids
+                    ).group_by("pending_outbound_id").annotate(
+                        total=_Sum("quantity")
+                    ).values_list("pending_outbound_id", "total")
+                    out_map = {r[0]: int(r[1]) for r in out_rows if r[1]}
+                    for p in pendings:
+                        locked += p.locked_qty - out_map.get(p.id, 0)
 
                 available_qty = max(0, batch_sum - locked)
                 stock_out_qty = min(int(available_qty), item.qty)
