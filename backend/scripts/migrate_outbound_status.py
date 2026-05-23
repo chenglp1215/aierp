@@ -14,14 +14,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
+from urllib.parse import quote_plus
 from tortoise import Tortoise
-from models_mysql.pending_outbound import PendingOutboundOrder
 
 
 async def migrate():
     db_url = (
-        f"mysql://{os.getenv('MYSQL_USER', 'admin')}"
-        f":{os.getenv('MYSQL_PASSWORD', 'Chenglp1215!@#')}"
+        f"mysql://{quote_plus(os.getenv('MYSQL_USER', 'admin'))}"
+        f":{quote_plus(os.getenv('MYSQL_PASSWORD', 'Chenglp1215!@#'))}"
         f"@{os.getenv('MYSQL_HOST', '132.232.212.151')}"
         f":{os.getenv('MYSQL_PORT', '58901')}"
         f"/{os.getenv('MYSQL_DATABASE', 'erp_test')}"
@@ -37,48 +37,30 @@ async def migrate():
         ]}
     )
 
-    # 迁移 partial → outbound
-    partial_count = await PendingOutboundOrder.filter(status="partial").update(status="outbound")
-    print(f"已将 {partial_count} 条 partial 记录更新为 outbound")
-
-    # 迁移 full → outbound
-    full_count = await PendingOutboundOrder.filter(status="full").update(status="outbound")
-    print(f"已将 {full_count} 条 full 记录更新为 outbound")
-
-    # 数据库字段变更：新增 shipped_at, shipping_company, tracking_no
     conn = Tortoise.get_connection("default")
-    try:
-        await conn.execute_query(
-            "ALTER TABLE pending_outbound_orders ADD COLUMN shipped_at DATETIME NULL"
-        )
-        print("已新增 shipped_at 列")
-    except Exception as e:
-        if "Duplicate column name" in str(e):
-            print("shipped_at 列已存在，跳过")
-        else:
-            raise
 
-    try:
-        await conn.execute_query(
-            "ALTER TABLE pending_outbound_orders ADD COLUMN shipping_company VARCHAR(100) NULL"
-        )
-        print("已新增 shipping_company 列")
-    except Exception as e:
-        if "Duplicate column name" in str(e):
-            print("shipping_company 列已存在，跳过")
-        else:
-            raise
+    # 使用原始 SQL 迁移状态值（ORM 枚举已更新，无法用 filter 查询旧值）
+    result = await conn.execute_query(
+        "UPDATE pending_outbound_orders SET status = 'outbound' WHERE status IN ('partial', 'full')"
+    )
+    count = result[0]
+    print(f"已将 {count} 条 partial/full 记录更新为 outbound")
 
-    try:
-        await conn.execute_query(
-            "ALTER TABLE pending_outbound_orders ADD COLUMN tracking_no VARCHAR(100) NULL"
-        )
-        print("已新增 tracking_no 列")
-    except Exception as e:
-        if "Duplicate column name" in str(e):
-            print("tracking_no 列已存在，跳过")
-        else:
-            raise
+    # 新增字段
+    for col_def in [
+        "shipped_at DATETIME NULL",
+        "shipping_company VARCHAR(100) NULL",
+        "tracking_no VARCHAR(100) NULL"
+    ]:
+        col_name = col_def.split()[0]
+        try:
+            await conn.execute_query(f"ALTER TABLE pending_outbound_orders ADD COLUMN {col_def}")
+            print(f"已新增 {col_name} 列")
+        except Exception as e:
+            if "Duplicate column name" in str(e):
+                print(f"{col_name} 列已存在，跳过")
+            else:
+                raise
 
     print("迁移完成！out_qty 列暂时保留，后续可手动执行: ALTER TABLE pending_outbound_orders DROP COLUMN out_qty")
 
