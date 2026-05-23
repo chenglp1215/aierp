@@ -69,11 +69,19 @@ class SalesOrderService:
             "amt": amt,
         }
 
-    def _calculate_order_totals(self, items: List[Dict], tax_rate: float) -> Dict[str, float]:
-        """计算订单总金额"""
+    def _calculate_order_totals(self, items: List[Dict], tax_rate: float, freight_amt: float = 0) -> Dict[str, float]:
+        """计算订单总金额
+
+        运费不计税，计算公式：
+        - 不含税最终金额 = 商品总金额 - 折扣 + 运费
+        - 税额 = 商品总金额 * 税率（运费不参与计税）
+        - 含税总额 = 不含税最终金额 + 税额
+        """
         total_amt = sum(item.get("amt", 0) for item in items)
+        # 运费不计税，税额仅基于商品总金额
         tax_amt = round(total_amt * tax_rate, 2)
-        total_tax_amt = round(total_amt + tax_amt, 2)
+        # 含税总额 = 商品总金额 + 税额 + 运费
+        total_tax_amt = round(total_amt + tax_amt + freight_amt, 2)
         return {
             "total_amt": round(total_amt, 2),
             "tax_amt": tax_amt,
@@ -132,7 +140,8 @@ class SalesOrderService:
     async def _calculate_delivery_status(self, order_id: int) -> DeliveryStatus:
         """计算发货状态（仅仓库发货）
 
-        根据仓库发货明细的待出库单出库数量计算订单发货状态。
+        根据仓库发货明细的出库单发货状态计算订单发货状态。
+        出库单状态为 shipped 视为已发货。
         直运明细不参与计算。
         """
         # 获取仓库发货方式的明细
@@ -144,7 +153,7 @@ class SalesOrderService:
         if not items:
             return DeliveryStatus.NONE  # 无仓库发货明细
 
-        # 批量获取所有待出库单（优化性能）
+        # 批量获取所有出库单
         item_ids = [item.id for item in items]
         all_pendings = await PendingOutboundOrder.filter(
             sales_order_item_id__in=item_ids
@@ -157,23 +166,24 @@ class SalesOrderService:
                 pendings_by_item[p.sales_order_item_id] = []
             pendings_by_item[p.sales_order_item_id].append(p)
 
-        has_none = False  # 有未出库
-        has_full = False  # 有已出库
+        has_unshipped = False  # 有未发货
+        has_shipped = False   # 有已发货
 
         for item in items:
             pendings = pendings_by_item.get(item.id, [])
-            out_qty = sum(p.out_qty for p in pendings)
+            if not pendings:
+                has_unshipped = True
+                continue
 
-            if out_qty == 0:
-                has_none = True
-            elif out_qty >= item.qty:
-                has_full = True
+            item_shipped = all(p.status == PendingOutboundStatus.SHIPPED for p in pendings)
+            if item_shipped:
+                has_shipped = True
             else:
-                has_none = True  # 部分出库视为未完成
+                has_unshipped = True
 
-        if has_none and has_full:
+        if has_shipped and has_unshipped:
             return DeliveryStatus.PARTIAL
-        if has_full and not has_none:
+        if has_shipped and not has_unshipped:
             return DeliveryStatus.FULL
         return DeliveryStatus.NONE
 
@@ -302,6 +312,16 @@ class SalesOrderService:
         """审核通过后处理：计算采购数量、生成待出库单、更新下推状态"""
         from services.pending_outbound_service import pending_outbound_service
 
+        # 获取发货信息
+        deliver_info = await SalesDeliverInfo.filter(sales_order_id=order.id).first()
+        deliver_data = {
+            "province": deliver_info.province if deliver_info else None,
+            "city": deliver_info.city if deliver_info else None,
+            "address": deliver_info.addr if deliver_info else None,
+            "recipient_name": deliver_info.person_name if deliver_info else None,
+            "recipient_phone": deliver_info.person_tel if deliver_info else None,
+        }
+
         items = await SalesOrderItem.filter(sales_order_id=order.id).select_related(
             "spec__product__brand",
             "warehouse"
@@ -312,15 +332,31 @@ class SalesOrderService:
                 # 直运：全部走采购
                 item.purchase_qty = item.qty
             else:
-                # 仓库发货：库存优先
-                stock = await Stock.filter(
+                # 仓库发货：基于批次计算可用库存
+                from models_mysql.warehouse import InboundBatch
+
+                # 入库批次 current_quantity 之和
+                batch_total = await InboundBatch.filter(
                     warehouse_id=item.warehouse_id,
                     spec_id=item.spec_id
-                ).first()
+                ).only("current_quantity").all()
+                batch_sum = sum(float(b.current_quantity) for b in batch_total) if batch_total else 0
 
-                available_qty = int(stock.quantity) if stock else 0
-                stock_out_qty = min(available_qty, item.qty)
-                item.purchase_qty = item.qty - stock_out_qty
+                # 锁定量 = PENDING/PARTIAL 待出库单的 (locked_qty - out_qty) 之和
+                pendings = await PendingOutboundOrder.filter(
+                    warehouse_id=item.warehouse_id,
+                    spec_id=item.spec_id,
+                    status__in=["pending", "partial"]
+                ).only("locked_qty", "out_qty").all()
+                locked = sum(float(p.locked_qty) - float(p.out_qty) for p in pendings)
+
+                available_qty = max(0, batch_sum - locked)
+                stock_out_qty = min(int(available_qty), item.qty)
+                purchase_qty = item.qty - stock_out_qty
+
+                logger.info(f"仓库发货计算: item={item.id}, warehouse={item.warehouse_id}, spec={item.spec_id}, batch_sum={batch_sum}, locked={locked}, available={available_qty}, stock_out={stock_out_qty}, purchase={purchase_qty}")
+
+                item.purchase_qty = purchase_qty
 
                 # 生成待出库单
                 if stock_out_qty > 0:
@@ -330,18 +366,27 @@ class SalesOrderService:
                     product_code = spec.product.product_code if spec and spec.product else ""
                     spec_code = spec.spec_code if spec else ""
 
-                    await pending_outbound_service.create_pending_outbound(
-                        sales_order_id=order.id,
-                        sales_order_no=order.order_no,
-                        sales_order_item_id=item.id,
-                        row_no=item.row_no,
-                        warehouse_id=item.warehouse_id,
-                        warehouse_name=warehouse_name,
-                        spec_id=item.spec_id,
-                        product_code=product_code,
-                        spec_code=spec_code,
-                        locked_qty=stock_out_qty
-                    )
+                    try:
+                        await pending_outbound_service.create_pending_outbound(
+                            sales_order_id=order.id,
+                            sales_order_no=order.order_no,
+                            sales_order_item_id=item.id,
+                            row_no=item.row_no,
+                            warehouse_id=item.warehouse_id,
+                            warehouse_name=warehouse_name,
+                            spec_id=item.spec_id,
+                            product_code=product_code,
+                            spec_code=spec_code,
+                            locked_qty=stock_out_qty,
+                            outbound_type="order_outbound",
+                            province=deliver_data["province"],
+                            city=deliver_data["city"],
+                            address=deliver_data["address"],
+                            recipient_name=deliver_data["recipient_name"],
+                            recipient_phone=deliver_data["recipient_phone"]
+                        )
+                    except Exception as e:
+                        logger.error(f"创建待出库单失败: order={order.order_no}, item={item.id}, error={e}")
 
             await item.save()
 
@@ -377,9 +422,10 @@ class SalesOrderService:
             item["discounted_price"] = calc["discounted_price"]
             item["amt"] = calc["amt"]
 
-        # 计算订单总金额
+        # 计算订单总金额（运费不计税）
         tax_rate = data.get("tax_rate", 0.13)
-        totals = self._calculate_order_totals(items_data, tax_rate)
+        freight_amt = float(data.get("freight_amt", 0) or 0)
+        totals = self._calculate_order_totals(items_data, tax_rate, freight_amt)
 
         # 确定初始状态
         initial_status = OrderStatus.AUDITED if auto_approve else OrderStatus.DRAFT
@@ -398,6 +444,7 @@ class SalesOrderService:
             tax_amt=totals["tax_amt"],
             total_tax_amt=totals["total_tax_amt"],
             total_discount_amt=data.get("total_discount_amt", 0),
+            freight_amt=freight_amt,
             expect_deliver_date=data.get("expect_deliver_date"),
             settle_type=data.get("settle_type"),
             remark=data.get("remark"),
@@ -458,6 +505,12 @@ class SalesOrderService:
             operator=current_user.get("username", "system"),
             remark="创建订单" + ("并审核通过" if auto_approve else ""),
         )
+
+        # 如果自动审核，触发审核后处理（生成待出库单等）
+        if auto_approve:
+            # 需要重新查询订单以 prefetch_related items
+            order = await SalesOrder.filter(id=order.id).prefetch_related("items").first()
+            await self._process_audit_pass(order, current_user.get("username", "system"))
 
         logger.info(f"销售订单创建成功: {order_no}")
         return {"order_no": order_no, "id": order.id}
