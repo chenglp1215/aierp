@@ -5,7 +5,7 @@ from .auth import User, Role, Permission, UserStatus, RoleStatus, PermissionType
 from .product import Brand, Category, Product, ProductSpec
 from .customer import Customer, InvoiceInfo, ShippingAddress, CustomerDiscount
 from .stock_check import StockCheckBatch, StockCheckRecord
-from .warehouse import Warehouse, Stock, InboundBatch, OutboundBatch
+from .warehouse import Warehouse, Stock, InboundBatch, OutboundBatch, WarehouseLocation
 from .sales_order import (
     SalesOrder, SalesOrderItem, SalesDeliverInfo,
     OrderStatus, DeliveryStatus, ReceiveStatus, InvoiceStatus, ShippingMethod, PushStatus
@@ -14,7 +14,7 @@ from .purchase_order import (
     PurchaseOrder, PurchaseOrderItem,
     PurchaseType, PurchaseStatus, InStatus, PayStatus
 )
-from .pending_outbound import PendingOutboundOrder, PendingOutboundStatus
+from .pending_outbound import PendingOutboundOrder, PendingOutboundStatus, OutboundType
 from .order_status_flow import OrderStatusFlow
 from .supplier import Supplier, SupplierBankAccount, SupplierBrand
 
@@ -47,6 +47,7 @@ __all__ = [
     "Stock",
     "InboundBatch",
     "OutboundBatch",
+    "WarehouseLocation",
     # 销售订单
     "SalesOrder",
     "SalesOrderItem",
@@ -67,6 +68,7 @@ __all__ = [
     # 待出库单
     "PendingOutboundOrder",
     "PendingOutboundStatus",
+    "OutboundType",
     # 状态流转
     "OrderStatusFlow",
     # 供应商
