@@ -19,6 +19,15 @@ interface PendingOutbound {
   locked_qty: number
   out_qty: number
   status: string
+  outbound_type: string
+  province: string | null
+  city: string | null
+  address: string | null
+  recipient_name: string | null
+  recipient_phone: string | null
+  shipped_at: string | null
+  shipping_company: string | null
+  tracking_no: string | null
   created_at: string
 }
 
@@ -45,19 +54,27 @@ const filters = ref({
 // ============ 状态映射 ============
 
 const statusMap: Record<string, { label: string; class: string }> = {
-  pending: { label: '待出库', class: 'pending' },
-  partial: { label: '部分出库', class: 'partial' },
-  full: { label: '已出库', class: 'full' },
+  pending: { label: '未出库', class: 'pending' },
+  outbound: { label: '已出库', class: 'full' },
+  shipped: { label: '已发货', class: 'shipped' },
   cancelled: { label: '已取消', class: 'cancelled' }
 }
 
 const statusOptions = [
   { value: '', label: '全部状态' },
-  { value: 'pending', label: '待出库' },
-  { value: 'partial', label: '部分出库' },
-  { value: 'full', label: '已出库' },
+  { value: 'pending', label: '未出库' },
+  { value: 'outbound', label: '已出库' },
+  { value: 'shipped', label: '已发货' },
   { value: 'cancelled', label: '已取消' }
 ]
+
+// 出库类型映射
+const outboundTypeMap: Record<string, string> = {
+  order_outbound: '订单出库',
+  transfer_outbound: '调拨出库'
+}
+
+const getOutboundTypeLabel = (type: string) => outboundTypeMap[type] || type
 
 // ============ 弹窗状态 ============
 
@@ -65,6 +82,78 @@ const showOutboundModal = ref(false)
 const selectedPending = ref<PendingOutbound | null>(null)
 const outboundQty = ref(0)
 const outboundLoading = ref(false)
+
+// 发货弹窗状态
+const showShipModal = ref(false)
+const shipLoading = ref(false)
+
+// 撤销弹窗状态
+const showRevokeModal = ref(false)
+const revokeLoading = ref(false)
+
+// 批次选择相关
+interface AvailableBatch {
+  id: number
+  batch_no?: string | null
+  location_code: string | null
+  expiry_date: string | null
+  current_quantity: number
+  out_quantity: number
+}
+const availableBatches = ref<AvailableBatch[]>([])
+const batchLoading = ref(false)
+
+const loadAvailableBatches = async (pendingId: number) => {
+  batchLoading.value = true
+  try {
+    const res = await pendingOutboundApi.getAvailableBatches(pendingId)
+    const batches = res?.items || res || []
+    availableBatches.value = batches.map((b: any) => ({
+      ...b,
+      out_quantity: 0
+    }))
+    // 先进先出自动填充
+    autoFillBatches()
+  } catch (e) {
+    console.error('加载可出库批次失败:', e)
+    availableBatches.value = []
+  } finally {
+    batchLoading.value = false
+  }
+}
+
+const autoFillBatches = () => {
+  let remaining = outboundQty.value
+  for (const batch of availableBatches.value) {
+    if (remaining <= 0) {
+      batch.out_quantity = 0
+      continue
+    }
+    const take = Math.min(remaining, batch.current_quantity)
+    batch.out_quantity = take
+    remaining -= take
+  }
+}
+
+const totalBatchQuantity = computed(() => {
+  return availableBatches.value.reduce((sum, b) => sum + b.out_quantity, 0)
+})
+
+const batchQuantityValid = computed(() => {
+  return Math.abs(totalBatchQuantity.value - outboundQty.value) < 0.001
+})
+
+const isBatchExpired = (batch: AvailableBatch) => {
+  if (!batch.expiry_date) return false
+  return new Date(batch.expiry_date) < new Date()
+}
+
+const isBatchExpiring = (batch: AvailableBatch) => {
+  if (!batch.expiry_date) return false
+  const d = new Date(batch.expiry_date)
+  return d >= new Date() && d < new Date(Date.now() + 30 * 24 * 3600 * 1000)
+}
+
 
 // ============ 计算属性 ============
 
@@ -138,6 +227,8 @@ const handlePageChange = ({ currentPage, pageSize: newSize }: { currentPage: num
 const openOutboundModal = (item: PendingOutbound) => {
   selectedPending.value = item
   outboundQty.value = item.locked_qty - item.out_qty
+  availableBatches.value = []
+  loadAvailableBatches(item.id)
   showOutboundModal.value = true
 }
 
@@ -146,7 +237,10 @@ const handleOutbound = async () => {
 
   outboundLoading.value = true
   try {
-    await pendingOutboundApi.execute(selectedPending.value.id, outboundQty.value)
+    const batchItems = availableBatches.value
+      .filter(b => b.out_quantity > 0)
+      .map(b => ({ inbound_batch_id: b.id, quantity: b.out_quantity }))
+    await pendingOutboundApi.execute(selectedPending.value.id, outboundQty.value, batchItems.length > 0 ? batchItems : undefined)
     window.showToast('出库成功', 'success')
     showOutboundModal.value = false
     selectedPending.value = null
@@ -156,6 +250,48 @@ const handleOutbound = async () => {
     window.showToast(error.message || '出库失败', 'error')
   } finally {
     outboundLoading.value = false
+  }
+}
+
+const openShipModal = (item: PendingOutbound) => {
+  selectedPending.value = item
+  showShipModal.value = true
+}
+
+const handleShip = async () => {
+  if (!selectedPending.value) return
+  shipLoading.value = true
+  try {
+    await pendingOutboundApi.ship(selectedPending.value.id)
+    window.showToast('发货成功', 'success')
+    showShipModal.value = false
+    selectedPending.value = null
+    await loadPendingOutbounds()
+  } catch (error: any) {
+    window.showToast(error.message || '发货失败', 'error')
+  } finally {
+    shipLoading.value = false
+  }
+}
+
+const openRevokeModal = (item: PendingOutbound) => {
+  selectedPending.value = item
+  showRevokeModal.value = true
+}
+
+const handleRevoke = async () => {
+  if (!selectedPending.value) return
+  revokeLoading.value = true
+  try {
+    await pendingOutboundApi.revoke(selectedPending.value.id)
+    window.showToast('撤销成功', 'success')
+    showRevokeModal.value = false
+    selectedPending.value = null
+    await loadPendingOutbounds()
+  } catch (error: any) {
+    window.showToast(error.message || '撤销失败', 'error')
+  } finally {
+    revokeLoading.value = false
   }
 }
 
@@ -177,7 +313,7 @@ onMounted(async () => {
   <div class="pending-outbound-workspace">
     <!-- 列表头部 -->
     <div class="workspace-header">
-      <h2 class="workspace-title">待出库管理</h2>
+      <h2 class="workspace-title">出库管理</h2>
     </div>
 
     <!-- 筛选区 -->
@@ -239,22 +375,51 @@ onMounted(async () => {
             </span>
           </template>
         </vxe-column>
+        <vxe-column field="outbound_type" title="出库类型" width="100" class-name="col--center">
+          <template #default="{ row }">
+            {{ getOutboundTypeLabel(row.outbound_type) }}
+          </template>
+        </vxe-column>
+        <vxe-column field="recipient_name" title="收货人" width="100" class-name="col--left">
+          <template #default="{ row }">
+            {{ row.recipient_name || '-' }}
+          </template>
+        </vxe-column>
+        <vxe-column field="recipient_phone" title="收货电话" width="120" class-name="col--center">
+          <template #default="{ row }">
+            {{ row.recipient_phone || '-' }}
+          </template>
+        </vxe-column>
         <vxe-column field="created_at" title="创建时间" width="160" class-name="col--center">
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="80" fixed="right" class-name="col--center">
+        <vxe-column title="操作" width="160" fixed="right" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
               <button
-                v-if="row.status !== 'full' && row.status !== 'cancelled'"
+                v-if="row.status === 'pending'"
                 class="btn-link success"
                 @click="openOutboundModal(row)"
               >
                 出库
               </button>
-              <span v-else class="text-muted">-</span>
+              <button
+                v-if="row.status === 'outbound'"
+                class="btn-link primary"
+                @click="openShipModal(row)"
+              >
+                发货
+              </button>
+              <button
+                v-if="row.status === 'outbound'"
+                class="btn-link warning"
+                @click="openRevokeModal(row)"
+              >
+                撤销
+              </button>
+              <span v-if="row.status === 'shipped' || row.status === 'cancelled'" class="text-muted">-</span>
             </span>
           </template>
         </vxe-column>
@@ -298,6 +463,18 @@ onMounted(async () => {
                 <label>待出库数量</label>
                 <span>{{ selectedPending ? selectedPending.locked_qty - selectedPending.out_qty : 0 }}</span>
               </div>
+              <div class="detail-item">
+                <label>收货人</label>
+                <span>{{ selectedPending?.recipient_name || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <label>收货电话</label>
+                <span>{{ selectedPending?.recipient_phone || '-' }}</span>
+              </div>
+              <div class="detail-item full-width">
+                <label>收货地址</label>
+                <span>{{ [selectedPending?.province, selectedPending?.city, selectedPending?.address].filter(Boolean).join(' ') || '-' }}</span>
+              </div>
             </div>
           </div>
           <div class="form-section">
@@ -310,15 +487,146 @@ onMounted(async () => {
                   class="form-control"
                   :max="selectedPending ? selectedPending.locked_qty - selectedPending.out_qty : 0"
                   min="1"
+                  @input="autoFillBatches"
                 />
               </div>
+            </div>
+          </div>
+          <div class="batch-select-section" v-if="availableBatches.length > 0">
+            <h4>批次选择（按有效期排序，优先出库即将过期的批次）</h4>
+            <div class="batch-loading" v-if="batchLoading">加载批次中...</div>
+            <table class="batch-table" v-else>
+              <thead>
+                <tr>
+                  <th>批次编号</th>
+                  <th>库位</th>
+                  <th>有效期</th>
+                  <th>剩余数量</th>
+                  <th>出库数量</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="batch in availableBatches" :key="batch.inbound_batch_id" :class="{ 'batch-expired': isBatchExpired(batch), 'batch-expiring': isBatchExpiring(batch) }">
+                  <td>{{ batch.batch_no || '-' }}</td>
+                  <td>{{ batch.location_code || '-' }}</td>
+                  <td>{{ batch.expiry_date ? batch.expiry_date.substring(0, 10) : '-' }}</td>
+                  <td>{{ batch.current_quantity }}</td>
+                  <td>
+                    <input
+                      type="number"
+                      v-model.number="batch.out_quantity"
+                      class="batch-qty-input"
+                      :max="batch.current_quantity"
+                      min="0"
+                      :disabled="isBatchExpired(batch)"
+                    />
+                  </td>
+                  <td>
+                    <span v-if="isBatchExpired(batch)" class="batch-status expired">已过期</span>
+                    <span v-else-if="isBatchExpiring(batch)" class="batch-status expiring">即将过期</span>
+                    <span v-else class="batch-status normal">正常</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="batch-summary" v-if="availableBatches.length > 0">
+              <span>批次出库合计: {{ totalBatchQuantity }}</span>
+              <span v-if="!batchQuantityValid" class="batch-error">（与总出库数量不一致）</span>
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showOutboundModal = false">取消</button>
-          <button class="btn-primary" @click="handleOutbound" :disabled="outboundLoading || outboundQty <= 0">
+          <button class="btn-primary" @click="handleOutbound" :disabled="outboundLoading || outboundQty <= 0 || (availableBatches.length > 0 && !batchQuantityValid)">
             {{ outboundLoading ? '处理中...' : '确认出库' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 发货确认弹窗 -->
+    <div class="modal-overlay" v-if="showShipModal">
+      <div class="modal confirm-modal">
+        <div class="modal-header">
+          <h3>确认发货</h3>
+          <button class="modal-close" @click="showShipModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="detail-section">
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>出库单号</label>
+                <span>{{ selectedPending?.pending_no }}</span>
+              </div>
+              <div class="detail-item">
+                <label>商品编码</label>
+                <span>{{ selectedPending?.product_code }}</span>
+              </div>
+              <div class="detail-item">
+                <label>规格编码</label>
+                <span>{{ selectedPending?.spec_code }}</span>
+              </div>
+              <div class="detail-item">
+                <label>仓库</label>
+                <span>{{ selectedPending?.warehouse_name }}</span>
+              </div>
+              <div class="detail-item">
+                <label>收货人</label>
+                <span>{{ selectedPending?.recipient_name || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <label>收货电话</label>
+                <span>{{ selectedPending?.recipient_phone || '-' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showShipModal = false">取消</button>
+          <button class="btn-primary" @click="handleShip" :disabled="shipLoading">
+            {{ shipLoading ? '处理中...' : '确认发货' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 撤销确认弹窗 -->
+    <div class="modal-overlay" v-if="showRevokeModal">
+      <div class="modal confirm-modal">
+        <div class="modal-header">
+          <h3>确认撤销出库</h3>
+          <button class="modal-close" @click="showRevokeModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="warning-text">
+            撤销后，出库单将回退为"未出库"状态，对应入库批次的剩余数量将恢复，锁定数量不变。确定要撤销吗？
+          </div>
+          <div class="detail-section">
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>出库单号</label>
+                <span>{{ selectedPending?.pending_no }}</span>
+              </div>
+              <div class="detail-item">
+                <label>商品编码</label>
+                <span>{{ selectedPending?.product_code }}</span>
+              </div>
+              <div class="detail-item">
+                <label>规格编码</label>
+                <span>{{ selectedPending?.spec_code }}</span>
+              </div>
+              <div class="detail-item">
+                <label>出库数量</label>
+                <span>{{ selectedPending?.out_qty }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showRevokeModal = false">取消</button>
+          <button class="btn-danger" @click="handleRevoke" :disabled="revokeLoading">
+            {{ revokeLoading ? '处理中...' : '确认撤销' }}
           </button>
         </div>
       </div>
@@ -523,7 +831,7 @@ onMounted(async () => {
 }
 
 .confirm-modal {
-  width: 400px;
+  width: 560px;
 }
 
 .modal-header {
@@ -592,6 +900,10 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
 }
 
 .detail-item label {
@@ -686,6 +998,120 @@ onMounted(async () => {
   cursor: not-allowed;
 }
 
+/* ============ 批次选择 ============ */
+
+.batch-select-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.batch-select-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.batch-loading {
+  text-align: center;
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.batch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.batch-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.batch-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.batch-table tr.batch-expired {
+  opacity: 0.5;
+}
+
+.batch-table tr.batch-expired td {
+  color: var(--text-muted);
+}
+
+.batch-table tr.batch-expiring td {
+  color: #e6a23c;
+}
+
+.batch-qty-input {
+  width: 80px;
+  padding: 4px 8px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: right;
+  outline: none;
+}
+
+.batch-qty-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.batch-qty-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.batch-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.batch-status.expired {
+  background-color: rgba(245, 108, 108, 0.15);
+  color: #f56c6c;
+}
+
+.batch-status.expiring {
+  background-color: rgba(230, 162, 60, 0.15);
+  color: #e6a23c;
+}
+
+.batch-status.normal {
+  background-color: rgba(103, 194, 58, 0.15);
+  color: #67c23a;
+}
+
+.batch-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 8px 0;
+}
+
+.batch-error {
+  color: #f56c6c;
+  font-weight: 500;
+}
+
 /* ============ 响应式 ============ */
 
 @media (max-width: 768px) {
@@ -706,5 +1132,39 @@ onMounted(async () => {
   .filter-select {
     width: 100%;
   }
+}
+
+.warning-text {
+  color: #e6a23c;
+  font-size: 14px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #fdf6ec;
+  border-radius: 4px;
+}
+.btn-link.primary {
+  color: #409eff;
+}
+.btn-link.warning {
+  color: #e6a23c;
+}
+.btn-danger {
+  padding: 8px 20px;
+  background: #f56c6c;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-danger:hover {
+  background: #f78989;
+}
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.status-tag.shipped {
+  background: #e1f3d8;
+  color: #67c23a;
 }
 </style>
