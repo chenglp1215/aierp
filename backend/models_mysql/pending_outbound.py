@@ -36,7 +36,6 @@ class PendingOutboundOrder(Model):
     spec_code = fields.CharField(max_length=50, description="规格编码")
 
     locked_qty = fields.IntField(description="锁定数量")
-    out_qty = fields.IntField(default=0, description="已出库数量")
     status = fields.CharEnumField(PendingOutboundStatus, default=PendingOutboundStatus.PENDING, description="状态")
     outbound_type = fields.CharEnumField(OutboundType, default=OutboundType.ORDER_OUTBOUND, description="出库类型")
 
@@ -48,6 +47,9 @@ class PendingOutboundOrder(Model):
     recipient_phone = fields.CharField(max_length=20, null=True, description="收货电话")
 
     remark = fields.TextField(null=True, description="备注")
+    shipped_at = fields.DatetimeField(null=True, description="发货时间")
+    shipping_company = fields.CharField(max_length=100, null=True, description="物流公司")
+    tracking_no = fields.CharField(max_length=100, null=True, description="物流单号")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
 
@@ -57,6 +59,13 @@ class PendingOutboundOrder(Model):
 
     def __str__(self):
         return f"{self.pending_no}"
+
+    @property
+    def out_qty_value(self) -> int:
+        """已出库数量（动态计算，需先 prefetch）"""
+        if hasattr(self, '_out_qty_cached'):
+            return self._out_qty_cached
+        return 0
 
     def to_dict(self):
         """转换为字典格式"""
@@ -73,7 +82,7 @@ class PendingOutboundOrder(Model):
             "product_code": self.product_code,
             "spec_code": self.spec_code,
             "locked_qty": self.locked_qty,
-            "out_qty": self.out_qty,
+            "out_qty": self.out_qty_value,
             "status": self.status.value if self.status else None,
             "outbound_type": self.outbound_type.value if self.outbound_type else None,
             "province": self.province,
@@ -82,6 +91,9 @@ class PendingOutboundOrder(Model):
             "recipient_name": self.recipient_name,
             "recipient_phone": self.recipient_phone,
             "remark": self.remark,
+            "shipped_at": self.shipped_at.isoformat() if self.shipped_at else None,
+            "shipping_company": self.shipping_company,
+            "tracking_no": self.tracking_no,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
