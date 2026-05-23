@@ -507,7 +507,7 @@ onMounted(async () => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="batch in availableBatches" :key="batch.inbound_batch_id" :class="{ 'batch-expired': isBatchExpired(batch), 'batch-expiring': isBatchExpiring(batch) }">
+                <tr v-for="batch in availableBatches" :key="batch.id" :class="{ 'batch-expired': isBatchExpired(batch), 'batch-expiring': isBatchExpiring(batch) }">
                   <td>{{ batch.batch_no || '-' }}</td>
                   <td>{{ batch.location_code || '-' }}</td>
                   <td>{{ batch.expiry_date ? batch.expiry_date.substring(0, 10) : '-' }}</td>
