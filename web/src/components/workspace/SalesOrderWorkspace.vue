@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch, onBeforeUnmount, nextTick } from 'vue'
-import { salesOrderApi, customerApi, productApi, warehouseApi, customerDiscountApi, type Customer } from '../../services/api'
+import { salesOrderApi, customerApi, productApi, warehouseApi, customerDiscountApi, brandApi, type Customer } from '../../services/api'
 import { useProvinceCity } from '../../hooks/useProvinceCity'
 import PushPurchaseItemSelectModal from './PushPurchaseItemSelectModal.vue'
 
@@ -27,7 +27,7 @@ interface SalesOrderItem {
   amt: number
   warehouse_id: string | number
   warehouse_name?: string
-  shipping_method: 'direct' | 'warehouse'
+  shipping_method: 'direct' | 'warehouse' | 'warehouse_pickup'
   out_qty: number
   return_qty: number
   remain_out_qty: number
@@ -76,9 +76,10 @@ interface SalesOrder {
   tax_amt: number
   total_tax_amt: number
   total_discount_amt: number
+  freight_amt?: number
   order_status: string
   delivery_status: string
-  receive_status: string
+  push_status?: string
   invoice_status: string
   finance_status?: string
   cost_amt?: number
@@ -96,45 +97,22 @@ interface SalesOrder {
   items: SalesOrderItem[]
 }
 
-interface Product {
-  id: string
-  name: string
-  product_code?: string
-  brand_id?: string
-  brand_name?: string
-  specs?: ProductSpec[]
-}
-
-interface ProductWithSpecs {
-  product: Product
-  specs: ProductSpec[]
-  expanded: boolean
-}
-
 interface SpecSearchResult {
-  id: string
+  id: string | number
   spec_code: string
   packaging?: string
   sales_spec?: string
   price: number
   is_active: boolean
-  product_id: string
+  product_id: string | number
   product_name: string
   product_code: string
+  brand_id?: string | number
   brand_name: string
 }
 
-interface ProductSpec {
-  id: string
-  spec_code: string
-  packaging?: string
-  sales_spec?: string
-  price: number
-  is_active: boolean
-}
-
 interface Warehouse {
-  id: string
+  id: number
   name: string
 }
 
@@ -155,10 +133,11 @@ const deliveryStatusMap: Record<string, { label: string; class: string }> = {
   full: { label: '全部发货', class: 'full' }
 }
 
-const receiveStatusMap: Record<string, { label: string; class: string }> = {
-  none: { label: '未收货', class: 'none' },
-  partial: { label: '部分收货', class: 'partial' },
-  full: { label: '全部收货', class: 'full' }
+const pushStatusMap: Record<string, { label: string; class: string }> = {
+  none: { label: '未下推', class: 'none' },
+  partial: { label: '部分下推', class: 'partial' },
+  full: { label: '已下推', class: 'full' },
+  not_needed: { label: '无需下推', class: 'reconciled' }
 }
 
 const invoiceStatusMap: Record<string, { label: string; class: string }> = {
@@ -182,7 +161,8 @@ const settleTypeOptions = [
 
 const shippingMethodOptions = [
   { value: 'direct', label: '直运' },
-  { value: 'warehouse', label: '仓库发货' }
+  { value: 'warehouse', label: '仓库发货' },
+  { value: 'warehouse_pickup', label: '仓库自提' }
 ]
 
 const orderStatusOptions = Object.entries(orderStatusMap).map(([value, { label }]) => ({ value, label }))
@@ -223,23 +203,25 @@ const detailLoading = ref(false)
 
 // Dropdown data
 const customerList = ref<Customer[]>([])
-const productTree = ref<ProductWithSpecs[]>([])
 const specSearchResults = ref<SpecSearchResult[]>([])
 const warehouseList = ref<Warehouse[]>([])
 
 // 仓库库存数据（按规格ID缓存）
-const specStockMap = ref<Record<string, { warehouse_id: string; quantity: number }[]>>({})
+const specStockMap = ref<Record<string, { warehouse_id: string; warehouse_name: string; quantity: number }[]>>({})
 // 表头批量设置
 const headerShippingMethod = ref('')
-const headerWarehouseId = ref('')
+const headerWarehouseId = ref<number | string>('')
 const customersLoading = ref(false)
 const warehousesLoading = ref(false)
 
 // Search states
 const customerSearchKeyword = ref('')
 const showCustomerDropdown = ref(false)
-const showProductDropdown = ref<number | null>(null)
-const productSearchKeywords = ref<Record<number, string>>({})
+
+// 规格编号搜索相关
+const showSpecDropdown = ref<number | null>(null)
+const specSearchKeywords = ref<Record<number, string>>({})
+let specSearchTimer: ReturnType<typeof setTimeout> | null = null
 
 const { loadProvinceCityData, getProvinces, getCities } = useProvinceCity()
 
@@ -286,6 +268,14 @@ const quickAddSelectedProvince = ref('')
 const quickAddSelectedCity = ref('')
 const quickAddCityList = ref<any[]>([])
 
+// 运费相关状态
+const freightAmt = ref(0)
+const isEditingFreight = ref(false)
+const freightInputRef = ref<HTMLInputElement | null>(null)
+const isFreightManuallyModified = ref(false)
+const brandFreightCache = ref<Record<string, number>>({})
+const isAddOrder = ref(false)
+
 // Watch quick add province change -> load cities
 watch(quickAddSelectedProvince, async (val) => {
   quickAddCityList.value = []
@@ -310,7 +300,8 @@ const handleclickOutside = (e: MouseEvent) => {
   const target = e.target as HTMLElement
   if (!target.closest('.search-select')) {
     showCustomerDropdown.value = false
-    showProductDropdown.value = null
+    showSpecDropdown.value = null
+    showEditWarehouseDropdown.value = null
     specSearchResults.value = []
   }
 }
@@ -404,78 +395,90 @@ const loadCustomers = async (keyword?: string) => {
   }
 }
 
-// 商品搜索（服务端模糊匹配规格编号）
-let productSearchTimer: ReturnType<typeof setTimeout> | null = null
-const handleProductSearch = (index: number, keyword: string) => {
-  // 保存搜索关键字
-  productSearchKeywords.value[index] = keyword
+// 规格编号搜索
+const handleSpecSearch = (index: number, keyword: string) => {
+  specSearchKeywords.value[index] = keyword
 
-  if (productSearchTimer) clearTimeout(productSearchTimer)
+  if (specSearchTimer) clearTimeout(specSearchTimer)
   if (!keyword || keyword.length < 1) {
-    productTree.value = []
     specSearchResults.value = []
     return
   }
-  productSearchTimer = setTimeout(async () => {
+  specSearchTimer = setTimeout(async () => {
     try {
-      // 只搜索规格
-      const specsRes = await productApi.searchSpecs(keyword, 20)
-      specSearchResults.value = specsRes?.items || []
-      productTree.value = []
+      const res = await productApi.searchSpecs(keyword, 20)
+      specSearchResults.value = res?.items || []
     } catch (e) {
-      console.error('搜索商品失败:', e)
-      productTree.value = []
+      console.error('搜索规格失败:', e)
       specSearchResults.value = []
     }
   }, 300)
 }
 
-// 从规格搜索结果中选择规格（直接匹配规格编号）
-const selectSpecFromSearch = async (specResult: SpecSearchResult) => {
-  const itemIndex = showProductDropdown.value ?? 0
-  showProductDropdown.value = null
-  specSearchResults.value = []
-  productSearchKeywords.value[itemIndex] = ''
+// 清除规格选择
+const clearSpecSelection = (index: number) => {
+  const item = orderForm.value.items[index]
+  // 重置所有商品相关字段
+  item.spec_id = ''
+  item.spec_code = ''
+  item.product_id = ''
+  item.product_name = ''
+  item.product_code = ''
+  item.brand_name = ''
+  item.packaging = ''
+  item.sales_spec = ''
+  item.price = 0
+  item.discount = 1
+  item.discounted_price = 0
+  item.amt = 0
+  // 重置发货方式和仓库
+  item.shipping_method = 'direct'
+  item.warehouse_id = ''
+  item.warehouse_name = ''
+  specSearchKeywords.value[index] = ''
+}
 
-  // 获取商品详情以获取品牌信息用于折扣计算
+// 从规格搜索结果中选择规格（编辑模式）
+const selectSpecFromSearchEdit = async (index: number, specResult: SpecSearchResult) => {
+  showSpecDropdown.value = null
+  specSearchResults.value = []
+  specSearchKeywords.value[index] = ''
+
   let discount = 1
-  if (orderForm.value.customer_id && specResult.product_id) {
+  if (orderForm.value.customer_id && specResult.brand_id) {
     try {
-      const productRes = await productApi.getById(specResult.product_id)
-      const productDetail = productRes.result
-      if (productDetail?.brand_id) {
-        const discountRes = await customerDiscountApi.list({
-          customer_id: orderForm.value.customer_id,
-          brand_id: productDetail.brand_id,
-          is_active: true
-        })
-        const discountItem = discountRes.result?.items?.[0]
-        if (discountItem) {
-          discount = discountItem.discount_value
-        }
-      }
+      const discountRes = await customerDiscountApi.list({
+        customer_id: orderForm.value.customer_id,
+        brand_id: String(specResult.brand_id),
+        is_active: true
+      })
+      const discountItem = discountRes?.items?.[0]
+      if (discountItem) discount = discountItem.discount_value
     } catch (e) {
-      console.error('获取商品折扣失败:', e)
+      console.error('获取客户折扣失败:', e)
     }
   }
 
   const discountedPrice = +(specResult.price * discount).toFixed(2)
-
-  orderForm.value.items[itemIndex] = {
-    ...orderForm.value.items[itemIndex],
-    product_id: specResult.product_id,
+  orderForm.value.items[index] = {
+    ...orderForm.value.items[index],
+    product_id: String(specResult.product_id),
     product_name: specResult.product_name,
     product_code: specResult.product_code || '',
+    brand_id: specResult.brand_id ? String(specResult.brand_id) : '',
     brand_name: specResult.brand_name || '',
-    spec_id: specResult.id,
+    spec_id: String(specResult.id),
     spec_code: specResult.spec_code,
     packaging: specResult.packaging || '',
     sales_spec: specResult.sales_spec || '',
     price: specResult.price,
     discount: discount,
     discounted_price: discountedPrice,
-    amt: +(orderForm.value.items[itemIndex].qty * discountedPrice).toFixed(2)
+    amt: +(orderForm.value.items[index].qty * discountedPrice).toFixed(2)
   }
+
+  // 自动加载库存
+  await loadSpecStock(specResult.id)
 }
 
 const loadWarehouses = async () => {
@@ -502,12 +505,19 @@ const loadSpecStock = async (specId: string | number) => {
   }
 }
 
-// 获取仓库中某规格的库存数量
-const getStockQty = (specId: string | number, warehouseId: string | number): number | null => {
-  const stocks = specStockMap.value[String(specId)]
-  if (!stocks) return null
-  const stock = stocks.find((s: any) => s.warehouse_id === String(warehouseId))
-  return stock ? stock.quantity : 0
+// 获取规格的库存仓库列表
+const getSpecStockList = (specId: string | number) => {
+  return specStockMap.value[String(specId)] || []
+}
+
+// 编辑弹窗仓库下拉状态
+const showEditWarehouseDropdown = ref<number | null>(null)
+
+// 从库存列表中选择仓库（编辑模式）
+const selectWarehouseFromStockEdit = (index: number, stockItem: { warehouse_id: string | number; warehouse_name: string; quantity: number }) => {
+  orderForm.value.items[index].warehouse_id = String(stockItem.warehouse_id)
+  orderForm.value.items[index].warehouse_name = stockItem.warehouse_name
+  showEditWarehouseDropdown.value = null
 }
 
 // 批量设置发货方式
@@ -515,7 +525,7 @@ const applyHeaderShippingMethod = () => {
   if (!headerShippingMethod.value) return
   orderForm.value.items.forEach(item => {
     if (item.product_id) {
-      item.shipping_method = headerShippingMethod.value as 'direct' | 'warehouse'
+      item.shipping_method = headerShippingMethod.value as 'direct' | 'warehouse' | 'warehouse_pickup'
       if (headerShippingMethod.value === 'direct') {
         item.warehouse_id = ''
         item.warehouse_name = ''
@@ -527,10 +537,10 @@ const applyHeaderShippingMethod = () => {
 // 批量设置仓库
 const applyHeaderWarehouse = () => {
   if (!headerWarehouseId.value) return
-  const warehouse = warehouseList.value.find((w: Warehouse) => w.id === headerWarehouseId.value)
+  const warehouse = warehouseList.value.find((w: Warehouse) => w.id === Number(headerWarehouseId.value))
   orderForm.value.items.forEach(item => {
     if (item.product_id && item.shipping_method !== 'direct') {
-      item.warehouse_id = headerWarehouseId.value
+      item.warehouse_id = Number(headerWarehouseId.value)
       item.warehouse_name = warehouse?.name || ''
     }
   })
@@ -668,6 +678,12 @@ const resetOrderForm = () => {
   headerShippingMethod.value = ''
   headerWarehouseId.value = ''
   specStockMap.value = {}
+  // 重置运费相关状态
+  freightAmt.value = 0
+  isEditingFreight.value = false
+  isFreightManuallyModified.value = false
+  brandFreightCache.value = {}
+  isAddOrder.value = false
 }
 
 const openCreateOrder = () => {
@@ -693,7 +709,8 @@ const openEditOrder = async (order: SalesOrder) => {
   // 发货方式中文转英文映射
   const shippingMethodReverseMap: Record<string, string> = {
     '直运': 'direct',
-    '仓库发货': 'warehouse'
+    '仓库发货': 'warehouse',
+    '仓库自提': 'warehouse_pickup'
   }
 
   orderForm.value = {
@@ -714,7 +731,7 @@ const openEditOrder = async (order: SalesOrder) => {
       brand_name: item.brand_name || '',
       spec_code: item.spec_code || '',
       // 发货方式中文转英文
-      shipping_method: (shippingMethodReverseMap[item.shipping_method] || item.shipping_method || 'warehouse') as 'direct' | 'warehouse'
+      shipping_method: (shippingMethodReverseMap[item.shipping_method] || item.shipping_method || 'warehouse') as 'direct' | 'warehouse' | 'warehouse_pickup'
     }))
   }
   customerSearchKeyword.value = fullOrder.customer_name || ''
@@ -781,6 +798,108 @@ const openEditOrder = async (order: SalesOrder) => {
     cityList.value = getCities(fullOrder.deliver_info.province)
     selectedCity.value = fullOrder.deliver_info?.city || ''
   }
+
+  // 设置运费（编辑模式使用原运费值，不自动重新计算）
+  freightAmt.value = (fullOrder as any).freight_amt || 0
+  isFreightManuallyModified.value = true
+
+  showOrderModal.value = true
+}
+
+/**
+ * 加单功能：基于已审核订单创建新订单
+ * 复制客户信息、收货信息、开票信息，清空商品明细
+ */
+const handleAddOrder = async (order: SalesOrder) => {
+  // 获取完整订单数据
+  let fullOrder = order
+  if (!order.deliver_info || !order.invoice_info) {
+    try {
+      const res = await salesOrderApi.getByOrderNo(order.order_no)
+      fullOrder = res
+    } catch (error) {
+      window.showToast('获取订单详情失败', 'error')
+      return
+    }
+  }
+
+  // 重置表单状态
+  resetOrderForm()
+
+  // 预填充客户和订单信息
+  orderForm.value = {
+    order_date: new Date().toISOString().split('T')[0], // 使用当前日期
+    customer_id: fullOrder.customer_id,
+    customer_name: fullOrder.customer_name || '',
+    sale_user_id: fullOrder.sale_user_id || '',
+    deliver_info: fullOrder.deliver_info ? { ...fullOrder.deliver_info } : {
+      addr: '',
+      province: '',
+      city: '',
+      person_name: '',
+      person_tel: ''
+    },
+    expect_deliver_date: '',
+    settle_type: fullOrder.settle_type || '月结',
+    invoice_info: fullOrder.invoice_info ? {
+      invoice_title: fullOrder.invoice_info.invoice_title || '',
+      invoice_type: fullOrder.invoice_info.invoice_type || '',
+      tax_number: fullOrder.invoice_info.tax_number || '',
+      bank_name: fullOrder.invoice_info.bank_name || '',
+      bank_account: fullOrder.invoice_info.bank_account || '',
+      address: fullOrder.invoice_info.address || '',
+      phone: fullOrder.invoice_info.phone || ''
+    } : {
+      invoice_title: '',
+      invoice_type: '',
+      tax_number: '',
+      bank_name: '',
+      bank_account: '',
+      address: '',
+      phone: ''
+    },
+    remark: '', // 备注清空
+    items: [] // 商品明细清空
+  }
+
+  // 设置客户搜索关键字
+  customerSearchKeyword.value = fullOrder.customer_name || ''
+
+  // 设置省份和城市
+  if (fullOrder.deliver_info?.province) {
+    selectedProvince.value = fullOrder.deliver_info.province
+    cityList.value = getCities(fullOrder.deliver_info.province)
+    selectedCity.value = fullOrder.deliver_info?.city || ''
+  }
+
+  // 加载客户收货地址和开票信息用于下拉选择
+  try {
+    const res = await customerApi.getById(fullOrder.customer_id)
+    const detail = res
+    customerInvoiceInfos.value = detail?.invoice_infos || []
+    customerShippingAddresses.value = detail?.shipping_addresses || []
+
+    // 匹配当前订单的收货地址
+    const matchedAddr = customerShippingAddresses.value.find(
+      (a: any) => a.recipient_name === fullOrder.deliver_info?.person_name && a.recipient_phone === fullOrder.deliver_info?.person_tel
+    )
+    selectedShippingAddressId.value = matchedAddr?.id || ''
+
+    // 匹配当前订单的开票信息
+    if (fullOrder.invoice_info?.invoice_title) {
+      const matchedInv = customerInvoiceInfos.value.find(
+        (i: any) => i.invoice_title === fullOrder.invoice_info?.invoice_title && i.tax_number === fullOrder.invoice_info?.tax_number
+      )
+      selectedInvoiceInfoId.value = matchedInv?.id || ''
+    }
+  } catch {
+    // 忽略错误，不影响主流程
+  }
+
+  // editingOrder 保持 null，表示新建模式
+  // 加单默认不计算运费
+  isAddOrder.value = true
+  isFreightManuallyModified.value = true
   showOrderModal.value = true
 }
 
@@ -898,19 +1017,6 @@ const onInvoiceInfoChange = (invoiceId: string) => {
       address: inv.address,
       phone: inv.phone
     }
-  }
-}
-
-const onWarehouseChange = (index: number, warehouseId: string) => {
-  if (!warehouseId) {
-    orderForm.value.items[index].warehouse_id = ''
-    orderForm.value.items[index].warehouse_name = ''
-    return
-  }
-  const warehouse = warehouseList.value.find((w: Warehouse) => w.id === warehouseId)
-  if (warehouse) {
-    orderForm.value.items[index].warehouse_id = warehouse.id
-    orderForm.value.items[index].warehouse_name = warehouse.name
   }
 }
 
@@ -1043,6 +1149,52 @@ const totalDiscountAmount = computed(() => {
   return orderForm.value.items.reduce((sum, item) => sum + ((item.price || 0) - (item.discounted_price || 0)) * (item.qty || 0), 0)
 })
 
+// 运费自动计算
+let freightCalcTimer: ReturnType<typeof setTimeout> | null = null
+const calculateFreight = async () => {
+  if (isFreightManuallyModified.value) return
+
+  if (freightCalcTimer) clearTimeout(freightCalcTimer)
+  freightCalcTimer = setTimeout(async () => {
+    const brandIds = new Set<string>()
+    orderForm.value.items.forEach(item => {
+      if (item.brand_id) brandIds.add(String(item.brand_id))
+    })
+
+    let total = 0
+    for (const brandId of brandIds) {
+      try {
+        // 使用缓存避免重复请求
+        if (!brandFreightCache.value[brandId]) {
+          const res = await brandApi.getById(brandId)
+          brandFreightCache.value[brandId] = res?.default_freight || 0
+        }
+        total += brandFreightCache.value[brandId]
+      } catch (e) {
+        console.error('获取品牌运费失败:', e)
+      }
+    }
+    freightAmt.value = total
+  }, 300)
+}
+
+// 监听商品明细变化，自动计算运费
+watch(() => orderForm.value.items, calculateFreight, { deep: true })
+
+// 开始编辑运费
+const startEditFreight = () => {
+  isEditingFreight.value = true
+  isFreightManuallyModified.value = true
+  nextTick(() => {
+    freightInputRef.value?.focus()
+  })
+}
+
+// 最终金额计算（包含运费）
+const finalAmount = computed(() => {
+  return totalAmount.value - totalDiscountAmount.value + freightAmt.value
+})
+
 const handleSaveOrder = async () => {
   if (!orderForm.value.customer_id) {
     window.showToast('请选择客户', 'warning')
@@ -1084,6 +1236,7 @@ const handleSaveOrder = async () => {
       invoice_info: orderForm.value.invoice_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
       settle_type: orderForm.value.settle_type,
+      freight_amt: freightAmt.value,
       remark: orderForm.value.remark,
       items: orderForm.value.items.map(item => ({
         row_no: item.row_no,
@@ -1148,6 +1301,7 @@ const handleSaveAndSubmit = async () => {
       invoice_info: orderForm.value.invoice_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
       settle_type: orderForm.value.settle_type,
+      freight_amt: freightAmt.value,
       remark: orderForm.value.remark,
       items: orderForm.value.items.map(item => ({
         row_no: item.row_no,
@@ -1380,7 +1534,7 @@ const formatAmount = (amount: number | undefined | null) => {
 
 const getOrderStatusInfo = (status: string) => orderStatusMap[status] || { label: status, class: '' }
 const getDeliveryStatusInfo = (status: string) => deliveryStatusMap[status] || { label: status, class: '' }
-const getReceiveStatusInfo = (status: string) => receiveStatusMap[status] || { label: status, class: '' }
+const getPushStatusInfo = (status: string | undefined) => pushStatusMap[status || 'none'] || { label: status || '未下推', class: 'none' }
 const getInvoiceStatusInfo = (status: string) => invoiceStatusMap[status] || { label: status, class: '' }
 const getFinanceStatusInfo = (status: string) => financeStatusMap[status] || { label: status || '未付款', class: 'none' }
 
@@ -1388,7 +1542,7 @@ const statusFieldLabel = (field: string) => {
   const map: Record<string, string> = {
     order_status: '订单状态',
     delivery_status: '发货状态',
-    receive_status: '收货状态',
+    push_status: '下推状态',
     invoice_status: '开票状态',
     finance_status: '财务状态'
   }
@@ -1607,10 +1761,10 @@ onBeforeUnmount(() => {
             </span>
           </template>
         </vxe-column>
-        <vxe-column field="receive_status" title="收货状态" width="100" class-name="col--center">
+        <vxe-column field="push_status" title="下推状态" width="100" class-name="col--center">
           <template #default="{ row }">
-            <span class="status-tag" :class="getReceiveStatusInfo(row.receive_status).class">
-              {{ getReceiveStatusInfo(row.receive_status).label }}
+            <span class="status-tag" :class="getPushStatusInfo(row.push_status).class">
+              {{ getPushStatusInfo(row.push_status).label }}
             </span>
           </template>
         </vxe-column>
@@ -1627,7 +1781,9 @@ onBeforeUnmount(() => {
               <button class="btn-link success" @click="handleSubmitOrder(row.order_no)" v-if="row.order_status === 'draft'">提交审核</button>
               <!-- 兼容历史数据：pending 状态显示审核通过按钮 -->
               <button class="btn-link success" @click="confirmAudit(row.order_no)" v-if="row.order_status === 'pending'">审核通过</button>
-              <button class="btn-link primary" @click="confirmPushPurchase(row.order_no)" v-if="row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase'">下推采购</button>
+              <button class="btn-link primary" @click="confirmPushPurchase(row.order_no)" v-if="(row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase') && (row.push_status === 'none' || row.push_status === 'partial')">下推采购</button>
+              <!-- 加单按钮：已审核状态可见，用于基于当前订单创建新订单 -->
+              <button class="btn-link" @click="handleAddOrder(row)" v-if="row.order_status === 'audited'">加单</button>
               <!-- 取消按钮仅限草稿状态 -->
               <button class="btn-link danger" @click="confirmCancel(row.order_no)" v-if="row.order_status === 'draft'">取消</button>
               <button class="btn-link danger" @click="confirmDelete(row.order_no)" v-if="row.order_status === 'draft'">删除</button>
@@ -1734,8 +1890,10 @@ onBeforeUnmount(() => {
                 <thead>
                   <tr>
                     <th style="width: 60px">行号</th>
-                    <th style="width: 200px">商品</th>
-                    <th style="width: 100px">规格编码</th>
+                    <th style="width: 40px"></th>
+                    <th style="width: 250px">商品</th>
+                    <th style="width: 100px">品牌</th>
+                    <th style="width: 200px">规格编号</th>
                     <th style="width: 120px">包装和包装单位</th>
                     <th style="width: 80px">数量</th>
                     <th style="width: 100px">单价</th>
@@ -1766,70 +1924,101 @@ onBeforeUnmount(() => {
                 <tbody>
                   <tr v-for="(item, index) in orderForm.items" :key="index">
                     <td>{{ item.row_no }}</td>
-                    <td>
-                      <div class="search-select">
-                        <input
-                          type="text"
-                          :value="productSearchKeywords[index] ?? (item.product_name ? (item.brand_name ? '[' + item.brand_name + '] ' + item.product_name : item.product_name) : '')"
-                          @focus="showProductDropdown = index; productTree = []"
-                          @input="handleProductSearch(index, ($event.target as HTMLInputElement).value)"
-                          placeholder="输入规格编号搜索"
-                        />
-                        <div class="search-dropdown product-tree-dropdown" v-if="showProductDropdown === index">
-                          <!-- 规格搜索结果 -->
-                          <template v-if="specSearchResults.length > 0">
+                    <!-- 未选择商品时：显示合并输入框 -->
+                    <td v-if="!item.spec_id" colspan="10" class="merged-input-cell">
+                      <div class="merged-search-wrapper">
+                        <div class="search-select merged-search-select">
+                          <input
+                            type="text"
+                            :value="specSearchKeywords[index] || ''"
+                            @focus="showSpecDropdown = index; specSearchResults = []"
+                            @input="handleSpecSearch(index, ($event.target as HTMLInputElement).value)"
+                            placeholder="输入规格编号搜索商品..."
+                          />
+                          <div class="search-dropdown merged-search-dropdown" v-if="showSpecDropdown === index">
                             <div
-                              v-for="specResult in specSearchResults"
-                              :key="specResult.id"
-                              class="search-option spec-search-item"
-                              :class="{ 'inactive': !specResult.is_active }"
-                              @click="selectSpecFromSearch(specResult)"
+                              v-for="spec in specSearchResults"
+                              :key="spec.id"
+                              class="search-option merged-search-item"
+                              :class="{ 'inactive': !spec.is_active }"
+                              @click="selectSpecFromSearchEdit(index, spec)"
                             >
-                              <span class="spec-code">{{ specResult.spec_code }}</span>
-                              <span class="spec-info" v-if="specResult.packaging || specResult.sales_spec">{{ [specResult.packaging, specResult.sales_spec].filter(Boolean).join(' - ') }}</span>
-                              <span class="brand-name" v-if="specResult.brand_name">[{{ specResult.brand_name }}]</span>
-                              <span class="product-name-small">{{ specResult.product_name }}</span>
-                              <span class="spec-price">¥{{ specResult.price.toFixed(2) }}</span>
-                              <span class="spec-status" v-if="!specResult.is_active">停用</span>
+                              <span class="spec-code">{{ spec.spec_code }}</span>
+                              <span class="spec-packaging" v-if="spec.packaging">{{ spec.packaging }}</span>
+                              <span class="brand-name" v-if="spec.brand_name">[{{ spec.brand_name }}]</span>
+                              <span class="product-name-small">{{ spec.product_name }}</span>
+                              <span class="spec-price">¥{{ spec.price.toFixed(2) }}</span>
+                              <span class="spec-status" v-if="!spec.is_active">停用</span>
                             </div>
-                          </template>
-                          <div v-if="specSearchResults.length === 0" class="search-option disabled">
-                            输入关键字搜索规格编号
+                            <div v-if="specSearchResults.length === 0" class="search-option disabled">
+                              输入规格编号搜索
+                            </div>
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td>{{ item.spec_code || '-' }}</td>
-                    <td>{{ (item.packaging && item.sales_spec) ? item.packaging + ' - ' + item.sales_spec : (item.packaging || item.sales_spec || '-') }}</td>
-                    <td>
-                      <input type="number" v-model="item.qty" min="1" @input="updateItemAmount(index)" />
-                    </td>
-                    <td>
-                      <input type="number" v-model="item.price" min="0" step="0.01" @input="updateItemAmount(index)" />
-                    </td>
-                    <td>
-                      <input type="number" v-model="item.discount" min="0" max="1" step="0.01" @input="updateItemAmount(index)" />
-                    </td>
-                    <td>
-                      <input type="number" v-model="item.discounted_price" min="0" step="0.01" @input="updateItemDiscountByPrice(index)" />
-                    </td>
-                    <td>{{ formatAmount(item.amt) }}</td>
+                    <!-- 已选择商品时：显示分列 -->
+                    <template v-else>
+                      <td class="clear-btn-cell">
+                        <button class="btn-clear-row" @click="clearSpecSelection(index)" title="清除整行">×</button>
+                      </td>
+                      <td>
+                        <span v-if="item.product_name">{{ item.product_name }}</span>
+                        <span v-else class="text-muted">-</span>
+                      </td>
+                      <td>
+                        <span v-if="item.brand_name">{{ item.brand_name }}</span>
+                        <span v-else class="text-muted">-</span>
+                      </td>
+                      <td>
+                        <span class="spec-selected-code">{{ item.spec_code }}</span>
+                      </td>
+                      <td>
+                        <span class="packaging-text">{{ (item.packaging && item.sales_spec) ? item.packaging + ' - ' + item.sales_spec : (item.packaging || item.sales_spec || '-') }}</span>
+                      </td>
+                      <td>
+                        <input type="number" v-model="item.qty" min="1" @input="updateItemAmount(index)" />
+                      </td>
+                      <td>
+                        <input type="number" v-model="item.price" min="0" step="0.01" @input="updateItemAmount(index)" />
+                      </td>
+                      <td>
+                        <input type="number" v-model="item.discount" min="0" max="1" step="0.01" @input="updateItemAmount(index)" />
+                      </td>
+                      <td>
+                        <input type="number" v-model="item.discounted_price" min="0" step="0.01" @input="updateItemDiscountByPrice(index)" />
+                      </td>
+                      <td>{{ formatAmount(item.amt) }}</td>
+                    </template>
                     <td>
                       <select v-model="item.shipping_method" @change="if(item.shipping_method === 'direct') { item.warehouse_id = ''; item.warehouse_name = '' }">
                         <option v-for="s in shippingMethodOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
                       </select>
                     </td>
                     <td v-if="item.shipping_method !== 'direct'">
-                      <select
-                        :value="item.warehouse_id"
-                        @focus="loadSpecStock(item.spec_id)"
-                        @change="onWarehouseChange(index, ($event.target as HTMLSelectElement).value)"
-                      >
-                        <option value="">请选择仓库</option>
-                        <option v-for="w in warehouseList" :key="w.id" :value="w.id">
-                          {{ w.name }}{{ item.spec_id ? ' (库存: ' + (getStockQty(item.spec_id, w.id) !== null ? getStockQty(item.spec_id, w.id) : '加载中') + ')' : '' }}
-                        </option>
-                      </select>
+                      <div class="search-select">
+                        <input
+                          type="text"
+                          :value="item.warehouse_name || ''"
+                          @click="if(item.warehouse_id) { item.warehouse_id = ''; item.warehouse_name = '' }"
+                          @focus="showEditWarehouseDropdown = index; loadSpecStock(item.spec_id)"
+                          readonly
+                        />
+                        <div class="search-dropdown" v-if="showEditWarehouseDropdown === index && getSpecStockList(item.spec_id).length > 0">
+                          <div
+                            v-for="s in getSpecStockList(item.spec_id)"
+                            :key="s.warehouse_id"
+                            class="search-option warehouse-option"
+                            @click="selectWarehouseFromStockEdit(index, s)"
+                          >
+                            <span class="warehouse-name">{{ s.warehouse_name }}</span>
+                            <span class="warehouse-stock">库存: {{ s.quantity }}</span>
+                          </div>
+                        </div>
+                        <div class="search-dropdown" v-if="showEditWarehouseDropdown === index && getSpecStockList(item.spec_id).length === 0">
+                          <div class="search-option disabled">暂无库存信息</div>
+                        </div>
+                      </div>
                     </td>
                     <td v-else></td>
                     <td>
@@ -1849,13 +2038,22 @@ onBeforeUnmount(() => {
                 <span>商品总金额：</span>
                 <span>{{ formatAmount(totalAmount) }}</span>
               </div>
+              <div class="summary-row freight-row">
+                <span>运费：</span>
+                <span v-if="!isEditingFreight" @click="startEditFreight" class="freight-value">{{ formatAmount(freightAmt) }}</span>
+                <input v-else type="number" v-model="freightAmt" min="0" step="0.01"
+                  @blur="isEditingFreight = false"
+                  @keyup.enter="isEditingFreight = false"
+                  ref="freightInputRef" class="freight-input" />
+              </div>
+              <div v-if="isAddOrder" class="freight-hint">加单默认不计算运费</div>
               <div class="summary-row">
                 <span>总折扣金额：</span>
                 <span>-{{ formatAmount(totalDiscountAmount) }}</span>
               </div>
               <div class="summary-row total">
                 <span>最终金额：</span>
-                <span>{{ formatAmount(totalAmount - totalDiscountAmount) }}</span>
+                <span>{{ formatAmount(finalAmount) }}</span>
               </div>
             </div>
           </div>
@@ -1933,9 +2131,9 @@ onBeforeUnmount(() => {
                   </span>
                 </div>
                 <div class="detail-item">
-                  <label>收货状态</label>
-                  <span class="status-tag" :class="getReceiveStatusInfo(selectedOrder.receive_status).class">
-                    {{ getReceiveStatusInfo(selectedOrder.receive_status).label }}
+                  <label>下推状态</label>
+                  <span class="status-tag" :class="getPushStatusInfo(selectedOrder.push_status).class">
+                    {{ getPushStatusInfo(selectedOrder.push_status).label }}
                   </span>
                 </div>
                 <div class="detail-item">
@@ -2057,8 +2255,8 @@ onBeforeUnmount(() => {
                   <span class="status-tag" :class="getDeliveryStatusInfo(selectedOrder.delivery_status).class">{{ getDeliveryStatusInfo(selectedOrder.delivery_status).label }}</span>
                 </div>
                 <div class="status-info-item">
-                  <label>收货状态：</label>
-                  <span class="status-tag" :class="getReceiveStatusInfo(selectedOrder.receive_status).class">{{ getReceiveStatusInfo(selectedOrder.receive_status).label }}</span>
+                  <label>下推状态：</label>
+                  <span class="status-tag" :class="getPushStatusInfo(selectedOrder.push_status).class">{{ getPushStatusInfo(selectedOrder.push_status).label }}</span>
                 </div>
                 <div class="status-info-item">
                   <label>开票状态：</label>
@@ -2110,14 +2308,14 @@ onBeforeUnmount(() => {
           </button>
           <button
             class="btn-warning"
-            v-if="selectedOrder.order_status === 'audited' || selectedOrder.order_status === 'partially_pushed_to_purchase'"
+            v-if="(selectedOrder.order_status === 'audited' || selectedOrder.order_status === 'partially_pushed_to_purchase') && (selectedOrder.push_status === 'none' || selectedOrder.push_status === 'partial')"
             @click="confirmClose(selectedOrder.order_no)"
           >
             关闭订单
           </button>
           <button
             class="btn-primary"
-            v-if="selectedOrder.order_status === 'audited' || selectedOrder.order_status === 'partially_pushed_to_purchase'"
+            v-if="(selectedOrder.order_status === 'audited' || selectedOrder.order_status === 'partially_pushed_to_purchase') && (selectedOrder.push_status === 'none' || selectedOrder.push_status === 'partial')"
             @click="confirmPushPurchase(selectedOrder.order_no)"
           >
             下推采购
@@ -2431,7 +2629,7 @@ onBeforeUnmount(() => {
 }
 
 .filter-btn.reset-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
 
@@ -2464,6 +2662,28 @@ onBeforeUnmount(() => {
   height: 20px !important;
 }
 
+.top-scrollbar-area :deep(.vxe-table--body-wrapper::-webkit-scrollbar) {
+  height: 8px;
+}
+
+.top-scrollbar-area :deep(.vxe-table--body-wrapper::-webkit-scrollbar-track) {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+.top-scrollbar-area :deep(.vxe-table--body-wrapper::-webkit-scrollbar-thumb) {
+  background: var(--text-muted);
+  border-radius: 4px;
+}
+
+.top-scrollbar-area :deep(.vxe-table--body-wrapper::-webkit-scrollbar-thumb:hover) {
+  background: var(--text-secondary);
+}
+
+.top-scrollbar-area :deep(.vxe-table--body-wrapper::-webkit-scrollbar-corner) {
+  background: var(--bg-secondary);
+}
+
 .order-link {
   color: var(--accent-blue);
   cursor: pointer;
@@ -2484,7 +2704,7 @@ onBeforeUnmount(() => {
 .status-tag.draft { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
 .status-tag.pending { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.audited { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
-.status-tag.pushed { background-color: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.status-tag.pushed { background-color: rgba(139, 92, 246, 0.1); color: var(--accent-purple); }
 .status-tag.partial-pushed { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.closed { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .status-tag.cancelled { background-color: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
@@ -2492,7 +2712,7 @@ onBeforeUnmount(() => {
 .status-tag.none { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
 .status-tag.partial { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.full { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
-.status-tag.reconciled { background-color: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.status-tag.reconciled { background-color: rgba(139, 92, 246, 0.1); color: var(--accent-purple); }
 
 .profit-positive { color: var(--accent-green); }
 .profit-negative { color: var(--accent-red); }
@@ -2527,7 +2747,7 @@ onBeforeUnmount(() => {
 }
 
 .btn-link.success {
-  color: #10b981;
+  color: var(--accent-green);
 }
 
 .btn-link.success:hover {
@@ -2535,7 +2755,7 @@ onBeforeUnmount(() => {
 }
 
 .btn-link.warning {
-  color: #f59e0b;
+  color: var(--accent-yellow);
 }
 
 .btn-link.warning:hover {
@@ -2611,7 +2831,7 @@ onBeforeUnmount(() => {
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.12);
   color: var(--text-primary);
 }
 
@@ -2874,6 +3094,44 @@ onBeforeUnmount(() => {
   color: var(--text-primary);
 }
 
+/* 运费行样式 */
+.freight-row {
+  cursor: pointer;
+}
+
+.freight-row:hover .freight-value {
+  color: var(--accent-blue);
+  text-decoration: underline;
+}
+
+.freight-value {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.freight-hint {
+  font-size: 11px;
+  color: var(--text-tertiary, #999);
+  text-align: right;
+  padding-right: 0;
+}
+
+.freight-input {
+  width: 120px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent-blue);
+  border-radius: 4px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: right;
+}
+
+.freight-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
 /* Detail styles */
 .detail-loading {
   text-align: center;
@@ -2982,7 +3240,7 @@ onBeforeUnmount(() => {
 }
 
 .flow-item:last-child .flow-dot {
-  background-color: #10b981;
+  background-color: var(--accent-green);
 }
 
 .flow-content {
@@ -3073,7 +3331,7 @@ onBeforeUnmount(() => {
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
 
@@ -3125,7 +3383,7 @@ onBeforeUnmount(() => {
 .btn-success {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: #10b981;
+  background-color: var(--accent-green);
   color: white;
   font-size: 14px;
   border: none;
@@ -3133,7 +3391,7 @@ onBeforeUnmount(() => {
 }
 
 .btn-success:hover:not(:disabled) {
-  background-color: #059669;
+  filter: brightness(0.9);
 }
 
 .btn-success:disabled {
@@ -3144,7 +3402,7 @@ onBeforeUnmount(() => {
 .btn-warning {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: #f59e0b;
+  background-color: var(--accent-yellow);
   color: white;
   font-size: 14px;
   border: none;
@@ -3152,7 +3410,7 @@ onBeforeUnmount(() => {
 }
 
 .btn-warning:hover:not(:disabled) {
-  background-color: #d97706;
+  filter: brightness(0.9);
 }
 
 .btn-warning:disabled {
@@ -3171,7 +3429,7 @@ onBeforeUnmount(() => {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #dc2626;
+  filter: brightness(0.9);
 }
 
 .btn-danger:disabled {
@@ -3193,11 +3451,11 @@ onBeforeUnmount(() => {
 .table-loading-overlay {
   position: absolute;
   inset: 0;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
+  z-index: 100;
 }
 
 .table-loading-content {
@@ -3339,6 +3597,54 @@ onBeforeUnmount(() => {
   opacity: 0.5;
 }
 
+.brand-tag {
+  color: var(--accent-blue);
+  margin-right: 4px;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.spec-search-dropdown {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.spec-selected-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.spec-selected-overlay:hover {
+  background: var(--bg-tertiary);
+}
+
+.spec-selected-code {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.spec-selected-clear {
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.spec-selected-clear:hover {
+  color: var(--accent-red);
+}
+
 .product-name-small {
   font-size: 12px;
   color: var(--text-muted);
@@ -3433,5 +3739,133 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 合并输入框样式 */
+.merged-input-cell {
+  padding: 8px !important;
+  background-color: var(--bg-secondary);
+}
+
+.merged-search-wrapper {
+  width: 100%;
+}
+
+.merged-search-select {
+  width: 100%;
+}
+
+.merged-search-select input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.merged-search-select input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.merged-search-select input::placeholder {
+  color: var(--text-muted);
+}
+
+.merged-search-dropdown {
+  min-width: 600px;
+  max-width: 800px;
+}
+
+.merged-search-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.merged-search-item .spec-code {
+  font-weight: 500;
+  min-width: 120px;
+}
+
+.merged-search-item .spec-packaging {
+  color: var(--text-muted);
+  font-size: 12px;
+  min-width: 80px;
+}
+
+.merged-search-item .brand-name {
+  color: var(--accent-blue);
+  font-size: 12px;
+  min-width: 60px;
+}
+
+.merged-search-item .product-name-small {
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merged-search-item .spec-price {
+  color: var(--accent-blue);
+  font-weight: 500;
+  margin-left: auto;
+}
+
+.merged-search-item .spec-status {
+  font-size: 11px;
+  color: var(--accent-red);
+  background-color: rgba(239, 68, 68, 0.1);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.merged-search-item.inactive {
+  opacity: 0.5;
+}
+
+/* 清除按钮列 */
+.clear-btn-cell {
+  padding: 8px !important;
+  text-align: center;
+}
+
+.btn-clear-row {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-clear-row:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--accent-red);
+}
+
+/* 已选择的规格编码样式 */
+.spec-selected-code {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* 包装文本样式 */
+.packaging-text {
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 </style>
