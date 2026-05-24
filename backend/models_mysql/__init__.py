@@ -4,7 +4,6 @@ MySQL ORM 模型（Tortoise ORM）
 from .auth import User, Role, Permission, UserStatus, RoleStatus, PermissionType
 from .product import Brand, Category, Product, ProductSpec
 from .customer import Customer, InvoiceInfo, ShippingAddress, CustomerDiscount
-from .stock_check import StockCheckBatch, StockCheckRecord
 from .warehouse import Warehouse, Stock, InboundBatch, OutboundBatch, WarehouseLocation
 from .sales_order import (
     SalesOrder, SalesOrderItem, SalesDeliverInfo,
@@ -14,7 +13,7 @@ from .purchase_order import (
     PurchaseOrder, PurchaseOrderItem,
     PurchaseType, PurchaseStatus, InStatus, PayStatus
 )
-from .pending_outbound import PendingOutboundOrder, PendingOutboundStatus, OutboundType
+from .pending_outbound import PendingOutboundOrder, PendingOutboundStatus, OutboundType, LogisticsStatus, DeliveryType
 from .order_status_flow import OrderStatusFlow
 from .supplier import Supplier, SupplierBankAccount, SupplierBrand
 
@@ -41,8 +40,6 @@ __all__ = [
     "InvoiceInfo",
     "ShippingAddress",
     "CustomerDiscount",
-    "StockCheckBatch",
-    "StockCheckRecord",
     "Warehouse",
     "Stock",
     "InboundBatch",
@@ -69,6 +66,8 @@ __all__ = [
     "PendingOutboundOrder",
     "PendingOutboundStatus",
     "OutboundType",
+    "LogisticsStatus",
+    "DeliveryType",
     # 状态流转
     "OrderStatusFlow",
     # 供应商

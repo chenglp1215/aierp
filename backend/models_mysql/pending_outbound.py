@@ -14,10 +14,25 @@ class PendingOutboundStatus(str, Enum):
     CANCELLED = "cancelled"  # 已取消
 
 
+class LogisticsStatus(str, Enum):
+    """物流状态"""
+    PENDING = "pending"          # 待取件
+    PICKED_UP = "picked_up"      # 已取件
+    IN_TRANSIT = "in_transit"    # 运输中
+    DELIVERED = "delivered"      # 已签收
+    EXCEPTION = "exception"      # 异常
+
+
 class OutboundType(str, Enum):
     """出库类型"""
     ORDER_OUTBOUND = "order_outbound"      # 订单出库
     TRANSFER_OUTBOUND = "transfer_outbound"  # 调拨出库
+
+
+class DeliveryType(str, Enum):
+    """配送方式枚举"""
+    LOGISTICS = "logistics"  # 物流发货
+    PICKUP = "pickup"        # 等待自提
 
 
 class PendingOutboundOrder(Model):
@@ -38,6 +53,7 @@ class PendingOutboundOrder(Model):
     locked_qty = fields.IntField(description="锁定数量")
     status = fields.CharEnumField(PendingOutboundStatus, default=PendingOutboundStatus.PENDING, description="状态")
     outbound_type = fields.CharEnumField(OutboundType, default=OutboundType.ORDER_OUTBOUND, description="出库类型")
+    delivery_type = fields.CharEnumField(enum_type=DeliveryType, default=DeliveryType.LOGISTICS, max_length=50, description="配送方式：logistics-物流发货，pickup-等待自提")
 
     # 收货地址信息
     province = fields.CharField(max_length=100, null=True, description="省份")
@@ -50,6 +66,7 @@ class PendingOutboundOrder(Model):
     shipped_at = fields.DatetimeField(null=True, description="发货时间")
     shipping_company = fields.CharField(max_length=100, null=True, description="物流公司")
     tracking_no = fields.CharField(max_length=100, null=True, description="物流单号")
+    logistics_status = fields.CharEnumField(LogisticsStatus, max_length=50, null=True, description="物流状态")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
 
@@ -85,6 +102,7 @@ class PendingOutboundOrder(Model):
             "out_qty": self.out_qty_value,
             "status": self.status.value if self.status else None,
             "outbound_type": self.outbound_type.value if self.outbound_type else None,
+            "delivery_type": self.delivery_type.value if self.delivery_type else None,
             "province": self.province,
             "city": self.city,
             "address": self.address,
@@ -94,6 +112,7 @@ class PendingOutboundOrder(Model):
             "shipped_at": self.shipped_at.isoformat() if self.shipped_at else None,
             "shipping_company": self.shipping_company,
             "tracking_no": self.tracking_no,
+            "logistics_status": self.logistics_status.value if self.logistics_status else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
