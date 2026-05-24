@@ -16,7 +16,7 @@ from models_mysql.sales_order import (
     CostType, CostSourceType, FinanceStatus, PushStatus
 )
 from models_mysql.order_status_flow import OrderStatusFlow
-from models_mysql.pending_outbound import PendingOutboundOrder, PendingOutboundStatus
+from models_mysql.pending_outbound import PendingOutboundOrder, PendingOutboundStatus, DeliveryType
 from models_mysql.warehouse import Stock
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,8 @@ class SalesOrderService:
             "direct": ShippingMethod.DIRECT,
             "仓库发货": ShippingMethod.WAREHOUSE,
             "warehouse": ShippingMethod.WAREHOUSE,
+            "仓库自提": ShippingMethod.WAREHOUSE_PICKUP,
+            "warehouse_pickup": ShippingMethod.WAREHOUSE_PICKUP,
         }
         return shipping_map.get(value, ShippingMethod.WAREHOUSE)
 
@@ -144,10 +146,10 @@ class SalesOrderService:
         出库单状态为 shipped 视为已发货。
         直运明细不参与计算。
         """
-        # 获取仓库发货方式的明细
+        # 获取仓库发货方式的明细（包含仓库发货和仓库自提）
         items = await SalesOrderItem.filter(
             sales_order_id=order_id,
-            shipping_method=ShippingMethod.WAREHOUSE
+            shipping_method__in=[ShippingMethod.WAREHOUSE, ShippingMethod.WAREHOUSE_PICKUP]
         ).all()
 
         if not items:
@@ -331,8 +333,8 @@ class SalesOrderService:
             if item.shipping_method == ShippingMethod.DIRECT:
                 # 直运：全部走采购
                 item.purchase_qty = item.qty
-            else:
-                # 仓库发货：基于批次计算可用库存
+            elif item.shipping_method in (ShippingMethod.WAREHOUSE, ShippingMethod.WAREHOUSE_PICKUP):
+                # 仓库发货/仓库自提：基于批次计算可用库存
                 from models_mysql.warehouse import InboundBatch
 
                 # 入库批次 current_quantity 之和
@@ -396,7 +398,8 @@ class SalesOrderService:
                             city=deliver_data["city"],
                             address=deliver_data["address"],
                             recipient_name=deliver_data["recipient_name"],
-                            recipient_phone=deliver_data["recipient_phone"]
+                            recipient_phone=deliver_data["recipient_phone"],
+                            delivery_type=DeliveryType.PICKUP if item.shipping_method == ShippingMethod.WAREHOUSE_PICKUP else DeliveryType.LOGISTICS,
                         )
                     except Exception as e:
                         logger.error(f"创建待出库单失败: order={order.order_no}, item={item.id}, error={e}")
@@ -1207,8 +1210,8 @@ class SalesOrderService:
         if not cost_item:
             raise ValueError("成本明细不存在")
 
-        if cost_item.source_type == CostSourceType.PURCHASE_ORDER:
-            raise ValueError("采购成本不可手动删除")
+        if cost_item.source_type in (CostSourceType.PURCHASE_ORDER, CostSourceType.OUTBOUND):
+            raise ValueError("采购成本和出库成本不可手动删除")
 
         await cost_item.delete()
         logger.info(f"销售单 {order_no} 删除成本明细: {item_id}")
