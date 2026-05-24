@@ -9,9 +9,9 @@ from tortoise.expressions import Q
 from tortoise.functions import Sum
 from tortoise.transactions import in_transaction
 
-from models_mysql.pending_outbound import PendingOutboundOrder, PendingOutboundStatus
+from models_mysql.pending_outbound import PendingOutboundOrder, PendingOutboundStatus, DeliveryType
 from models_mysql.warehouse import Stock, OutboundBatch, InboundBatch
-from models_mysql.sales_order import SalesOrderItem
+from models_mysql.sales_order import SalesOrderItem, SalesOrderCostItem, CostType, CostSourceType
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,8 @@ class PendingOutboundService:
         city: str = None,
         address: str = None,
         recipient_name: str = None,
-        recipient_phone: str = None
+        recipient_phone: str = None,
+        delivery_type: DeliveryType = DeliveryType.LOGISTICS
     ) -> PendingOutboundOrder:
         """创建待出库单（锁定量通过查询动态计算，不再直接扣减 stock.quantity）"""
         pending_no = await self.generate_pending_no()
@@ -76,6 +77,7 @@ class PendingOutboundService:
                 address=address,
                 recipient_name=recipient_name,
                 recipient_phone=recipient_phone,
+                delivery_type=delivery_type,
                 using_db=conn
             )
 
@@ -192,8 +194,8 @@ class PendingOutboundService:
         ).annotate(total=Sum("quantity")).values_list("total", flat=True)
         current_out_qty = int(current_out_qty_result[0]) if current_out_qty_result and current_out_qty_result[0] else 0
         remaining = pending.locked_qty - current_out_qty
-        if out_qty > remaining:
-            raise ValueError(f"出库数量不能超过待出库数量 {remaining}")
+        if out_qty != remaining:
+            raise ValueError(f"出库数量必须等于待出库数量 {remaining}")
 
         # 获取库存记录
         stock = await Stock.filter(
@@ -246,6 +248,19 @@ class PendingOutboundService:
                         remarks=f"待出库单 {pending.pending_no} 出库（批次{inbound_batch_id}）",
                         pending_outbound_id=pending.id,
                         inbound_batch_id=inbound_batch_id
+                    )
+
+                # 创建成本明细（基于入库批次成本价）
+                if inbound_batch.cost_price is not None and pending.sales_order_id:
+                    cost_amount = float(inbound_batch.cost_price) * batch_qty
+                    await SalesOrderCostItem.create(
+                        sales_order_id=pending.sales_order_id,
+                        cost_type=CostType.PURCHASE,
+                        amount=round(cost_amount, 2),
+                        source_type=CostSourceType.OUTBOUND,
+                        source_no=pending.pending_no,
+                        pending_outbound_id=pending.id,
+                        remark=f"成本 {float(inbound_batch.cost_price):.2f} × 数量 {int(batch_qty) if batch_qty == int(batch_qty) else batch_qty}",
                     )
         else:
             # 未提供批次明细时，保持原有逻辑（兼容旧调用）
@@ -334,6 +349,10 @@ class PendingOutboundService:
         if pending.status == PendingOutboundStatus.PENDING:
             raise ValueError("只有已出库状态的单据可以发货")
 
+        # 自提类型无需物流信息
+        if pending.delivery_type == DeliveryType.PICKUP:
+            logger.info(f"自提发货: {pending.pending_no}, 无需物流信息")
+
         pending.status = PendingOutboundStatus.SHIPPED
         pending.shipped_at = datetime.now(timezone.utc)
         if shipping_company:
@@ -408,6 +427,15 @@ class PendingOutboundService:
             if item:
                 item.out_qty = max(0, item.out_qty - int(revoked_qty))
                 await item.save(using_db=conn)
+
+            # 删除出库操作创建的成本明细
+            cost_items = await SalesOrderCostItem.filter(
+                pending_outbound_id=pending.id,
+                source_type=CostSourceType.OUTBOUND
+            ).using_db(conn).all()
+
+            for ci in cost_items:
+                await ci.delete(using_db=conn)
 
         # 更新销售订单发货状态（事务外执行，避免嵌套事务）
         from services.sales_order_service_mysql import sales_order_service_mysql
