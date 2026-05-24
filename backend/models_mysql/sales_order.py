@@ -55,6 +55,7 @@ class CostType(str, Enum):
 class CostSourceType(str, Enum):
     """成本来源类型枚举"""
     PURCHASE_ORDER = "purchase_order"  # 采购单
+    OUTBOUND = "outbound"              # 出库发货
     MANUAL = "manual"                  # 手动添加
 
 
@@ -70,6 +71,7 @@ class ShippingMethod(str, Enum):
     """发货方式枚举"""
     DIRECT = "direct"      # 直运
     WAREHOUSE = "warehouse"  # 仓库发货
+    WAREHOUSE_PICKUP = "warehouse_pickup"  # 仓库自提
 
 
 class SalesOrder(Model):
@@ -92,6 +94,7 @@ class SalesOrder(Model):
     tax_amt = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="税额")
     total_tax_amt = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="含税总金额")
     total_discount_amt = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="整单折扣金额")
+    freight_amt = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="运费金额")
     expect_deliver_date = fields.DateField(null=True, description="期望交货日")
     settle_type = fields.CharField(max_length=50, null=True, description="结算方式")
     remark = fields.TextField(null=True, description="备注")
@@ -127,6 +130,7 @@ class SalesOrder(Model):
             "tax_amt": float(self.tax_amt),
             "total_tax_amt": float(self.total_tax_amt),
             "total_discount_amt": float(self.total_discount_amt),
+            "freight_amt": float(self.freight_amt) if self.freight_amt else 0.00,
             "expect_deliver_date": self.expect_deliver_date.isoformat() if self.expect_deliver_date else None,
             "settle_type": self.settle_type,
             "remark": self.remark,
@@ -199,7 +203,7 @@ class SalesOrderItem(Model):
                 if warehouse is None or not hasattr(warehouse, 'id'):
                     warehouse = await self.warehouse
             except TypeError:
-                warehouse = await self.warehouse
+                pass  # self.warehouse 为 None，无法 await
 
         # 通过 spec 获取 product 和 brand
         product = None
@@ -226,6 +230,7 @@ class SalesOrderItem(Model):
         shipping_method_map = {
             ShippingMethod.DIRECT: "直运",
             ShippingMethod.WAREHOUSE: "仓库发货",
+            ShippingMethod.WAREHOUSE_PICKUP: "仓库自提",
         }
         shipping_method_cn = shipping_method_map.get(self.shipping_method) if self.shipping_method else None
 
@@ -268,6 +273,7 @@ class SalesOrderCostItem(Model):
     source_type = fields.CharEnumField(CostSourceType, description="来源类型")
     source_no = fields.CharField(max_length=50, null=True, description="来源单号")
     purchase_order_id = fields.IntField(null=True, description="关联采购单ID")
+    pending_outbound_id = fields.IntField(null=True, description="关联待出库单ID")
     remark = fields.TextField(null=True, description="备注")
     creator_id = fields.IntField(null=True, description="创建人ID")
     creator_name = fields.CharField(max_length=100, null=True, description="创建人名称")
@@ -286,6 +292,7 @@ class SalesOrderCostItem(Model):
             "source_type": self.source_type.value if self.source_type else None,
             "source_no": self.source_no,
             "purchase_order_id": self.purchase_order_id,
+            "pending_outbound_id": self.pending_outbound_id,
             "remark": self.remark,
             "creator_id": self.creator_id,
             "creator_name": self.creator_name,
