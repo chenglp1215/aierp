@@ -164,7 +164,7 @@ class SalesOrderItem(Model):
     discount = fields.DecimalField(max_digits=5, decimal_places=4, default=1.0, description="折扣率")
     discounted_price = fields.DecimalField(max_digits=12, decimal_places=2, null=True, description="折后单价")
     amt = fields.DecimalField(max_digits=12, decimal_places=2, null=True, description="行金额")
-    shipping_method = fields.CharEnumField(ShippingMethod, description="发货方式")
+    shipping_method = fields.CharEnumField(ShippingMethod, max_length=20, description="发货方式")
     purchase_qty = fields.IntField(default=0, description="需要采购的数量")
     pushed_qty = fields.IntField(default=0, description="已下推采购的数量")
     out_qty = fields.IntField(default=0, description="已发货数量")
