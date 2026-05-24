@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
-import { salesOrderApi, purchaseOrderApi, receivableApi, brandApi, pendingOutboundApi } from '../../services/api'
+import { salesOrderApi, purchaseOrderApi, brandApi, pendingOutboundApi } from '../../services/api'
 import PushPurchaseItemSelectModal from './PushPurchaseItemSelectModal.vue'
 
 interface Props {
@@ -18,7 +18,6 @@ const loading = ref(true)
 const order = ref<any>(null)
 const flows = ref<any[]>([])
 const purchaseOrders = ref<any[]>([])
-const receivables = ref<any[]>([])
 const actionLoading = ref(false)
 const showPushItemSelect = ref(false)
 const pushableItems = ref<any[]>([])
@@ -26,7 +25,7 @@ const pushableItems = ref<any[]>([])
 // 成本明细相关
 const costItems = ref<any[]>([])
 const pendingOutbounds = ref<any[]>([])
-const activeMainTab = ref<'items' | 'purchase' | 'receivable' | 'cost' | 'outbound'>('items')
+const activeMainTab = ref<'items' | 'purchase' | 'cost' | 'outbound'>('items')
 const flowExpanded = ref(false)
 
 // ============ 状态映射 ============
@@ -73,12 +72,6 @@ const purchaseStatusMap: Record<string, { label: string; class: string }> = {
   cancelled: { label: '已作废', class: 'cancelled' }
 }
 
-const receivableStatusMap: Record<string, { label: string; class: string }> = {
-  pending: { label: '待收款', class: 'draft' },
-  partial: { label: '部分收款', class: 'partial' },
-  completed: { label: '已收清', class: 'full' },
-  overdue: { label: '逾期', class: 'cancelled' }
-}
 
 const stockStatusMap: Record<string, { label: string; class: string }> = {
   normal: { label: '充足', class: 'stock-normal' },
@@ -88,9 +81,9 @@ const stockStatusMap: Record<string, { label: string; class: string }> = {
 }
 
 const pendingOutboundStatusMap: Record<string, { label: string; class: string }> = {
-  pending: { label: '待出库', class: 'pending' },
-  partial: { label: '部分出库', class: 'partial' },
-  full: { label: '已出库', class: 'full' },
+  pending: { label: '未出库', class: 'pending' },
+  outbound: { label: '已出库', class: 'partial' },
+  shipped: { label: '已发货', class: 'full' },
   cancelled: { label: '已取消', class: 'cancelled' }
 }
 
@@ -105,6 +98,7 @@ const costTypeMap: Record<string, string> = {
 // 来源类型映射
 const sourceTypeMap: Record<string, string> = {
   purchase_order: '采购单',
+  outbound: '出库发货',
   manual: '手动添加'
 }
 
@@ -172,7 +166,8 @@ const handleTestUpdateStatus = async () => {
 // ============ 计算属性 ============
 const canPushPurchase = computed(() => {
   const s = order.value?.status?.order_status
-  return s === 'audited' || s === 'partially_pushed_to_purchase'
+  const ps = order.value?.push_status
+  return (s === 'audited' || s === 'partially_pushed_to_purchase') && (ps === 'none' || ps === 'partial')
 })
 
 // 成本合计
@@ -197,7 +192,7 @@ const loadOrder = async () => {
     ])
     order.value = orderData
     flows.value = flowsData || []
-    await Promise.all([loadPurchaseOrders(), loadReceivables(), loadCostItems(), loadPendingOutbounds()])
+    await Promise.all([loadPurchaseOrders(), loadCostItems(), loadPendingOutbounds()])
   } catch (e) {
     console.error('加载订单详情失败:', e)
   } finally {
@@ -215,21 +210,12 @@ const loadPurchaseOrders = async () => {
   }
 }
 
-const loadReceivables = async () => {
-  if (!props.orderNo) return
-  try {
-    const res = await receivableApi.list({ sales_order_no: props.orderNo, page_size: 100 })
-    receivables.value = res?.items || []
-  } catch (e) {
-    console.error('加载关联收款单失败:', e)
-  }
-}
 
 const loadCostItems = async () => {
   if (!props.orderNo) return
   try {
     const res = await salesOrderApi.getCostItems(props.orderNo)
-    costItems.value = res?.items || []
+    costItems.value = Array.isArray(res) ? res : (res?.items || [])
   } catch (e) {
     console.error('加载成本明细失败:', e)
     costItems.value = []
@@ -592,13 +578,6 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
           </button>
           <button
             class="tab-btn"
-            :class="{ active: activeMainTab === 'receivable' }"
-            @click="activeMainTab = 'receivable'"
-          >
-            收款单 <span class="tab-count">({{ receivables.length }})</span>
-          </button>
-          <button
-            class="tab-btn"
             :class="{ active: activeMainTab === 'cost' }"
             @click="activeMainTab = 'cost'"
           >
@@ -655,7 +634,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
                   <td class="col-num">{{ item.amt?.toFixed(2) }}</td>
                   <td>{{ item.shipping_method }}</td>
                   <td class="col-num">
-                    <span v-if="item.shipping_method === '仓库发货' && (item.stock_quantity ?? 0) > 0">
+                    <span v-if="(item.shipping_method === '仓库发货' || item.shipping_method === '仓库自提') && (item.stock_quantity ?? 0) > 0">
                       {{ Math.min(item.qty, item.stock_quantity ?? 0) }}
                     </span>
                     <span v-else class="text-muted">-</span>
@@ -702,36 +681,9 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
           </div>
         </div>
 
-        <!-- 收款单 Tab -->
-        <div v-if="activeMainTab === 'receivable'">
-          <div v-if="receivables.length === 0" class="empty-state">暂无关联收款单</div>
-          <div v-else class="table-wrapper">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>收款单号</th>
-                  <th>客户</th>
-                  <th class="col-num">应收金额</th>
-                  <th class="col-num">已收金额</th>
-                  <th>状态</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in receivables" :key="r.id">
-                  <td>{{ r.receivable_no }}</td>
-                  <td>{{ r.customer_name || '-' }}</td>
-                  <td class="col-num">{{ r.total_amount?.toFixed(2) }}</td>
-                  <td class="col-num">{{ r.paid_amount?.toFixed(2) }}</td>
-                  <td><span class="status-tag" :class="getStatusClass(receivableStatusMap, r.status)">{{ getStatusLabel(receivableStatusMap, r.status) }}</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
         <!-- 成本明细 Tab -->
         <div v-if="activeMainTab === 'cost'">
-          <div v-if="costItems.length === 0" class="empty-state">暂无成本明细，采购单审核后自动生成</div>
+          <div v-if="costItems.length === 0" class="empty-state">暂无成本明细，采购单审核或出库发货后自动生成</div>
           <template v-else>
             <div class="table-wrapper">
               <table class="data-table">
@@ -776,6 +728,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
                   <th class="col-num">锁定数量</th>
                   <th class="col-num">已出库数量</th>
                   <th class="col-num">待出库数量</th>
+                  <th>配送方式</th>
                   <th>状态</th>
                   <th>创建时间</th>
                 </tr>
@@ -789,6 +742,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
                   <td class="col-num">{{ item.locked_qty }}</td>
                   <td class="col-num">{{ item.out_qty }}</td>
                   <td class="col-num">{{ item.locked_qty - item.out_qty }}</td>
+                  <td>{{ item.delivery_type === 'pickup' ? '等待自提' : '物流发货' }}</td>
                   <td>
                     <span class="status-tag" :class="getStatusClass(pendingOutboundStatusMap, item.status)">
                       {{ getStatusLabel(pendingOutboundStatusMap, item.status) }}
@@ -853,7 +807,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
           <button class="modal-close" @click="showTestStatusModal = false">&times;</button>
         </div>
         <div class="modal-body">
-          <p style="color: #e67e22; margin-bottom: 16px; font-size: 12px;">
+          <p style="color: var(--accent-yellow); margin-bottom: 16px; font-size: 12px;">
             注意：此功能仅用于测试自动完成机制，后续版本删除。
           </p>
           <div class="form-group" style="margin-bottom: 12px;">
@@ -954,7 +908,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
 }
 
 .back-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
 
@@ -1188,15 +1142,15 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
 .status-tag.draft { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
 .status-tag.pending { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.audited { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
-.status-tag.partial-pushed { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-.status-tag.pushed { background-color: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.status-tag.partial-pushed { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
+.status-tag.pushed { background-color: rgba(139, 92, 246, 0.1); color: var(--accent-purple); }
 .status-tag.closed { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .status-tag.cancelled { background-color: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
 .status-tag.none { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
 .status-tag.partial { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.full { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .status-tag.reconciled { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
-.status-tag.pending { background-color: rgba(255, 152, 0, 0.1); color: #ff9800; }
+.status-tag.pending { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.stock-sufficient { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .status-tag.stock-normal { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .status-tag.stock-low { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
@@ -1239,7 +1193,6 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
 }
 
 .col-num {
-  text-align: right;
   white-space: nowrap;
 }
 
@@ -1461,7 +1414,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
 
 .btn-warning {
   padding: 8px 16px;
-  background-color: #f59e0b;
+  background-color: var(--accent-yellow);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -1470,7 +1423,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
   transition: all var(--transition-fast);
 }
 
-.btn-warning:hover { background-color: #d97706; }
+.btn-warning:hover { filter: brightness(0.9); }
 .btn-warning:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-danger {
@@ -1484,7 +1437,7 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
   transition: all var(--transition-fast);
 }
 
-.btn-danger:hover { background-color: #dc2626; }
+.btn-danger:hover { filter: brightness(0.9); }
 .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
 
 @media (max-width: 900px) {
