@@ -1,6 +1,18 @@
 {
   "permissions": {
     "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "Git",
+      "Npm",
+      "Pip",
+      "Grep",
+      "Glob",
+      "Agent",
+      "Skill",
       "Bash(npx vue-tsc *)",
       "Bash(npm run *)",
       "Bash(python -c \"from app.routers.inventory import warehouse_router; print\\('OK'\\)\")",
@@ -63,11 +75,32 @@
       "Skill(opsx:apply:*)",
       "WebSearch",
       "Skill(api-testing)",
-      "Skill(api-testing:*)"
+      "Skill(api-testing:*)",
+      "Skill(superpowers:finishing-a-development-branch)",
+      "Skill(superpowers:finishing-a-development-branch:*)",
+      "Skill(my-agents-info)",
+      "Skill(my-agents-info:*)",
+      "Bash(mkdir -p .claude/agents .claude/skills/orchestration .claude/skills/my-agents-info tasks outputs/requirements outputs/backend outputs/frontend outputs/testing)",
+      "Bash(rm \"e:\\\\ai_erp\\\\aierp\\\\.claude\\\\agents\\\\requirements-analyst.md\")",
+      "Bash(rm -rf E:/ai_erp/aierp/web/test-screenshots/*)",
+      "Bash(node test-verify.cjs)",
+      "Bash(rm \"e:/ai_erp/aierp/.claude/agents/verifier.md\" \"e:/ai_erp/aierp/.claude/agents/tester.md\")"
+    ],
+    "deny": [
+      "Rm",
+      "Ssh",
+      "Sudo"
     ],
     "additionalDirectories": [
       "e:\\ai_erp\\aierp\\openspec\\specs",
-      "E:\\ai_erp\\aierp\\openspec\\specs"
-    ]
-  }
+      "E:\\ai_erp\\aierp\\openspec\\specs",
+      "e:\\ai_erp\\aierp\\.claude\\agents",
+      "e:\\ai_erp\\aierp\\.claude\\skills",
+      "e:\\ai_erp\\aierp\\tasks",
+      "e:\\ai_erp\\aierp\\outputs"
+    ],
+    "initialPermissionMode": "acceptEdits"
+  },
+  "language": "zh-CN",
+  "theme": "dark"
 }

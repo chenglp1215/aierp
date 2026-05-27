@@ -53,7 +53,7 @@ const allMenuItems: MenuItem[] = [
     children: [
       { id: 'warehouse-list', label: '仓库管理', icon: 'warehouse' },
       { id: 'inventory-stock', label: '库存管理', icon: 'stock' },
-      { id: 'pending-outbound', label: '待出库', icon: 'outbound' }
+      { id: 'pending-outbound', label: '出库管理', icon: 'outbound' }
     ]
   },
   {

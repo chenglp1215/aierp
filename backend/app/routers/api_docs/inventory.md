@@ -382,7 +382,7 @@
 
 ---
 
-### 2.3 更新库存（手动盘库）
+### 2.3 更新库存
 
 | 属性 | 值 |
 |------|-----|
@@ -933,7 +933,7 @@
 | 更新仓库 | `warehouse.edit` |
 | 获取库存列表 | `stock.view` |
 | 获取库存详情 | `stock.view` |
-| 更新库存（盘库） | `stock.edit` |
+| 更新库存 | `stock.edit` |
 | 获取入库批次列表 | `inbound.view` |
 | 创建入库批次 | `inbound.create` |
 | 获取入库批次详情 | `inbound.view` |

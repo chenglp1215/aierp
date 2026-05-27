@@ -1,28 +1,31 @@
-## ADDED Requirements
+## Purpose
 
+定义前端销售订单 API 接口与后端接口的对称规范，确保状态操作接口的一致性和正确性。
+## Requirements
 ### Requirement: 前端销售订单 API 接口对称
 
 前端销售订单 API 接口 SHALL 与后端接口完全对称，使用独立的状态操作接口。
 
-#### Scenario: 提交审核
+#### Scenario: 提交审核直接审核通过
 - **WHEN** 用户在草稿订单页面点击"提交审核"按钮
 - **THEN** 系统调用 `POST /api/v1/sales-orders/{order_no}/submit` 接口
-- **AND** 订单状态从 `draft` 变更为 `pending`
+- **AND** 订单状态从 `draft` 直接变更为 `audited`（跳过 pending）
 
-#### Scenario: 审核通过
-- **WHEN** 用户在待审核订单页面点击"审核通过"按钮
+#### Scenario: 审核通过（兼容历史数据）
+- **WHEN** 用户在待审核订单页面点击"审核通过"按钮（历史数据兼容）
 - **THEN** 系统调用 `POST /api/v1/sales-orders/{order_no}/approve` 接口
 - **AND** 订单状态从 `pending` 变更为 `audited`
 
-#### Scenario: 驳回订单
-- **WHEN** 用户在待审核订单页面点击"驳回"按钮
+#### Scenario: 驳回订单（兼容历史数据）
+- **WHEN** 用户在待审核订单页面点击"驳回"按钮（历史数据兼容）
 - **THEN** 系统调用 `POST /api/v1/sales-orders/{order_no}/reject` 接口
 - **AND** 订单状态从 `pending` 变更为 `draft`
 
-#### Scenario: 取消订单
+#### Scenario: 取消订单仅限草稿状态
 - **WHEN** 用户点击"取消订单"按钮
 - **THEN** 系统调用 `POST /api/v1/sales-orders/{order_no}/cancel` 接口
 - **AND** 订单状态变更为 `cancelled`
+- **AND** 取消操作仅限 `draft` 状态的订单
 
 ### Requirement: 商品明细只传外键字段
 
@@ -52,20 +55,6 @@
 - **THEN** 请求体中的 `shipping_method` 字段 SHALL 为 `warehouse`
 - **AND** 订单详情中显示的发货方式 SHALL 为"仓库发货"
 
-### Requirement: 支持 pending 状态展示
-
-前端 SHALL 正确展示和处理 `pending`（待审核）状态的订单。
-
-#### Scenario: 列表展示待审核状态
-- **WHEN** 订单状态为 `pending`
-- **THEN** 订单列表中的状态标签 SHALL 显示"待审核"
-- **AND** 状态标签样式 SHALL 为黄色/橙色
-
-#### Scenario: 待审核订单操作按钮
-- **WHEN** 订单状态为 `pending`
-- **THEN** 操作区域 SHALL 显示"审核通过"和"驳回"按钮
-- **AND** 操作区域 SHALL NOT 显示"编辑"和"删除"按钮
-
 ### Requirement: 移除旧的状态更新接口
 
 前端 SHALL 移除 `updateOrderStatus`、`updateDeliveryStatus`、`updateReceiveStatus`、`updateInvoiceStatus` 等旧接口调用。
@@ -79,3 +68,18 @@
 - **WHEN** 前端代码需要更新发货/收货/开票状态
 - **THEN** 暂时隐藏相关功能（后端暂未实现）
 - **AND** 移除 `updateDeliveryStatus`、`updateReceiveStatus`、`updateInvoiceStatus` 接口调用
+
+### Requirement: 测试用状态修改接口
+
+后端 SHALL 提供测试用的状态修改接口，支持手动修改发货、收货、财务、开票状态。
+
+#### Scenario: 调用测试状态修改接口
+- **WHEN** 前端调用 `POST /api/v1/sales-orders/{order_no}/test-update-status` 接口
+- **THEN** 后端 SHALL 更新订单的 `delivery_status`、`receive_status`、`finance_status`、`invoice_status` 字段
+- **AND** 更新后 SHALL 检查是否满足自动完成条件
+
+#### Scenario: 测试接口权限控制
+- **WHEN** 用户调用测试状态修改接口
+- **THEN** 系统 SHALL 验证用户具有 `order.edit` 权限
+- **AND** 接口 SHALL 记录操作日志
+

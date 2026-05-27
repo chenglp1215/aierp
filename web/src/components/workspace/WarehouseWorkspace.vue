@@ -2,7 +2,7 @@
 defineOptions({ name: 'WarehouseWorkspace' })
 
 import { ref, computed, onMounted } from 'vue'
-import { warehouseApi } from '../../services/api'
+import { warehouseApi, warehouseLocationApi } from '../../services/api'
 
 const emit = defineEmits<{
   (e: 'navigate', id: string, extraData?: Record<string, any>): void
@@ -74,11 +74,6 @@ const buildTableData = () => {
     display_status: formatStatus(w.status),
     status_class: w.status
   }))
-}
-
-const seqMethod = ({ row }: { row: any }) => {
-  const index = tableData.value.findIndex(r => r._id === row._id)
-  return index + 1 + (page.value - 1) * pageSize.value
 }
 
 const loadWarehouses = async () => {
@@ -224,6 +219,102 @@ const handleSaveWarehouse = async () => {
   }
 }
 
+
+// 库位管理相关
+const showLocationModal = ref(false)
+const editingLocation = ref<any | null>(null)
+const locationList = ref<any[]>([])
+const locationLoading = ref(false)
+const locationFormLoading = ref(false)
+const selectedWarehouseForLocation = ref<Warehouse | null>(null)
+
+const locationForm = ref({
+  location_code: '',
+  location_name: '',
+  status: 'active',
+  description: ''
+})
+
+const loadLocations = async (warehouseId: string | number) => {
+  locationLoading.value = true
+  try {
+    const res = await warehouseLocationApi.list({ warehouse_id: warehouseId, page_size: 200 })
+    locationList.value = res?.items || []
+  } catch (e) {
+    console.error('加载库位列表失败:', e)
+    locationList.value = []
+  } finally {
+    locationLoading.value = false
+  }
+}
+
+const openLocationModal = (row: any) => {
+  const warehouse = warehouses.value.find(w => w.id === row._id)
+  if (!warehouse) return
+  selectedWarehouseForLocation.value = warehouse
+  editingLocation.value = null
+  locationForm.value = { location_code: '', location_name: '', status: 'active', description: '' }
+  loadLocations(warehouse.id)
+  showLocationModal.value = true
+}
+
+const openEditLocation = (loc: any) => {
+  editingLocation.value = loc
+  locationForm.value = {
+    location_code: loc.location_code || '',
+    location_name: loc.location_name || '',
+    status: loc.status || 'active',
+    description: loc.description || ''
+  }
+}
+
+const handleSaveLocation = async () => {
+  if (!locationForm.value.location_code.trim()) {
+    window.showToast('请输入库位编码', 'warning')
+    return
+  }
+  if (!selectedWarehouseForLocation.value) return
+
+  locationFormLoading.value = true
+  try {
+    if (editingLocation.value) {
+      await warehouseLocationApi.update(editingLocation.value.id, locationForm.value)
+      window.showToast('库位更新成功', 'success')
+    } else {
+      await warehouseLocationApi.create({
+        warehouse_id: selectedWarehouseForLocation.value.id,
+        ...locationForm.value
+      })
+      window.showToast('库位创建成功', 'success')
+    }
+    await loadLocations(selectedWarehouseForLocation.value.id)
+    editingLocation.value = null
+    locationForm.value = { location_code: '', location_name: '', status: 'active', description: '' }
+  } catch (error: any) {
+    window.showToast(error.message || '操作失败', 'error')
+  } finally {
+    locationFormLoading.value = false
+  }
+}
+
+const handleDeleteLocation = async (loc: any) => {
+  if (!confirm('确定删除该库位吗？')) return
+  try {
+    await warehouseLocationApi.delete(loc.id)
+    window.showToast('库位删除成功', 'success')
+    if (selectedWarehouseForLocation.value) {
+      await loadLocations(selectedWarehouseForLocation.value.id)
+    }
+  } catch (error: any) {
+    window.showToast(error.message || '删除失败', 'error')
+  }
+}
+
+const cancelLocationEdit = () => {
+  editingLocation.value = null
+  locationForm.value = { location_code: '', location_name: '', status: 'active', description: '' }
+}
+
 onMounted(() => {
   loadWarehouses()
   loadManagerCandidates()
@@ -266,22 +357,22 @@ onMounted(() => {
       <vxe-table
         :data="tableData"
         :column-config="{ resizable: true }"
-        :seq-config="{ seqMethod: seqMethod }"
       >
-        <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center" />
-        <vxe-column field="warehouse_code" title="仓库编码" width="180" class-name="col--center" />
+        <vxe-column type="seq" title="序号" width="60" class-name="col--center" />
+        <vxe-column field="warehouse_code" title="仓库编码" min-width="150" class-name="col--center" />
         <vxe-column field="name" title="仓库名称" min-width="180" />
         <vxe-column field="address" title="仓库地址" min-width="200" show-overflow />
-        <vxe-column field="manager_name" title="管理员" width="120" class-name="col--center" />
-        <vxe-column field="display_status" title="状态" width="80" class-name="col--center">
+        <vxe-column field="manager_name" title="管理员" min-width="100" class-name="col--center" />
+        <vxe-column field="display_status" title="状态" min-width="80" class-name="col--center">
           <template #default="{ row }">
             <span class="status-tag" :class="row.status_class">{{ row.display_status }}</span>
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="180" fixed="right" class-name="col--center">
+        <vxe-column title="操作" min-width="180" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
               <button class="btn-link" @click="viewInventory(row)">查看库存</button>
+              <button class="btn-link" @click="openLocationModal(row)">库位管理</button>
               <button class="btn-link" @click="openEditWarehouse(row)">编辑</button>
             </span>
           </template>
@@ -353,6 +444,113 @@ onMounted(() => {
       </div>
     </div>
 
+
+    <!-- 库位管理弹窗 -->
+    <div class="modal-overlay" v-if="showLocationModal">
+      <div class="modal" style="max-width: 700px;">
+        <div class="modal-header">
+          <h3>{{ selectedWarehouseForLocation?.name }} - 库位管理</h3>
+          <button class="modal-close" @click="showLocationModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="location-form" v-if="!editingLocation">
+            <div class="form-row">
+              <div class="form-group">
+                <label>库位编码 *</label>
+                <input type="text" v-model="locationForm.location_code" placeholder="如 A-01" />
+              </div>
+              <div class="form-group">
+                <label>库位名称</label>
+                <input type="text" v-model="locationForm.location_name" placeholder="可选" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>状态</label>
+                <select v-model="locationForm.status">
+                  <option value="active">启用</option>
+                  <option value="inactive">停用</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>描述</label>
+                <input type="text" v-model="locationForm.description" placeholder="可选" />
+              </div>
+            </div>
+            <button class="btn-primary" @click="handleSaveLocation" :disabled="locationFormLoading" style="align-self: flex-end;">
+              {{ locationFormLoading ? '保存中...' : '添加库位' }}
+            </button>
+          </div>
+          <div class="location-form" v-else>
+            <div class="form-row">
+              <div class="form-group">
+                <label>库位编码 *</label>
+                <input type="text" v-model="locationForm.location_code" />
+              </div>
+              <div class="form-group">
+                <label>库位名称</label>
+                <input type="text" v-model="locationForm.location_name" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>状态</label>
+                <select v-model="locationForm.status">
+                  <option value="active">启用</option>
+                  <option value="inactive">停用</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>描述</label>
+                <input type="text" v-model="locationForm.description" />
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; align-self: flex-end;">
+              <button class="btn-secondary" @click="cancelLocationEdit">取消</button>
+              <button class="btn-primary" @click="handleSaveLocation" :disabled="locationFormLoading">
+                {{ locationFormLoading ? '保存中...' : '保存' }}
+              </button>
+            </div>
+          </div>
+          <div class="location-list">
+            <div v-if="locationLoading" style="text-align: center; padding: 20px; color: var(--text-muted);">加载中...</div>
+            <table v-else class="location-table">
+              <thead>
+                <tr>
+                  <th>库位编码</th>
+                  <th>名称</th>
+                  <th>状态</th>
+                  <th>描述</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="loc in locationList" :key="loc.id">
+                  <td>{{ loc.location_code }}</td>
+                  <td>{{ loc.location_name || '-' }}</td>
+                  <td>
+                    <span class="status-tag" :class="loc.status">{{ loc.status === 'active' ? '启用' : '停用' }}</span>
+                  </td>
+                  <td>{{ loc.description || '-' }}</td>
+                  <td>
+                    <span class="action-btns">
+                      <button class="btn-link" @click="openEditLocation(loc)">编辑</button>
+                      <button class="btn-link danger" @click="handleDeleteLocation(loc)">删除</button>
+                    </span>
+                  </td>
+                </tr>
+                <tr v-if="locationList.length === 0">
+                  <td colspan="5" style="text-align: center; color: var(--text-muted);">暂无库位</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showLocationModal = false">关闭</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -742,5 +940,39 @@ onMounted(() => {
     width: 95%;
     margin: 16px;
   }
+}
+
+.location-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.location-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.location-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.location-table th {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.location-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
 }
 </style>

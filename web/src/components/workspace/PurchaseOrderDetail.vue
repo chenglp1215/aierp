@@ -18,6 +18,8 @@ const order = ref<any>(null)
 const flows = ref<any[]>([])
 const actionLoading = ref(false)
 const supplierOptions = ref<any[]>([])
+const showLogisticsModal = ref(false) // 物流信息弹窗
+const logisticsLoading = ref(false) // 物流信息提交加载状态
 
 // 物流表单
 const logisticsForm = ref({
@@ -128,15 +130,53 @@ const handleApprove = async () => {
 
 const handleStartPurchase = async () => {
   if (!order.value) return
-  actionLoading.value = true
+  // 回显已有物流信息
+  logisticsForm.value = {
+    logistics_company: order.value.logistics_company || '',
+    logistics_no: order.value.logistics_no || '',
+    source_purchase_order_id: order.value.source_purchase_order_id || '',
+    expect_arrive_date: order.value.expect_arrive_date || ''
+  }
+  showLogisticsModal.value = true
+}
+
+// 填写物流信息后开始采购
+const handleStartPurchaseWithLogistics = async () => {
+  if (!order.value) return
+  logisticsLoading.value = true
   try {
+    // 先更新物流信息
+    await purchaseOrderApi.updateLogistics(order.value.purchase_no, {
+      logistics_company: logisticsForm.value.logistics_company || undefined,
+      logistics_no: logisticsForm.value.logistics_no || undefined,
+      source_purchase_order_id: logisticsForm.value.source_purchase_order_id || undefined,
+      expect_arrive_date: logisticsForm.value.expect_arrive_date || undefined
+    })
+    // 再执行开始采购
     await purchaseOrderApi.startPurchase(order.value.purchase_no)
-    window.showToast('开始采购成功', 'success')
+    window.showToast('采购已开始', 'success')
+    showLogisticsModal.value = false
     await loadOrder()
   } catch (error: any) {
     window.showToast(error.message || '操作失败', 'error')
   } finally {
-    actionLoading.value = false
+    logisticsLoading.value = false
+  }
+}
+
+// 跳过物流信息直接开始采购
+const handleStartPurchaseLater = async () => {
+  if (!order.value) return
+  logisticsLoading.value = true
+  try {
+    await purchaseOrderApi.startPurchase(order.value.purchase_no)
+    window.showToast('采购已开始', 'success')
+    showLogisticsModal.value = false
+    await loadOrder()
+  } catch (error: any) {
+    window.showToast(error.message || '操作失败', 'error')
+  } finally {
+    logisticsLoading.value = false
   }
 }
 
@@ -473,6 +513,47 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
         </div>
       </div>
     </template>
+
+    <!-- 物流信息弹窗 -->
+    <div class="modal-overlay" v-if="showLogisticsModal">
+      <div class="modal logistics-modal">
+        <div class="modal-header">
+          <h3>开始采购 - 物流信息</h3>
+          <button class="modal-close" @click="showLogisticsModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted mb-3">采购单号: <strong>{{ order?.purchase_no }}</strong></p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>物流公司</label>
+              <input v-model="logisticsForm.logistics_company" placeholder="请输入物流公司" />
+            </div>
+            <div class="form-group">
+              <label>物流单号</label>
+              <input v-model="logisticsForm.logistics_no" placeholder="请输入物流单号" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>采购源订单ID</label>
+              <input v-model="logisticsForm.source_purchase_order_id" placeholder="如1688订单号" />
+            </div>
+            <div class="form-group">
+              <label>预计到货日期</label>
+              <input v-model="logisticsForm.expect_arrive_date" type="date" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="handleStartPurchaseLater" :disabled="logisticsLoading">
+            {{ logisticsLoading ? '处理中...' : '后续填写' }}
+          </button>
+          <button class="btn-primary" @click="handleStartPurchaseWithLogistics" :disabled="logisticsLoading">
+            {{ logisticsLoading ? '处理中...' : '开始采购' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -900,6 +981,63 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 
 .btn-danger:hover { background-color: #dc2626; }
 .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ============ 物流信息弹窗 ============ */
+
+.logistics-modal {
+  width: 520px;
+  max-width: 90vw;
+}
+
+.logistics-modal .modal-body {
+  padding: 20px;
+}
+
+.logistics-modal .mb-3 {
+  margin-bottom: 16px;
+}
+
+.logistics-modal .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.logistics-modal .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.logistics-modal .form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.logistics-modal .form-group input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  transition: border-color 0.2s;
+}
+
+.logistics-modal .form-group input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.logistics-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-color);
+}
 
 @media (max-width: 900px) {
   .two-col-row, .form-row {

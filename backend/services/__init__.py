@@ -5,7 +5,6 @@ from .customer_service_mysql import customer_service, customer_discount_service
 from .auth_service import mysql_user_service, mysql_role_service, mysql_permission_service
 from .inventory_service_mysql import warehouse_service, stock_service
 from .product_service_mysql import product_service, category_service, brand_service, product_spec_service
-from .accounts_receivable_service import accounts_receivable_service
 from .ws_manager import ws_manager
 from .ai_service import (
     llm_service, llm_config_service, knowledge_base_service,
@@ -27,7 +26,6 @@ __all__ = [
     "category_service",
     "brand_service",
     "product_spec_service",
-    "accounts_receivable_service",
     "ws_manager",
     "llm_service",
     "llm_config_service",

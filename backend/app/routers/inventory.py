@@ -3,7 +3,7 @@
 """
 from fastapi import APIRouter, Query, Depends
 from typing import Optional, Dict, Any
-from services.inventory_service_mysql import warehouse_service, stock_service, inbound_batch_service, outbound_batch_service
+from services.inventory_service_mysql import warehouse_service, stock_service, inbound_batch_service, outbound_batch_service, warehouse_location_service
 from .auth import require_permission
 from app.decorators import wrap_response
 
@@ -11,6 +11,7 @@ warehouse_router = APIRouter(prefix="/warehouses", tags=["仓库管理"])
 stock_router = APIRouter(prefix="/stocks", tags=["库存管理"])
 inbound_router = APIRouter(prefix="/inbound-batches", tags=["入库批次管理"])
 outbound_router = APIRouter(prefix="/outbound-batches", tags=["出库批次管理"])
+location_router = APIRouter(prefix="/warehouse-locations", tags=["库位管理"])
 
 
 def to_int_id(id_str: str) -> int:
@@ -56,6 +57,19 @@ async def create_warehouse(
     """创建仓库"""
     warehouse_data = await warehouse_service.create_warehouse(warehouse)
     return warehouse_data
+
+
+@warehouse_router.get("/manager-candidates", response_model=dict)
+@wrap_response
+async def get_manager_candidates(
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    _: dict = Depends(require_permission("warehouse.view"))
+):
+    """获取仓库管理员候选人列表"""
+    from services.auth_service import mysql_user_service
+    users = await mysql_user_service.list_users(page=1, page_size=50, status="active", keyword=keyword)
+    candidates = [{"id": u["id"], "username": u["username"], "full_name": u.get("full_name", "")} for u in users.get("items", [])]
+    return candidates
 
 
 @warehouse_router.get("/{warehouse_id}", response_model=dict)
@@ -135,7 +149,7 @@ async def update_stock(
     stock: Dict[str, Any],
     _: dict = Depends(require_permission("stock.edit"))
 ):
-    """更新库存信息（手动盘库）"""
+    """更新库存信息"""
     await stock_service.update_stock(to_int_id(stock_id), stock)
     return "库存更新成功"
 
@@ -258,3 +272,74 @@ async def update_outbound_batch(
     """更新出库批次"""
     await outbound_batch_service.update_outbound(to_int_id(batch_id), outbound)
     return "出库批次更新成功"
+
+
+# ============ 库位管理路由 ============
+
+@location_router.get("/", response_model=dict)
+@wrap_response
+async def list_locations(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=500, description="每页数量"),
+    warehouse_id: Optional[int] = Query(None, description="仓库ID"),
+    _: dict = Depends(require_permission("warehouse.view"))
+):
+    """获取库位列表"""
+    locations, total = await warehouse_location_service.list_locations(
+        warehouse_id=warehouse_id,
+        page=page,
+        page_size=page_size
+    )
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": locations
+    }
+
+
+@location_router.post("/", response_model=dict)
+@wrap_response
+async def create_location(
+    location: Dict[str, Any],
+    _: dict = Depends(require_permission("warehouse.create"))
+):
+    """创建库位"""
+    location_data = await warehouse_location_service.create_location(location)
+    return location_data
+
+
+@location_router.get("/{location_id}", response_model=dict)
+@wrap_response
+async def get_location(
+    location_id: str,
+    _: dict = Depends(require_permission("warehouse.view"))
+):
+    """获取库位详情"""
+    location = await warehouse_location_service.get_location_by_id(to_int_id(location_id))
+    if not location:
+        raise ValueError("库位不存在")
+    return location
+
+
+@location_router.put("/{location_id}", response_model=dict)
+@wrap_response
+async def update_location(
+    location_id: str,
+    location: Dict[str, Any],
+    _: dict = Depends(require_permission("warehouse.edit"))
+):
+    """更新库位"""
+    await warehouse_location_service.update_location(to_int_id(location_id), location)
+    return "库位更新成功"
+
+
+@location_router.delete("/{location_id}", response_model=dict)
+@wrap_response
+async def delete_location(
+    location_id: str,
+    _: dict = Depends(require_permission("warehouse.delete"))
+):
+    """删除库位"""
+    await warehouse_location_service.delete_location(to_int_id(location_id))
+    return "库位删除成功"

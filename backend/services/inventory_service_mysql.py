@@ -286,7 +286,7 @@ class StockService:
         return stock.to_dict()
 
     async def update_stock(self, stock_id: int, stock_data: Dict[str, Any]) -> bool:
-        """更新库存（手动盘库）"""
+        """更新库存信息"""
         stock = await Stock.get_or_none(id=stock_id)
         if not stock:
             raise ValueError("库存不存在")
@@ -564,6 +564,14 @@ class InboundBatchService:
         if not batch_no:
             batch_no = await self._generate_batch_no(int(warehouse_id), int(spec_id))
 
+        # 处理成本价：未传入则从规格价格取默认值
+        cost_price = inbound_data.get("cost_price")
+        if cost_price is None or cost_price == "":
+            spec = await ProductSpec.filter(id=int(spec_id)).first()
+            cost_price = float(spec.price) if spec and spec.price else None
+        else:
+            cost_price = float(cost_price)
+
         # 创建入库批次记录，初始 current_quantity = quantity
         inbound = await InboundBatch.create(
             warehouse_id=int(warehouse_id),
@@ -578,6 +586,7 @@ class InboundBatchService:
             location_code=location_code or None,
             expiry_date=expiry_date,
             current_quantity=float(quantity),
+            cost_price=cost_price,
             batch_no=batch_no,
             user_id=int(inbound_data.get("user_id", 0)),
             user_name=inbound_data.get("user_name", ""),

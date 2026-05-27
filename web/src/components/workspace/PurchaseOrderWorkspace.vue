@@ -86,7 +86,13 @@ interface StatusFlowRecord {
 
 interface Warehouse {
   id: string
+  warehouse_code?: string
   name: string
+  address?: string
+  manager_name?: string
+  manager_id?: number
+  status?: string
+  description?: string
 }
 
 interface Brand {
@@ -165,6 +171,7 @@ const showCancelConfirm = ref(false)
 const showRecallConfirm = ref(false)
 const showReauditConfirm = ref(false)
 const showVoidConfirm = ref(false)
+const showLogisticsModal = ref(false) // 物流信息弹窗
 
 // ============ 选中状态 ============
 
@@ -180,6 +187,7 @@ const formLoading = ref(false)
 const deleteLoading = ref(false)
 const actionLoading = ref(false)
 const detailLoading = ref(false)
+const logisticsLoading = ref(false) // 物流信息提交加载状态
 
 // ============ 下拉数据 ============
 
@@ -202,6 +210,7 @@ const form = ref<{
   receive_info: {
     type: string
     warehouse_id: string
+    warehouse_name: string
     customer_addr: string
     province: string
     city: string
@@ -210,7 +219,7 @@ const form = ref<{
   }
   items: PurchaseOrderItem[]
 }>({
-  purchase_type: 'direct',
+  purchase_type: 'warehouse',
   supplier_id: '',
   brand_id: '',
   purchase_user_id: '',
@@ -219,8 +228,9 @@ const form = ref<{
   freight_amt: 0,
   remark: '',
   receive_info: {
-    type: 'customer',
+    type: 'warehouse',
     warehouse_id: '',
+    warehouse_name: '',
     customer_addr: '',
     province: '',
     city: '',
@@ -235,6 +245,23 @@ const form = ref<{
 const showProductTree = ref(false)
 const productSearchKeyword = ref('')
 let productSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+// 选中的仓库详情（用于信息卡片展示）
+const selectedWarehouse = ref<Warehouse | null>(null)
+
+// ============ 物流信息表单 ============
+
+const logisticsForm = ref<{
+  logistics_company: string
+  logistics_no: string
+  source_purchase_order_id: string
+  expect_arrive_date: string
+}>({
+  logistics_company: '',
+  logistics_no: '',
+  source_purchase_order_id: '',
+  expect_arrive_date: ''
+})
 
 // ============ 计算属性 ============
 
@@ -360,6 +387,40 @@ watch(() => form.value.supplier_id, (newSupplierId) => {
   })
 })
 
+// 监听采购类型变化，自动设置收货类型并清空对应字段
+watch(() => form.value.purchase_type, (val) => {
+  if (val === 'warehouse') {
+    form.value.receive_info.type = 'warehouse'
+    // 清空客户收货信息
+    form.value.receive_info.customer_addr = ''
+    form.value.receive_info.province = ''
+    form.value.receive_info.city = ''
+    form.value.receive_info.contact_person = ''
+    form.value.receive_info.contact_tel = ''
+  } else if (val === 'direct') {
+    form.value.receive_info.type = 'customer'
+    // 清空仓库信息
+    form.value.receive_info.warehouse_id = ''
+    form.value.receive_info.warehouse_name = ''
+    selectedWarehouse.value = null
+  }
+})
+
+// 仓库选择后自动填充信息并展示仓库详情卡片
+const onWarehouseChange = (warehouseId: string) => {
+  if (!warehouseId) {
+    selectedWarehouse.value = null
+    form.value.receive_info.warehouse_name = ''
+    return
+  }
+  // 从仓库列表中找到选中仓库
+  const warehouse = warehouseList.value.find(w => w.id === warehouseId)
+  if (warehouse) {
+    selectedWarehouse.value = warehouse
+    form.value.receive_info.warehouse_name = warehouse.name
+  }
+}
+
 const handleSearch = () => {
   page.value = 1
   loadOrders()
@@ -383,8 +444,9 @@ const resetFilters = () => {
 
 const openCreateOrder = () => {
   editingOrder.value = null
+  selectedWarehouse.value = null
   form.value = {
-    purchase_type: 'direct',
+    purchase_type: 'warehouse',
     supplier_id: '',
     brand_id: '',
     purchase_user_id: '',
@@ -393,8 +455,9 @@ const openCreateOrder = () => {
     freight_amt: 0,
     remark: '',
     receive_info: {
-      type: 'customer',
+      type: 'warehouse',
       warehouse_id: '',
+      warehouse_name: '',
       customer_addr: '',
       province: '',
       city: '',
@@ -418,8 +481,9 @@ const openEditOrder = (order: PurchaseOrder) => {
     freight_amt: order.freight_amt || 0,
     remark: order.remark || '',
     receive_info: {
-      type: order.receive_info?.type || 'customer',
+      type: order.receive_info?.type || (order.purchase_type === 'warehouse' ? 'warehouse' : 'customer'),
       warehouse_id: order.receive_info?.warehouse_id || '',
+      warehouse_name: order.receive_info?.warehouse_name || '',
       customer_addr: order.receive_info?.customer_addr || '',
       province: order.receive_info?.province || '',
       city: order.receive_info?.city || '',
@@ -431,6 +495,15 @@ const openEditOrder = (order: PurchaseOrder) => {
   // 加载供应商列表
   if (order.brand_id) {
     loadSuppliersByBrand(order.brand_id)
+  }
+  // 编辑模式下加载仓库详情卡片
+  if (order.purchase_type === 'warehouse' && order.receive_info?.warehouse_id) {
+    const warehouse = warehouseList.value.find(w => w.id === order.receive_info!.warehouse_id)
+    if (warehouse) {
+      selectedWarehouse.value = warehouse
+    }
+  } else {
+    selectedWarehouse.value = null
   }
   showPurchaseModal.value = true
 }
@@ -444,6 +517,22 @@ const handleSaveOrder = async () => {
   if (!form.value.supplier_id) {
     window.showToast('请选择供应商', 'warning')
     return
+  }
+  // 仓库采购时必须选择仓库
+  if (form.value.purchase_type === 'warehouse' && !form.value.receive_info.warehouse_id) {
+    window.showToast('请选择目标仓库', 'warning')
+    return
+  }
+  // 直运采购时必须填写收货地址和收货人
+  if (form.value.purchase_type === 'direct') {
+    if (!form.value.receive_info.customer_addr) {
+      window.showToast('请填写收货地址', 'warning')
+      return
+    }
+    if (!form.value.receive_info.contact_person) {
+      window.showToast('请填写收货人', 'warning')
+      return
+    }
   }
   if (form.value.items.length === 0) {
     window.showToast('请添加商品明细', 'warning')
@@ -628,9 +717,55 @@ const handleVoidOrder = async () => {
 
 // ============ 新状态操作方法 ============
 
+// 打开物流信息弹窗
 const confirmStartPurchase = (order: PurchaseOrder) => {
-  if (!confirm(`确定要开始采购采购单 ${order.purchase_no} 吗？`)) return
-  handleStartPurchase(order.purchase_no)
+  actionTargetPurchaseNo.value = order.purchase_no
+  // 回显已有物流信息
+  logisticsForm.value = {
+    logistics_company: (order as any).logistics_company || '',
+    logistics_no: (order as any).logistics_no || '',
+    source_purchase_order_id: (order as any).source_purchase_order_id || '',
+    expect_arrive_date: order.expect_arrive_date || ''
+  }
+  showLogisticsModal.value = true
+}
+
+// 填写物流信息后开始采购
+const handleStartPurchaseWithLogistics = async () => {
+  logisticsLoading.value = true
+  try {
+    // 先更新物流信息
+    await purchaseOrderApi.updateLogistics(actionTargetPurchaseNo.value, {
+      logistics_company: logisticsForm.value.logistics_company || undefined,
+      logistics_no: logisticsForm.value.logistics_no || undefined,
+      source_purchase_order_id: logisticsForm.value.source_purchase_order_id || undefined,
+      expect_arrive_date: logisticsForm.value.expect_arrive_date || undefined
+    })
+    // 再执行开始采购
+    await purchaseOrderApi.startPurchase(actionTargetPurchaseNo.value)
+    window.showToast('采购已开始', 'success')
+    showLogisticsModal.value = false
+    loadOrders()
+  } catch (error: any) {
+    window.showToast(error.message || '操作失败', 'error')
+  } finally {
+    logisticsLoading.value = false
+  }
+}
+
+// 跳过物流信息直接开始采购
+const handleStartPurchaseLater = async () => {
+  logisticsLoading.value = true
+  try {
+    await purchaseOrderApi.startPurchase(actionTargetPurchaseNo.value)
+    window.showToast('采购已开始', 'success')
+    showLogisticsModal.value = false
+    loadOrders()
+  } catch (error: any) {
+    window.showToast(error.message || '操作失败', 'error')
+  } finally {
+    logisticsLoading.value = false
+  }
 }
 
 const handleStartPurchase = async (purchaseNo: string) => {
@@ -976,7 +1111,7 @@ onBeforeUnmount(() => {
         <div class="modal-body">
           <!-- 基本信息 -->
           <div class="form-section">
-            <div class="section-title">基本信息</div>
+            <div class="section-title">单头信息</div>
             <div class="form-row">
               <div class="form-group">
                 <label>采购类型 <span class="required">*</span></label>
@@ -984,6 +1119,15 @@ onBeforeUnmount(() => {
                   <option v-for="opt in purchaseTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                 </select>
               </div>
+              <div class="form-group">
+                <label>品牌</label>
+                <select v-model="form.brand_id" class="form-control" :disabled="isFormDisabled">
+                  <option value="">请选择品牌</option>
+                  <option v-for="brand in brandList" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
               <div class="form-group">
                 <label>供应商 <span class="required">*</span></label>
                 <select v-model="form.supplier_id" class="form-control" :disabled="!form.brand_id || isFormDisabled">
@@ -996,26 +1140,17 @@ onBeforeUnmount(() => {
                   </option>
                 </select>
               </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>品牌</label>
-                <select v-model="form.brand_id" class="form-control" :disabled="isFormDisabled">
-                  <option value="">请选择品牌</option>
-                  <option v-for="brand in brandList" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>采购员</label>
-                <input v-model="form.purchase_user_id" class="form-control" placeholder="采购员ID" :disabled="isFormDisabled" />
-              </div>
-            </div>
-            <div class="form-row">
               <div class="form-group">
                 <label>结算方式 <span class="required">*</span></label>
                 <select v-model="form.settle_type" class="form-control" :disabled="isFormDisabled">
                   <option v-for="st in settleTypeOptions" :key="st" :value="st">{{ st }}</option>
                 </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>采购员</label>
+                <input v-model="form.purchase_user_id" class="form-control" placeholder="采购员ID" :disabled="isFormDisabled" />
               </div>
               <div class="form-group">
                 <label>预计到货日</label>
@@ -1036,39 +1171,72 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <!-- 收货信息 -->
+          <!-- 收货/入库信息 -->
           <div class="form-section">
-            <div class="section-title">收货信息</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>收货类型</label>
-                <select v-model="form.receive_info.type" class="form-control" :disabled="isFormDisabled">
-                  <option value="customer">直运发给客户</option>
-                  <option value="warehouse">入库到仓库</option>
-                </select>
+            <div class="section-title">收货/入库信息</div>
+
+            <!-- 仓库采购模式 -->
+            <template v-if="form.purchase_type === 'warehouse'">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>目标仓库 <span class="required">*</span></label>
+                  <select
+                    v-model="form.receive_info.warehouse_id"
+                    class="form-control"
+                    :disabled="isFormDisabled"
+                    @change="onWarehouseChange(form.receive_info.warehouse_id)"
+                  >
+                    <option value="">请选择仓库</option>
+                    <option v-for="wh in warehouseList" :key="wh.id" :value="wh.id">{{ wh.name }}</option>
+                  </select>
+                </div>
               </div>
-              <div class="form-group" v-if="form.receive_info.type === 'warehouse'">
-                <label>目标仓库</label>
-                <select v-model="form.receive_info.warehouse_id" class="form-control" :disabled="isFormDisabled">
-                  <option value="">请选择仓库</option>
-                  <option v-for="wh in warehouseList" :key="wh.id" :value="wh.id">{{ wh.name }}</option>
-                </select>
+              <!-- 仓库信息卡片 -->
+              <div v-if="selectedWarehouse" class="warehouse-info-card">
+                <div class="warehouse-info-grid">
+                  <div class="warehouse-info-item">
+                    <span class="info-label">仓库编码</span>
+                    <span class="info-value">{{ selectedWarehouse.warehouse_code || '-' }}</span>
+                  </div>
+                  <div class="warehouse-info-item">
+                    <span class="info-label">仓库名称</span>
+                    <span class="info-value">{{ selectedWarehouse.name }}</span>
+                  </div>
+                  <div class="warehouse-info-item full-width">
+                    <span class="info-label">仓库地址</span>
+                    <span class="info-value">{{ selectedWarehouse.address || '-' }}</span>
+                  </div>
+                  <div class="warehouse-info-item">
+                    <span class="info-label">管理员</span>
+                    <span class="info-value">{{ selectedWarehouse.manager_name || '-' }}</span>
+                  </div>
+                  <div class="warehouse-info-item">
+                    <span class="info-label">状态</span>
+                    <span class="info-value">{{ selectedWarehouse.status === 'active' ? '正常' : selectedWarehouse.status === 'inactive' ? '停用' : '维护中' }}</span>
+                  </div>
+                </div>
               </div>
-              <div class="form-group" v-if="form.receive_info.type === 'customer'">
-                <label>收货地址</label>
-                <input v-model="form.receive_info.customer_addr" class="form-control" placeholder="详细地址" :disabled="isFormDisabled" />
+            </template>
+
+            <!-- 直运采购模式 -->
+            <template v-if="form.purchase_type === 'direct'">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>收货地址 <span class="required">*</span></label>
+                  <input v-model="form.receive_info.customer_addr" class="form-control" placeholder="详细地址" :disabled="isFormDisabled" />
+                </div>
+                <div class="form-group">
+                  <label>收货人 <span class="required">*</span></label>
+                  <input v-model="form.receive_info.contact_person" class="form-control" placeholder="收货人" :disabled="isFormDisabled" />
+                </div>
               </div>
-            </div>
-            <div class="form-row" v-if="form.receive_info.type === 'customer'">
-              <div class="form-group">
-                <label>收货人</label>
-                <input v-model="form.receive_info.contact_person" class="form-control" placeholder="收货人" :disabled="isFormDisabled" />
+              <div class="form-row">
+                <div class="form-group">
+                  <label>联系电话</label>
+                  <input v-model="form.receive_info.contact_tel" class="form-control" placeholder="联系电话" :disabled="isFormDisabled" />
+                </div>
               </div>
-              <div class="form-group">
-                <label>联系电话</label>
-                <input v-model="form.receive_info.contact_tel" class="form-control" placeholder="联系电话" :disabled="isFormDisabled" />
-              </div>
-            </div>
+            </template>
           </div>
 
           <!-- 商品明细 -->
@@ -1249,6 +1417,10 @@ onBeforeUnmount(() => {
                 <div class="detail-item">
                   <label>收货类型</label>
                   <span>{{ selectedOrder.receive_info.type === 'customer' ? '直运发给客户' : '入库到仓库' }}</span>
+                </div>
+                <div class="detail-item" v-if="selectedOrder.receive_info.warehouse_name">
+                  <label>目标仓库</label>
+                  <span>{{ selectedOrder.receive_info.warehouse_name }}</span>
                 </div>
                 <div class="detail-item" v-if="selectedOrder.receive_info.customer_addr">
                   <label>收货地址</label>
@@ -1525,6 +1697,47 @@ onBeforeUnmount(() => {
           <button class="btn-secondary" @click="showVoidConfirm = false">取消</button>
           <button class="btn-danger" @click="handleVoidOrder" :disabled="actionLoading">
             {{ actionLoading ? '处理中...' : '确认作废' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 物流信息弹窗 -->
+    <div class="modal-overlay" v-if="showLogisticsModal">
+      <div class="modal logistics-modal">
+        <div class="modal-header">
+          <h3>开始采购 - 物流信息</h3>
+          <button class="modal-close" @click="showLogisticsModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted mb-3">采购单号: <strong>{{ actionTargetPurchaseNo }}</strong></p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>物流公司</label>
+              <input v-model="logisticsForm.logistics_company" placeholder="请输入物流公司" />
+            </div>
+            <div class="form-group">
+              <label>物流单号</label>
+              <input v-model="logisticsForm.logistics_no" placeholder="请输入物流单号" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>采购源订单ID</label>
+              <input v-model="logisticsForm.source_purchase_order_id" placeholder="如1688订单号" />
+            </div>
+            <div class="form-group">
+              <label>预计到货日期</label>
+              <input v-model="logisticsForm.expect_arrive_date" type="date" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="handleStartPurchaseLater" :disabled="logisticsLoading">
+            {{ logisticsLoading ? '处理中...' : '后续填写' }}
+          </button>
+          <button class="btn-primary" @click="handleStartPurchaseWithLogistics" :disabled="logisticsLoading">
+            {{ logisticsLoading ? '处理中...' : '开始采购' }}
           </button>
         </div>
       </div>
@@ -1923,6 +2136,47 @@ onBeforeUnmount(() => {
   color: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+/* ============ 仓库信息卡片 ============ */
+
+.warehouse-info-card {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  padding: 16px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.warehouse-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 24px;
+}
+
+.warehouse-info-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.warehouse-info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.warehouse-info-item .info-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 56px;
+}
+
+.warehouse-info-item .info-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  word-break: break-all;
 }
 
 /* ============ 商品明细表 ============ */
@@ -2361,5 +2615,62 @@ onBeforeUnmount(() => {
   .filter-select {
     width: 100%;
   }
+}
+
+/* ============ 物流信息弹窗 ============ */
+
+.logistics-modal {
+  width: 520px;
+  max-width: 90vw;
+}
+
+.logistics-modal .modal-body {
+  padding: 20px;
+}
+
+.logistics-modal .mb-3 {
+  margin-bottom: 16px;
+}
+
+.logistics-modal .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.logistics-modal .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.logistics-modal .form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.logistics-modal .form-group input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  transition: border-color 0.2s;
+}
+
+.logistics-modal .form-group input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.logistics-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-color);
 }
 </style>

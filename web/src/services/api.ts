@@ -596,36 +596,6 @@ export const purchaseOrderApi = {
   }
 }
 
-export const receivableApi = {
-  list: (params: { page?: number; page_size?: number; status?: string; customer_id?: string; keyword?: string; sales_order_no?: string }) => {
-    return apiService.get<any>('/accounts-receivable/', params)
-  },
-
-  getById: (id: string) => {
-    return apiService.get<any>(`/accounts-receivable/${id}`)
-  },
-
-  create: (data: any) => {
-    return apiService.post<any>('/accounts-receivable/', data)
-  },
-
-  update: (id: string, data: any) => {
-    return apiService.put<any>(`/accounts-receivable/${id}`, data)
-  },
-
-  delete: (id: string) => {
-    return apiService.delete<any>(`/accounts-receivable/${id}`)
-  },
-
-  recordPayment: (id: string, data: { amount: number; payment_method?: string; remarks?: string }) => {
-    return apiService.post<any>(`/accounts-receivable/${id}/record-payment`, data)
-  },
-
-  updateStatus: (id: string, status: string) => {
-    return apiService.patch<any>(`/accounts-receivable/${id}/status`, { status })
-  }
-}
-
 // customers API (客户管理)
 export interface InvoiceInfo {
   id?: string
@@ -1416,6 +1386,7 @@ export const inboundBatchApi = {
     spec_code: string
     stock_id?: string
     quantity: number
+    cost_price?: number
     location_id?: number | null
     location_code?: string | null
     expiry_date?: string | null
@@ -1773,83 +1744,6 @@ export const uploadApi = {
   }
 }
 
-export const stockCheckApi = {
-  // 单个盘库
-  createSingle: (data: { stock_id: string; check_quantity: number; remarks?: string }) => {
-    return apiService.post<any>('/stock-checks/single', data)
-  },
-
-  // 批量盘库
-  createBatch: async (warehouseId: string, file: File, remarks?: string) => {
-    const formData = new FormData()
-    formData.append('warehouse_id', warehouseId)
-    formData.append('file', file)
-    if (remarks) {
-      formData.append('remarks', remarks)
-    }
-
-    const url = `${(apiService as any).baseUrl}/stock-checks/batch`
-    const headers: Record<string, string> = {}
-    const token = localStorage.getItem('token')
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: formData
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: '批量盘库失败' }))
-      throw new Error(error.detail || `HTTP error! status: ${response.status}`)
-    }
-
-    return response.json()
-  },
-
-  // 下载模板
-  downloadTemplate: async () => {
-    const url = `${(apiService as any).baseUrl}/stock-checks/template`
-    const headers: Record<string, string> = {}
-    const token = localStorage.getItem('token')
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
-    const response = await fetch(url, { headers })
-    if (!response.ok) {
-      throw new Error('下载模板失败')
-    }
-
-    const blob = await response.blob()
-    const downloadUrl = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = downloadUrl
-    a.download = 'stock_check_template.xlsx'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(downloadUrl)
-  },
-
-  // 获取盘库记录列表
-  listRecords: (params: { page?: number; page_size?: number; stock_id?: string; batch_id?: string; warehouse_id?: string }) => {
-    return apiService.get<any>('/stock-checks/records', params)
-  },
-
-  // 获取盘库批次列表
-  listBatches: (params: { page?: number; page_size?: number; warehouse_id?: string; check_type?: string }) => {
-    return apiService.get<any>('/stock-checks/batches', params)
-  },
-
-  // 获取批次详情
-  getBatchDetail: (batchId: string) => {
-    return apiService.get<any>(`/stock-checks/batches/${batchId}`)
-  }
-}
-
 export const pendingOutboundApi = {
   // 获取待出库单列表
   list: (params: { page?: number; page_size?: number; warehouse_id?: number; sales_order_no?: string; status?: string }) => {
@@ -1896,5 +1790,17 @@ export const pendingOutboundApi = {
   // 撤销出库
   revoke: (pendingId: number) => {
     return apiService.post<any>(`/pending-outbounds/${pendingId}/revoke`, {})
+  },
+
+  // 导出出库单（预留接口）
+  export: (params: {
+    warehouse_id?: string
+    sales_order_no?: string
+    status?: string
+    selected_ids?: number[]
+    select_all?: boolean
+    excluded_ids?: number[]
+  }) => {
+    return apiService.post<any>('/pending-outbounds/export', params)
   }
 }

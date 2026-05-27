@@ -29,6 +29,7 @@ const brandForm = ref<BrandFormData>({
   logo_url: '',
   description: '',
   purchaser_id: '',
+  default_freight: 0,
   is_active: true
 })
 
@@ -76,6 +77,7 @@ const resetForm = () => {
     logo_url: '',
     description: '',
     purchaser_id: '',
+    default_freight: 0,
     is_active: true
   }
   editingBrand.value = null
@@ -93,6 +95,7 @@ const openEdit = (brand: Brand) => {
     logo_url: brand.logo_url || '',
     description: brand.description || '',
     purchaser_id: brand.purchaser_id || '',
+    default_freight: brand.default_freight || 0,
     is_active: brand.is_active
   }
   showFormModal.value = true
@@ -126,6 +129,10 @@ const handleSave = async () => {
   }
   if (brandForm.value.description && brandForm.value.description.length > 500) {
     window.showToast('品牌描述不能超过500个字符', 'warning')
+    return
+  }
+  if (brandForm.value.default_freight !== undefined && brandForm.value.default_freight < 0) {
+    window.showToast('运费不能为负数', 'warning')
     return
   }
   formLoading.value = true
@@ -267,6 +274,11 @@ onMounted(() => {
               {{ row.purchaser_name || '-' }}
             </template>
           </vxe-column>
+          <vxe-column field="default_freight" title="默认运费" width="100" class-name="col--right">
+            <template #default="{ row }">
+              {{ row.default_freight ? `¥${Number(row.default_freight).toFixed(2)}` : '-' }}
+            </template>
+          </vxe-column>
           <vxe-column field="is_active" title="状态" width="80" class-name="col--center">
             <template #default="{ row }">
               <span :class="['status-tag', row.is_active ? 'active' : 'inactive']">
@@ -349,6 +361,17 @@ onMounted(() => {
                 {{ p.full_name || p.username }}
               </option>
             </select>
+          </div>
+          <div class="form-group">
+            <label>默认运费</label>
+            <input
+              type="number"
+              v-model.number="brandForm.default_freight"
+              placeholder="请输入默认运费"
+              min="0"
+              step="0.01"
+              class="form-input"
+            />
           </div>
           <div class="form-group checkbox-group">
             <label class="checkbox-label">
@@ -728,6 +751,7 @@ onMounted(() => {
 }
 
 .form-group input[type="text"],
+.form-group input[type="number"],
 .form-group textarea {
   padding: 10px 12px;
   background-color: var(--bg-secondary);
@@ -739,6 +763,7 @@ onMounted(() => {
 }
 
 .form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
 .form-group textarea:focus {
   outline: none;
   border-color: var(--accent-blue);

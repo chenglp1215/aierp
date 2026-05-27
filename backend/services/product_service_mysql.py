@@ -34,13 +34,24 @@ class BrandService:
         if existing:
             raise ValueError("品牌名称已存在")
 
+        # 验证运费不能为负数
+        default_freight = brand_data.get("default_freight", 0)
+        # 处理空字符串，转换为 0
+        if default_freight == "" or default_freight is None:
+            default_freight = 0
+        else:
+            default_freight = float(default_freight)
+        if default_freight < 0:
+            raise ValueError("运费不能为负数")
+
         brand = await Brand.create(
             name=name,
-            logo_url=brand_data.get("logo_url"),
-            description=brand_data.get("description"),
-            purchaser_id=brand_data.get("purchaser_id"),
-            purchaser_name=brand_data.get("purchaser_name"),
+            logo_url=brand_data.get("logo_url") or None,
+            description=brand_data.get("description") or None,
+            purchaser_id=brand_data.get("purchaser_id") if brand_data.get("purchaser_id") else None,
+            purchaser_name=brand_data.get("purchaser_name") or None,
             is_active=brand_data.get("is_active", True),
+            default_freight=default_freight if default_freight is not None else 0,
         )
         return brand.to_dict()
 
@@ -63,11 +74,23 @@ class BrandService:
         if "description" in brand_data:
             brand.description = brand_data["description"]
         if "purchaser_id" in brand_data:
-            brand.purchaser_id = brand_data["purchaser_id"]
+            purchaser_id = brand_data["purchaser_id"]
+            brand.purchaser_id = purchaser_id if purchaser_id else None
         if "purchaser_name" in brand_data:
-            brand.purchaser_name = brand_data["purchaser_name"]
+            brand.purchaser_name = brand_data["purchaser_name"] or None
         if "is_active" in brand_data:
             brand.is_active = brand_data["is_active"]
+        if "default_freight" in brand_data:
+            # 验证运费不能为负数
+            default_freight = brand_data["default_freight"]
+            # 处理空字符串，转换为 0
+            if default_freight == "" or default_freight is None:
+                default_freight = 0
+            else:
+                default_freight = float(default_freight)
+            if default_freight < 0:
+                raise ValueError("运费不能为负数")
+            brand.default_freight = default_freight
 
         await brand.save()
         return True

@@ -7,11 +7,91 @@ from datetime import date
 
 from models_mysql.purchase_order import PurchaseStatus, InStatus, PayStatus
 from services.purchase_order_service_mysql import purchase_order_service_mysql as purchase_order_service
-from services.order_status_flow_service import order_status_flow_service
+from models_mysql.order_status_flow import OrderStatusFlow
 from app.decorators import wrap_response
 from .auth import require_permission
 
 purchase_order_router = APIRouter(prefix="/purchase-orders", tags=["采购单管理"])
+
+
+@purchase_order_router.post("/", response_model=dict, description="创建采购单")
+@wrap_response
+async def create_purchase_order(
+    purchase_type: str = Body(..., description="采购类型: direct/warehouse"),
+    receive_info: Optional[Dict[str, Any]] = Body(None, description="收货信息"),
+    brand_id: Optional[int] = Body(None, description="品牌ID"),
+    supplier_id: Optional[int] = Body(None, description="供应商ID"),
+    supplier_name: Optional[str] = Body(None, description="供应商名称"),
+    freight_amt: Optional[float] = Body(0, description="运费"),
+    tax_rate: Optional[float] = Body(0.13, description="税率"),
+    expect_arrive_date: Optional[str] = Body(None, description="预计到货日期"),
+    settle_type: Optional[str] = Body(None, description="结算方式"),
+    remark: Optional[str] = Body(None, description="备注"),
+    items: Optional[List[Dict[str, Any]]] = Body(None, description="商品明细列表"),
+    current_user: dict = Depends(require_permission("purchase.edit"))
+):
+    """创建采购单，自动校验收货信息与采购类型的一致性"""
+    data = {
+        "purchase_type": purchase_type,
+        "receive_info": receive_info or {},
+        "brand_id": brand_id,
+        "supplier_id": supplier_id,
+        "supplier_name": supplier_name,
+        "freight_amt": freight_amt,
+        "tax_rate": tax_rate,
+        "expect_arrive_date": expect_arrive_date,
+        "settle_type": settle_type,
+        "remark": remark,
+        "items": items or [],
+    }
+    result = await purchase_order_service.create_purchase_order(data, current_user)
+    return result
+
+
+@purchase_order_router.put("/{purchase_no}", response_model=dict, description="更新采购单")
+@wrap_response
+async def update_purchase_order(
+    purchase_no: str,
+    purchase_type: Optional[str] = Body(None, description="采购类型: direct/warehouse"),
+    receive_info: Optional[Dict[str, Any]] = Body(None, description="收货信息"),
+    brand_id: Optional[int] = Body(None, description="品牌ID"),
+    supplier_id: Optional[int] = Body(None, description="供应商ID"),
+    supplier_name: Optional[str] = Body(None, description="供应商名称"),
+    freight_amt: Optional[float] = Body(None, description="运费"),
+    tax_rate: Optional[float] = Body(None, description="税率"),
+    expect_arrive_date: Optional[str] = Body(None, description="预计到货日期"),
+    settle_type: Optional[str] = Body(None, description="结算方式"),
+    remark: Optional[str] = Body(None, description="备注"),
+    items: Optional[List[Dict[str, Any]]] = Body(None, description="商品明细列表"),
+    current_user: dict = Depends(require_permission("purchase.edit"))
+):
+    """更新采购单，自动校验收货信息与采购类型的一致性"""
+    data = {}
+    if purchase_type is not None:
+        data["purchase_type"] = purchase_type
+    if receive_info is not None:
+        data["receive_info"] = receive_info
+    if brand_id is not None:
+        data["brand_id"] = brand_id
+    if supplier_id is not None:
+        data["supplier_id"] = supplier_id
+    if supplier_name is not None:
+        data["supplier_name"] = supplier_name
+    if freight_amt is not None:
+        data["freight_amt"] = freight_amt
+    if tax_rate is not None:
+        data["tax_rate"] = tax_rate
+    if expect_arrive_date is not None:
+        data["expect_arrive_date"] = expect_arrive_date
+    if settle_type is not None:
+        data["settle_type"] = settle_type
+    if remark is not None:
+        data["remark"] = remark
+    if items is not None:
+        data["items"] = items
+
+    await purchase_order_service.update_purchase_order(purchase_no, data, current_user)
+    return "采购单更新成功"
 
 
 @purchase_order_router.get("/", response_model=dict, description="获取采购单列表")
@@ -156,8 +236,8 @@ async def get_purchase_status_flows(
     purchase_no: str,
     _: dict = Depends(require_permission("purchase.view"))
 ):
-    flows = await order_status_flow_service.get_flows_by_order_no(purchase_no)
-    return flows
+    flows = await OrderStatusFlow.filter(order_no=purchase_no).order_by("operate_time")
+    return [f.to_dict() for f in flows]
 
 
 @purchase_order_router.post("/{purchase_no}/complete-payment", response_model=dict, description="付款完成")

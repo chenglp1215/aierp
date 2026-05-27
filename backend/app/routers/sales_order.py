@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query, Depends, Body
 from typing import Optional, List, Dict, Any
 
 from services.sales_order_service_mysql import sales_order_service_mysql as sales_order_service
-from services.order_status_flow_service import order_status_flow_service
+from models_mysql.order_status_flow import OrderStatusFlow
 from .auth import require_permission
 from app.decorators import wrap_response
 
@@ -103,8 +103,8 @@ async def get_order_status_flows(
     order = await sales_order_service.get_order_by_no(order_no)
     if not order:
         raise ValueError("订单不存在")
-    flows = await order_status_flow_service.get_flows_by_order_no(order_no)
-    return flows
+    flows = await OrderStatusFlow.filter(order_no=order_no).order_by("operate_time")
+    return [f.to_dict() for f in flows]
 
 
 @sales_order_router.get("/{order_no}", response_model=dict, description="获取销售订单详情")

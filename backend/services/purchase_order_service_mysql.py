@@ -25,6 +25,41 @@ logger = logging.getLogger(__name__)
 class PurchaseOrderService:
     """采购单服务"""
 
+    @staticmethod
+    def _validate_receive_info(data: dict) -> None:
+        """校验收货信息与采购类型的一致性
+
+        - 仓库采购（purchase_type == 'warehouse'）时，必须选择目标仓库（warehouse_id）
+        - 直运采购（purchase_type == 'direct'）时，必须填写收货地址和收货人
+        - 自动设置 receive_info.type 保持与采购类型一致
+
+        Args:
+            data: 包含 purchase_type 和 receive_info 的字典
+
+        Raises:
+            ValueError: 校验不通过时抛出
+        """
+        purchase_type = data.get("purchase_type")
+        receive_info = data.get("receive_info", {})
+
+        if not purchase_type:
+            return
+
+        if purchase_type == "warehouse":
+            warehouse_id = receive_info.get("warehouse_id")
+            if not warehouse_id:
+                raise ValueError("仓库采购时必须选择目标仓库")
+            receive_info["type"] = "warehouse"
+
+        elif purchase_type == "direct":
+            customer_addr = receive_info.get("customer_addr")
+            contact_person = receive_info.get("contact_person")
+            if not customer_addr:
+                raise ValueError("直运采购时必须填写收货地址")
+            if not contact_person:
+                raise ValueError("直运采购时必须填写收货人")
+            receive_info["type"] = "customer"
+
     def _generate_purchase_no(self) -> str:
         """生成采购单号: PO + 日期 + 4位随机数"""
         date_str = datetime.now().strftime("%Y%m%d")
@@ -73,6 +108,36 @@ class PurchaseOrderService:
             purchase_type = PurchaseType.DIRECT
             if items and items[0].shipping_method == ShippingMethod.WAREHOUSE:
                 purchase_type = PurchaseType.WAREHOUSE
+
+            # 构建收货信息用于校验（从销售订单明细中提取）
+            receive_info = {}
+            if purchase_type == PurchaseType.WAREHOUSE:
+                # 仓库采购：从明细中取第一个仓库ID
+                warehouse_id = None
+                for item in items:
+                    if item.warehouse_id:
+                        warehouse_id = item.warehouse_id
+                        break
+                receive_info["warehouse_id"] = warehouse_id
+            elif purchase_type == PurchaseType.DIRECT:
+                # 直运采购：从销售订单获取客户收货信息
+                # SalesOrder 模型暂无 delivery_address/contact_person 字段
+                # 下推场景中直运采购的收货信息由前端在编辑时补充
+                pass
+
+            # 校验收货信息与采购类型的一致性
+            # 下推场景跳过直运校验（收货信息尚未填写），仅校验仓库采购
+            validate_data = {
+                "purchase_type": purchase_type.value,
+                "receive_info": receive_info,
+            }
+            try:
+                self._validate_receive_info(validate_data)
+            except ValueError:
+                # 下推场景中，如果直运采购缺少收货信息，允许创建（后续编辑补充）
+                # 但仓库采购缺少仓库信息，仍然报错
+                if purchase_type == PurchaseType.WAREHOUSE:
+                    raise
 
             # 计算总金额
             total_amt = sum(self._calculate_item_amount(
@@ -151,6 +216,207 @@ class PurchaseOrderService:
             logger.info(f"采购单创建成功: {purchase_no}")
 
         return generated_orders
+
+    async def create_purchase_order(
+        self,
+        data: Dict[str, Any],
+        current_user: Dict = None
+    ) -> Dict[str, Any]:
+        """独立创建采购单
+
+        Args:
+            data: 采购单数据，包含 purchase_type、receive_info、items 等
+            current_user: 当前用户信息
+
+        Returns:
+            创建的采购单信息
+
+        Raises:
+            ValueError: 校验不通过时抛出
+        """
+        current_user = current_user or {}
+
+        # 校验收货信息与采购类型的一致性
+        self._validate_receive_info(data)
+
+        purchase_no = self._generate_purchase_no()
+        purchase_type = data.get("purchase_type", "direct")
+        receive_info = data.get("receive_info", {})
+
+        # 计算总金额
+        items_data = data.get("items", [])
+        total_amt = sum(
+            self._calculate_item_amount(
+                item.get("purchase_qty", 0),
+                Decimal(str(item.get("purchase_price", 0))),
+                Decimal(str(item.get("discount", 1.0)))
+            )
+            for item in items_data
+        )
+        tax_rate = Decimal(str(data.get("tax_rate", 0.13)))
+        tax_amt = round(total_amt * float(tax_rate), 2)
+        total_tax_amt = round(total_amt * (1 + float(tax_rate)), 2)
+
+        # 创建采购单主表
+        purchase_order = await PurchaseOrder.create(
+            purchase_no=purchase_no,
+            purchase_type=purchase_type,
+            source_sale_order_id=data.get("source_sale_order_id"),
+            source_sale_order_no=data.get("source_sale_order_no"),
+            brand_id=data.get("brand_id"),
+            supplier_id=data.get("supplier_id"),
+            supplier_name=data.get("supplier_name"),
+            purchase_status=PurchaseStatus.PENDING_REVIEW,
+            total_amt=total_amt,
+            freight_amt=data.get("freight_amt", 0),
+            tax_rate=tax_rate,
+            tax_amt=tax_amt,
+            total_tax_amt=total_tax_amt,
+            expect_arrive_date=data.get("expect_arrive_date"),
+            settle_type=data.get("settle_type"),
+            remark=data.get("remark", ""),
+            creator_id=current_user.get("id"),
+        )
+
+        # 创建明细
+        for idx, item_data in enumerate(items_data, 1):
+            amt = self._calculate_item_amount(
+                item_data.get("purchase_qty", 0),
+                Decimal(str(item_data.get("purchase_price", 0))),
+                Decimal(str(item_data.get("discount", 1.0)))
+            )
+            await PurchaseOrderItem.create(
+                purchase_order=purchase_order,
+                row_no=item_data.get("row_no", idx),
+                spec_id=item_data.get("spec_id"),
+                product_id=item_data.get("product_id"),
+                brand_id=item_data.get("brand_id"),
+                warehouse_id=item_data.get("warehouse_id"),
+                purchase_qty=item_data.get("purchase_qty", 0),
+                purchase_price=item_data.get("purchase_price", 0),
+                discount=item_data.get("discount", 1.0),
+                amt=amt,
+                shipping_method=item_data.get("shipping_method"),
+            )
+
+        # 记录状态流转
+        await OrderStatusFlow.create(
+            order_no=purchase_no,
+            order_type="purchase",
+            field="purchase_status",
+            old_value=None,
+            new_value=PurchaseStatus.PENDING_REVIEW.value,
+            operator=current_user.get("username", "system"),
+            remark="独立创建采购单",
+        )
+
+        logger.info(f"采购单创建成功: {purchase_no}")
+        return {"purchase_no": purchase_no, "id": purchase_order.id}
+
+    async def update_purchase_order(
+        self,
+        purchase_no: str,
+        data: Dict[str, Any],
+        current_user: Dict = None
+    ) -> bool:
+        """更新采购单信息
+
+        Args:
+            purchase_no: 采购单号
+            data: 更新数据，可包含 purchase_type、receive_info、items 等
+            current_user: 当前用户信息
+
+        Returns:
+            更新是否成功
+
+        Raises:
+            ValueError: 校验不通过时抛出
+        """
+        current_user = current_user or {}
+
+        order = await PurchaseOrder.filter(purchase_no=purchase_no).first()
+        if not order:
+            raise ValueError(f"采购单不存在: {purchase_no}")
+
+        # 只有待审核状态允许编辑
+        if order.purchase_status != PurchaseStatus.PENDING_REVIEW:
+            raise ValueError("只有待审核状态的采购单可以编辑")
+
+        # 如果更新了采购类型或收货信息，需要校验一致性
+        purchase_type = data.get("purchase_type", order.purchase_type.value if order.purchase_type else None)
+        validate_data = {
+            "purchase_type": purchase_type,
+            "receive_info": data.get("receive_info", {}),
+        }
+        self._validate_receive_info(validate_data)
+
+        # 更新主表字段
+        update_fields = {}
+        simple_fields = [
+            "purchase_type", "supplier_id", "supplier_name",
+            "freight_amt", "tax_rate", "expect_arrive_date",
+            "settle_type", "remark",
+        ]
+        for field_name in simple_fields:
+            if field_name in data:
+                update_fields[field_name] = data[field_name]
+
+        # 如果有收货信息，更新到主表（receive_info 存储为 JSON 字段或独立字段）
+        receive_info = data.get("receive_info")
+        if receive_info:
+            # 仓库采购时更新仓库信息
+            if purchase_type == "warehouse" and receive_info.get("warehouse_id"):
+                update_fields["warehouse_id"] = receive_info["warehouse_id"]
+
+        if update_fields:
+            await PurchaseOrder.filter(purchase_no=purchase_no).update(**update_fields)
+
+        # 更新明细（如果提供了 items）
+        items_data = data.get("items")
+        if items_data is not None:
+            # 删除旧明细
+            await PurchaseOrderItem.filter(purchase_order_id=order.id).delete()
+            # 创建新明细
+            for idx, item_data in enumerate(items_data, 1):
+                amt = self._calculate_item_amount(
+                    item_data.get("purchase_qty", 0),
+                    Decimal(str(item_data.get("purchase_price", 0))),
+                    Decimal(str(item_data.get("discount", 1.0)))
+                )
+                await PurchaseOrderItem.create(
+                    purchase_order=order,
+                    row_no=item_data.get("row_no", idx),
+                    spec_id=item_data.get("spec_id"),
+                    product_id=item_data.get("product_id"),
+                    brand_id=item_data.get("brand_id"),
+                    warehouse_id=item_data.get("warehouse_id"),
+                    purchase_qty=item_data.get("purchase_qty", 0),
+                    purchase_price=item_data.get("purchase_price", 0),
+                    discount=item_data.get("discount", 1.0),
+                    amt=amt,
+                    shipping_method=item_data.get("shipping_method"),
+                )
+
+            # 重新计算总金额
+            total_amt = sum(
+                self._calculate_item_amount(
+                    item_data.get("purchase_qty", 0),
+                    Decimal(str(item_data.get("purchase_price", 0))),
+                    Decimal(str(item_data.get("discount", 1.0)))
+                )
+                for item_data in items_data
+            )
+            tax_rate = Decimal(str(data.get("tax_rate", order.tax_rate)))
+            tax_amt = round(total_amt * float(tax_rate), 2)
+            total_tax_amt = round(total_amt * (1 + float(tax_rate)), 2)
+            await PurchaseOrder.filter(purchase_no=purchase_no).update(
+                total_amt=total_amt,
+                tax_amt=tax_amt,
+                total_tax_amt=total_tax_amt,
+            )
+
+        logger.info(f"采购单更新成功: {purchase_no}")
+        return True
 
     # ============ 查询采购单 ============
 
@@ -235,6 +501,7 @@ class PurchaseOrderService:
                 purchase_no=purchase_no,
                 amount=float(order.total_tax_amt),  # 含税金额
                 cost_type="purchase",
+                remark=f"采购单 {purchase_no} 含税金额",
                 current_user=current_user
             )
             # 创建运费成本（如果有运费）

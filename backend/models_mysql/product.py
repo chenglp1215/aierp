@@ -14,6 +14,7 @@ class Brand(Model):
     purchaser_id = fields.IntField(null=True, description="采购人员ID")
     purchaser_name = fields.CharField(max_length=100, null=True, description="采购人员名称")
     is_active = fields.BooleanField(default=True, description="是否有效")
+    default_freight = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="默认运费")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
 
@@ -34,6 +35,7 @@ class Brand(Model):
             "purchaser_id": self.purchaser_id,
             "purchaser_name": self.purchaser_name,
             "is_active": self.is_active,
+            "default_freight": float(self.default_freight) if self.default_freight else 0.00,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

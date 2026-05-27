@@ -31,7 +31,7 @@ async def migrate():
         db_url=db_url,
         modules={"models": [
             "models_mysql.auth", "models_mysql.product", "models_mysql.customer",
-            "models_mysql.stock_check", "models_mysql.warehouse", "models_mysql.sales_order",
+            "models_mysql.warehouse", "models_mysql.sales_order",
             "models_mysql.purchase_order", "models_mysql.pending_outbound",
             "models_mysql.order_status_flow", "models_mysql.supplier"
         ]}

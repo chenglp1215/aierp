@@ -11,7 +11,6 @@ import ChatWorkspace from './workspace/ChatWorkspace.vue'
 import SalesWorkspace from './workspace/SalesWorkspace.vue'
 
 import SalesOrderWorkspace from './workspace/SalesOrderWorkspace.vue'
-import ReceivableList from './workspace/ReceivableList.vue'
 import InventoryWorkspace from './workspace/InventoryWorkspace.vue'
 import FinanceWorkspace from './workspace/FinanceWorkspace.vue'
 import CrmWorkspace from './workspace/CrmWorkspace.vue'
@@ -22,7 +21,6 @@ import AccountManagement from './workspace/AccountManagement.vue'
 import IntelligentSettings from './workspace/IntelligentSettings.vue'
 import WarehouseWorkspace from './workspace/WarehouseWorkspace.vue'
 import CustomerDiscountWorkspace from './workspace/CustomerDiscountWorkspace.vue'
-import SalesOrderCreate from './workspace/SalesOrderCreate.vue'
 import PurchaseOrderWorkspace from './workspace/PurchaseOrderWorkspace.vue'
 import PurchaseOrderDetail from './workspace/PurchaseOrderDetail.vue'
 import SalesOrderDetail from './workspace/SalesOrderDetail.vue'
@@ -54,7 +52,6 @@ const isMobileMenuOpen = ref(false)
 const activeTabId = ref('dashboard')
 const inventoryDrillDownData = ref<{ warehouseId?: string; warehouseName?: string } | null>(null)
 const customerDiscountDrillDownData = ref<{ customerId?: string; customerName?: string } | null>(null)
-const salesOrderCreateDrillDownData = ref<{} | null>(null)
 const salesOrderDetailDrillDownData = ref<{ orderNo?: string } | null>(null)
 const openTabs = ref<Tab[]>([
   { id: 'dashboard', label: '工作台', closable: false },
@@ -100,17 +97,6 @@ const handleNavigate = (id: string, extraData?: Record<string, any>) => {
     return
   }
 
-  if (extraData?.salesOrderCreate) {
-    salesOrderCreateDrillDownData.value = {}
-    const label = '新建销售订单'
-    const tabExists = openTabs.value.find(t => t.id === 'sales-order-create-drilldown')
-    if (!tabExists) {
-      openTabs.value.push({ id: 'sales-order-create-drilldown', label, closable: true })
-    }
-    activeTabId.value = 'sales-order-create-drilldown'
-    return
-  }
-
   if (extraData?.orderNo && id === 'sales-order-detail') {
     salesOrderDetailDrillDownData.value = { orderNo: extraData.orderNo }
     const label = `${extraData.orderNo} - 订单详情`
@@ -141,7 +127,6 @@ const handleNavigate = (id: string, extraData?: Record<string, any>) => {
       'chat': '智能助手',
       'sales-order': '销售订单',
       'procurement-order': '采购单',
-      'finance-receivable': '应收款',
       'sales': '销售管理',
       'sales-contract': '销售合同',
       'sales-return': '退货管理',
@@ -211,15 +196,6 @@ const handleCustomerDiscountBack = () => {
   activeTabId.value = 'crm'
 }
 
-const handleSalesOrderCreateBack = () => {
-  const idx = openTabs.value.findIndex(t => t.id === 'sales-order-create-drilldown')
-  if (idx > -1) {
-    openTabs.value.splice(idx, 1)
-  }
-  salesOrderCreateDrillDownData.value = null
-  activeTabId.value = 'sales-order'
-}
-
 const handleSalesOrderDetailBack = () => {
   const tabId = activeTabId.value
   const idx = openTabs.value.findIndex(t => t.id === tabId)
@@ -244,8 +220,6 @@ const handleBack = () => {
     handleCustomerDiscountBack()
   } else if (activeTabId.value === 'inventory-drilldown') {
     handleInventoryBack()
-  } else if (activeTabId.value === 'sales-order-create-drilldown') {
-    handleSalesOrderCreateBack()
   } else if (activeTabId.value.startsWith('sales-order-detail')) {
     handleSalesOrderDetailBack()
   } else if (activeTabId.value.startsWith('purchase-order-detail')) {
@@ -263,7 +237,6 @@ const currentWorkspace = computed(() => {
   if (id === 'chat') return ChatWorkspace
   if (id === 'sales-order') return SalesOrderWorkspace
   if (id === 'purchase-order') return PurchaseOrderWorkspace
-  if (id === 'finance-receivable') return ReceivableList
   if (id.startsWith('sales-order-detail')) return SalesOrderDetail
   if (id.startsWith('purchase-order-detail')) return PurchaseOrderDetail
   if (id.startsWith('sales')) return SalesWorkspace
@@ -280,7 +253,6 @@ const currentWorkspace = computed(() => {
   if (id === 'system-account') return AccountManagement
   if (id === 'system-intelligent') return IntelligentSettings
   if (id === 'customer-discount-drilldown') return CustomerDiscountWorkspace
-  if (id === 'sales-order-create-drilldown') return SalesOrderCreate
   if (id === 'supplier') return SupplierWorkspace
   if (id === 'pending-outbound') return PendingOutboundWorkspace
   return DashboardWorkspace
@@ -291,7 +263,7 @@ const currentBreadcrumb = computed(() => {
 })
 
 const keepAliveList = computed(() => {
-  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderWorkspace', 'PurchaseOrderWorkspace', 'ReceivableList', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'BrandWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace', 'CustomerDiscountWorkspace', 'SalesOrderCreate', 'SalesOrderDetail', 'PurchaseOrderDetail', 'SupplierWorkspace', 'PendingOutboundWorkspace']
+  const names = ['DashboardWorkspace', 'ChatWorkspace', 'SalesWorkspace', 'SalesOrderWorkspace', 'PurchaseOrderWorkspace', 'InventoryWorkspace', 'FinanceWorkspace', 'CrmWorkspace', 'ProductWorkspace', 'CategoryWorkspace', 'BrandWorkspace', 'AccountManagement', 'IntelligentSettings', 'WarehouseWorkspace', 'CustomerDiscountWorkspace', 'SalesOrderDetail', 'PurchaseOrderDetail', 'SupplierWorkspace', 'PendingOutboundWorkspace']
   return names
 })
 
@@ -403,7 +375,7 @@ onMounted(async () => {
           <component
             :is="currentWorkspace"
             :key="activeTabId"
-            v-bind="activeTabId === 'inventory-drilldown' ? inventoryDrillDownData : activeTabId === 'customer-discount-drilldown' ? customerDiscountDrillDownData : activeTabId === 'sales-order-create-drilldown' ? salesOrderCreateDrillDownData : activeTabId.startsWith('sales-order-detail') ? salesOrderDetailDrillDownData : activeTabId.startsWith('purchase-order-detail') ? { purchaseNo: activeTabId.replace('purchase-order-detail-', '') } : {}"
+            v-bind="activeTabId === 'inventory-drilldown' ? inventoryDrillDownData : activeTabId === 'customer-discount-drilldown' ? customerDiscountDrillDownData : activeTabId.startsWith('sales-order-detail') ? salesOrderDetailDrillDownData : activeTabId.startsWith('purchase-order-detail') ? { purchaseNo: activeTabId.replace('purchase-order-detail-', '') } : {}"
             @back="handleBack"
             @navigate="handleNavigate"
           />
@@ -489,7 +461,7 @@ onMounted(async () => {
 }
 
 .tab-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
 
@@ -514,7 +486,7 @@ onMounted(async () => {
 }
 
 .tab-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.12);
   color: var(--text-primary);
 }
 

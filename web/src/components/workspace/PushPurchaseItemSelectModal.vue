@@ -13,7 +13,8 @@ interface OrderItem {
   qty: number
   price: number
   amt: number
-  pushed?: boolean
+  purchase_qty?: number
+  pushed_qty?: number
   shipping_method?: string
   stock_quantity?: number
   stock_status?: string
@@ -37,29 +38,33 @@ watch(() => props.visible, (val) => {
     loading.value = false
     const newSet = new Set<number>()
     props.items.forEach(item => {
-      if (item.pushed) return
-      if (item.shipping_method === '直运') {
+      const purchaseQty = item.purchase_qty ?? 0
+      const pushedQty = item.pushed_qty ?? 0
+      const pendingQty = purchaseQty - pushedQty
+      // 有待下推数量才默认选中
+      if (pendingQty > 0) {
         newSet.add(item.row_no)
-      } else {
-        const stock = item.stock_quantity ?? 0
-        if (stock < item.qty) {
-          newSet.add(item.row_no)
-        }
       }
     })
     selectedRowNos.value = newSet
   }
 }, { immediate: true })
 
+// 计算待下推数量
+const getPendingQty = (item: OrderItem): number => {
+  const purchaseQty = item.purchase_qty ?? 0
+  const pushedQty = item.pushed_qty ?? 0
+  return Math.max(0, purchaseQty - pushedQty)
+}
+
+// 判断是否可下推：有待下推数量
+const isPushable = (item: OrderItem): boolean => {
+  return getPendingQty(item) > 0
+}
+
 // 直运商品始终可下推；非直运商品仅库存不足时可下推
 const pushableItems = computed(() => {
-  return props.items.filter(item => {
-    if (item.pushed) return false
-    if (item.shipping_method === '直运') return true
-    // 非直运：库存不足才需要采购
-    const stock = item.stock_quantity ?? 0
-    return stock < item.qty
-  })
+  return props.items.filter(item => isPushable(item))
 })
 
 const allSelected = computed(() => {
@@ -86,13 +91,6 @@ const toggleItem = (rowNo: number) => {
   }
 }
 
-const isPushable = (item: OrderItem): boolean => {
-  if (item.pushed) return false
-  if (item.shipping_method === '直运') return true
-  const stock = item.stock_quantity ?? 0
-  return stock < item.qty
-}
-
 const stockStatusMap: Record<string, { label: string; class: string }> = {
   normal: { label: '充足', class: 'stock-normal' },
   low_stock: { label: '偏低', class: 'stock-low' },
@@ -104,12 +102,39 @@ const getStockStatus = (item: OrderItem) => {
   return stockStatusMap[item.stock_status || ''] || { label: '-', class: '' }
 }
 
+// 获取下推状态
+const getPushStatus = (item: OrderItem): { label: string; class: string } => {
+  const purchaseQty = item.purchase_qty ?? 0
+  const pushedQty = item.pushed_qty ?? 0
+  const pendingQty = purchaseQty - pushedQty
+
+  if (purchaseQty === 0) {
+    return { label: '无需下推', class: 'skip' }
+  }
+  if (pendingQty === 0) {
+    return { label: '已下推', class: 'pushed' }
+  }
+  if (pushedQty > 0) {
+    return { label: '部分下推', class: 'partial' }
+  }
+  return { label: '待下推', class: 'pending' }
+}
+
 const getPushReason = (item: OrderItem): string => {
-  if (item.pushed) return '已下推'
-  if (item.shipping_method === '直运') return '直运商品'
-  const stock = item.stock_quantity ?? 0
-  if (stock >= item.qty) return '库存充足，无需采购'
-  return `库存不足（${stock}/${item.qty}）`
+  const purchaseQty = item.purchase_qty ?? 0
+  const pushedQty = item.pushed_qty ?? 0
+  const pendingQty = purchaseQty - pushedQty
+
+  if (purchaseQty === 0) {
+    return '库存充足，无需采购'
+  }
+  if (pendingQty === 0) {
+    return `已下推 ${pushedQty}/${purchaseQty}`
+  }
+  if (pushedQty > 0) {
+    return `待下推 ${pendingQty}（已下推 ${pushedQty}/${purchaseQty}）`
+  }
+  return `待下推 ${pendingQty}`
 }
 
 const formatPrice = (val: number) => {
@@ -192,9 +217,9 @@ const handleClose = () => {
                 <td class="col-num">{{ formatPrice(item.amt) }}</td>
                 <td class="col-empty">{{ item.purchaser_name || '-' }}</td>
                 <td>
-                  <span v-if="item.pushed" class="status-tag pushed">已下推</span>
-                  <span v-else-if="isPushable(item)" class="status-tag pending">待下推</span>
-                  <span v-else class="status-tag skip">跳过</span>
+                  <span class="status-tag" :class="getPushStatus(item).class">
+                    {{ getPushStatus(item).label }}
+                  </span>
                 </td>
                 <td class="col-reason">{{ getPushReason(item) }}</td>
               </tr>
@@ -347,6 +372,11 @@ const handleClose = () => {
 .status-tag.pending {
   background: rgba(255, 152, 0, 0.15);
   color: #ff9800;
+}
+
+.status-tag.partial {
+  background: rgba(33, 150, 243, 0.15);
+  color: #2196f3;
 }
 
 .status-tag.skip {

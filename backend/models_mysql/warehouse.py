@@ -83,6 +83,40 @@ class Stock(Model):
         }
 
 
+class WarehouseLocation(Model):
+    """库位模型"""
+    id = fields.IntField(pk=True, description="库位ID")
+    warehouse_id = fields.IntField(description="所属仓库ID")
+    location_code = fields.CharField(max_length=50, description="库位编码")
+    location_name = fields.CharField(max_length=100, null=True, description="库位名称")
+    status = fields.CharField(max_length=20, default="active", description="状态: active/inactive")
+    description = fields.CharField(max_length=500, null=True, description="描述")
+    created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
+    updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
+
+    class Meta:
+        table = "warehouse_locations"
+        ordering = ["-created_at"]
+        # 唯一约束：同一仓库下库位编码唯一
+        unique_together = (("warehouse_id", "location_code"),)
+
+    def __str__(self):
+        return f"{self.location_code}: {self.location_name}"
+
+    def to_dict(self):
+        """转换为字典格式"""
+        return {
+            "id": self.id,
+            "warehouse_id": self.warehouse_id,
+            "location_code": self.location_code,
+            "location_name": self.location_name,
+            "status": self.status,
+            "description": self.description,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class InboundBatch(Model):
     """入库批次模型"""
     id = fields.IntField(pk=True, description="入库批次ID")
@@ -94,6 +128,12 @@ class InboundBatch(Model):
     spec_code = fields.CharField(max_length=50, description="规格编号")
     stock_id = fields.IntField(description="库存ID")
     quantity = fields.FloatField(description="入库数量")
+    location_id = fields.IntField(null=True, description="库位ID")
+    location_code = fields.CharField(max_length=50, null=True, description="库位编码")
+    expiry_date = fields.DatetimeField(null=True, description="有效截止时间")
+    current_quantity = fields.FloatField(default=0, description="当前剩余数量")
+    cost_price = fields.DecimalField(max_digits=12, decimal_places=2, null=True, description="成本价")
+    batch_no = fields.CharField(max_length=50, null=True, unique=True, description="批次编号")
     user_id = fields.IntField(description="操作用户ID")
     user_name = fields.CharField(max_length=100, description="操作用户名")
     remarks = fields.CharField(max_length=500, null=True, description="备注")
@@ -116,6 +156,12 @@ class InboundBatch(Model):
             "spec_code": self.spec_code,
             "stock_id": self.stock_id,
             "quantity": self.quantity,
+            "location_id": self.location_id,
+            "location_code": self.location_code,
+            "expiry_date": self.expiry_date.isoformat() if self.expiry_date else None,
+            "current_quantity": self.current_quantity,
+            "cost_price": float(self.cost_price) if self.cost_price else None,
+            "batch_no": self.batch_no,
             "user_id": self.user_id,
             "user_name": self.user_name,
             "remarks": self.remarks,
@@ -138,6 +184,8 @@ class OutboundBatch(Model):
     user_id = fields.IntField(description="操作用户ID")
     user_name = fields.CharField(max_length=100, description="操作用户名")
     remarks = fields.CharField(max_length=500, null=True, description="备注")
+    pending_outbound_id = fields.IntField(null=True, description="关联待出库单ID")
+    inbound_batch_id = fields.IntField(null=True, description="关联入库批次ID")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
 
@@ -160,6 +208,8 @@ class OutboundBatch(Model):
             "user_id": self.user_id,
             "user_name": self.user_name,
             "remarks": self.remarks,
+            "pending_outbound_id": self.pending_outbound_id,
+            "inbound_batch_id": self.inbound_batch_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

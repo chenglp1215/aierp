@@ -96,18 +96,6 @@
 - **WHEN** 查询库存详情时请求入库出库记录
 - **THEN** 系统返回该库存的所有入库批次和出库批次记录
 
-### Requirement: 手动盘库功能
-
-系统 SHALL 支持手动更新库存数量、最小库存阈值和最大库存阈值。
-
-#### Scenario: 手动更新库存数量
-- **WHEN** 调用 PUT /api/v1/stocks/{id} 更新 quantity
-- **THEN** 系统更新库存数量，重新计算库存状态
-
-#### Scenario: 更新库存阈值
-- **WHEN** 调用 PUT /api/v1/stocks/{id} 更新 min_stock 或 max_stock
-- **THEN** 系统更新阈值，重新计算库存状态
-
 ### Requirement: API 接口保持兼容
 
 系统 SHALL 保持现有 API 接口签名和响应格式不变，前端无需修改。

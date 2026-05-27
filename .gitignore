@@ -94,3 +94,10 @@ verify_code.jpg
 
 # openspec
 openspec/
+# Multi-agent system specific
+tasks/*.json
+tasks/.gitkeep
+outputs
+docs/superpowers
+tmp/
+.claude/

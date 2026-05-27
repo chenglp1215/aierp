@@ -92,7 +92,6 @@ async def init_mysql():
             "models_mysql.product",
             "models_mysql.customer",
             "models_mysql.warehouse",
-            "models_mysql.stock_check",
             "models_mysql.sales_order",
             "models_mysql.purchase_order",
             "models_mysql.pending_outbound",

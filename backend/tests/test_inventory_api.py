@@ -368,7 +368,7 @@ def test_get_stock():
 
 
 def test_update_stock():
-    print("\n[11/16] 手动盘库更新库存")
+    print("\n[11/16] 更新库存信息")
     stock_id = created_ids.get("stock_id", "")
     if not stock_id:
         print("  [SKIP] 跳过（无测试库存）")
@@ -378,17 +378,17 @@ def test_update_stock():
         "min_stock": 10,
         "max_stock": 500
     })
-    body = parse(resp, err, "手动盘库更新")
+    body = parse(resp, err, "更新库存")
     if not body:
         return
-    ok = check_response_ok(body, "手动盘库更新")
+    ok = check_response_ok(body, "更新库存")
     if ok:
-        result.record("手动盘库-返回成功", body.get("message") == "库存更新成功", f"msg={body.get('message')}")
+        result.record("更新库存-返回成功", body.get("message") == "库存更新成功", f"msg={body.get('message')}")
     resp2, _ = api("GET", f"/stocks/{stock_id}")
-    body2 = parse(resp2, None, "手动盘库-验证")
+    body2 = parse(resp2, None, "更新库存-验证")
     if body2 and body2.get("result"):
         data = body2["result"]
-        result.record("手动盘库-quantity已更新", data.get("quantity") == 95, f"quantity={data.get('quantity')}")
+        result.record("更新库存-quantity已更新", data.get("quantity") == 95, f"quantity={data.get('quantity')}")
 
 
 # ============ 出库批次测试 ============
@@ -611,11 +611,11 @@ def test_validation():
                        body.get("status") == "error",
                        f"status={body.get('status')}, msg={body.get('message')}")
 
-    print("\n  [异常-12] 手动盘库-库存不存在")
+    print("\n  [异常-12] 更新库存-库存不存在")
     resp, err = api("PUT", "/stocks/99999", {"quantity": 10})
-    body = parse(resp, err, "异常-盘库库存不存在")
+    body = parse(resp, err, "异常-更新库存不存在")
     if body:
-        result.record("异常-盘库库存不存在应报错",
+        result.record("异常-更新库存不存在应报错",
                        body.get("status") == "error",
                        f"status={body.get('status')}, msg={body.get('message')}")
 

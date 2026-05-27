@@ -107,6 +107,28 @@ aierp/
 
 部分插件还包含 `references/` 目录，提供更详细的参考文档，可根据需要加载。
 
+## Subagent 使用规则
+
+当需要使用 subagent 执行工作时，**必须优先使用项目本地定义的 agent**（位于 `.claude/agents/` 目录），而非系统内置的通用 agent。
+
+### 项目 Agent 列表
+
+| Agent | subagent_type | 适用场景 |
+|-------|--------------|---------|
+| **backend-developer** | `backend-developer` | Python 后端开发、API 设计、数据库操作、Service/Model 编写 |
+| **frontend-developer** | `frontend-developer` | Vue 前端开发、vxe-table 组件开发、页面开发、API 对接 |
+| **planner** | `planner` | 需求规划、技术方案设计、任务拆解 |
+| **verifier** | `verifier` | 编译检查、构建验证、静态分析、引用完整性检查 |
+| **tester** | `tester` | 测试用例编写、测试执行、问题验证、覆盖率分析 |
+
+### 使用原则
+
+1. **优先本地 agent**：当任务属于上述 agent 的职责范围时，必须使用对应的本地 agent，不要使用系统内置的 `general-purpose`、`claude` 等通用 agent
+2. **场景匹配**：根据任务性质选择 agent，不要让 frontend-developer 做后端任务，反之亦然
+3. **并行调度**：后端和前端任务可并行分派给 `backend-developer` 和 `frontend-developer`；验证和测试在开发完成后串行执行
+4. **开发流水线**：典型执行顺序为 `planner` → `backend-developer` / `frontend-developer`（并行） → `verifier` → `tester`
+5. **探索任务例外**：纯代码探索/搜索任务可使用系统内置的 `Explore` agent，因为项目未定义专门的探索 agent
+
 ## 编码规范
 
 ### 后端

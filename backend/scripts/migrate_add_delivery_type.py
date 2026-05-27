@@ -11,6 +11,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
 
 # 加载 .env
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
@@ -22,7 +23,7 @@ MYSQL_USER = os.getenv("MYSQL_USER", "root")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "erp_test")
 
-DB_URL = f"mysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
+DB_URL = f"mysql://{MYSQL_USER}:{quote_plus(MYSQL_PASSWORD)}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
 
 
 async def migrate():

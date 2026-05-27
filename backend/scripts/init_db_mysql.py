@@ -106,8 +106,6 @@ async def init_default_permissions():
             # 库存管理
             {"code": "inventory.stock.view", "name": "库存查看", "type": PermissionType.MENU, "sort_order": 55, "parent_code": "inventory.menu"},
             {"code": "inventory.stock.edit", "name": "库存编辑", "type": PermissionType.BUTTON_TOOLS, "sort_order": 56, "parent_code": "inventory.menu"},
-            {"code": "inventory.check.view", "name": "盘点查看", "type": PermissionType.MENU, "sort_order": 57, "parent_code": "inventory.menu"},
-            {"code": "inventory.check.edit", "name": "盘点编辑", "type": PermissionType.BUTTON_TOOLS, "sort_order": 58, "parent_code": "inventory.menu"},
             # 仓库管理
             {"code": "warehouse.view", "name": "仓库查看", "type": PermissionType.MENU, "sort_order": 65, "parent_code": "warehouse.menu"},
             {"code": "warehouse.create", "name": "仓库创建", "type": PermissionType.BUTTON_TOOLS, "sort_order": 66, "parent_code": "warehouse.menu"},
@@ -198,7 +196,6 @@ async def init_warehouse_admin_group():
         warehouse_perm_codes = [
             "warehouse.view", "warehouse.create", "warehouse.edit", "warehouse.delete",
             "inventory.stock.view", "inventory.stock.edit",
-            "inventory.check.view", "inventory.check.edit",
         ]
         warehouse_perms = await Permission.filter(code__in=warehouse_perm_codes)
 

@@ -40,6 +40,8 @@ async def search_specs(
             **spec,
             "product_name": product.get("name", ""),
             "product_code": product.get("product_code", ""),
+            "brand_id": product.get("brand_id"),
+            "brand_name": product.get("brand_name", ""),
         })
     return {
         "total": total,

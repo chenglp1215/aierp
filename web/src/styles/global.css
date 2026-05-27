@@ -2,14 +2,17 @@
   --bg-primary: #1a1a1a;
   --bg-secondary: #2d2d30;
   --bg-card: #252526;
+  --bg-tertiary: #2a2a2b;
   --text-primary: #ffffff;
   --text-secondary: #cccccc;
+  --text-tertiary: #888888;
   --text-muted: #808080;
   --accent-blue: #0078d4;
   --accent-blue-hover: #1a86d9;
   --accent-green: #10b981;
   --accent-red: #ef4444;
   --accent-yellow: #f59e0b;
+  --accent-purple: #8b5cf6;
   --border-color: #3d3d3d;
   --radius-sm: 8px;
   --radius-md: 10px;
@@ -26,14 +29,17 @@
   --bg-primary: #f5f7fa;
   --bg-secondary: #ffffff;
   --bg-card: #ffffff;
+  --bg-tertiary: #f0f0f0;
   --text-primary: #1a1a1a;
   --text-secondary: #666666;
+  --text-tertiary: #999999;
   --text-muted: #999999;
   --accent-blue: #0078d4;
   --accent-blue-hover: #1a86d9;
   --accent-green: #10b981;
   --accent-red: #ef4444;
   --accent-yellow: #f59e0b;
+  --accent-purple: #8b5cf6;
   --border-color: #e5e7eb;
   --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08);
   --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
@@ -155,6 +161,10 @@ a {
   --vxe-ui-table-header-bg-color: var(--bg-secondary);
   --vxe-table-row-hover-bg-color: var(--bg-secondary);
   --vxe-ui-table-row-hover-bg-color: var(--bg-secondary);
+  --vxe-table-font-color: var(--text-primary);
+  --vxe-ui-font-color: var(--text-primary);
+  --vxe-ui-font-primary-color: var(--text-primary);
+  --vxe-ui-layout-background-color: var(--bg-card);
 }
 
 .vxe-table::before {
@@ -187,11 +197,11 @@ a {
 }
 
 .vxe-table .vxe-table--body tr:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .vxe-table .vxe-table--body tr:hover > td {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .vxe-table .vxe-table--footer {
@@ -244,6 +254,9 @@ a {
   --vxe-table-border-color: #e5e7eb;
   --vxe-ui-table-border-color: #e5e7eb;
   --vxe-ui-table-resizable-line-color: #e5e7eb;
+  --vxe-table-font-color: #1a1a1a;
+  --vxe-ui-font-color: #1a1a1a;
+  --vxe-ui-font-primary-color: #1a1a1a;
 }
 
 [data-theme="light"] .vxe-table::before {
@@ -320,4 +333,32 @@ a {
 [data-theme="light"] .vxe-table .vxe-table--empty-placeholder {
   background-color: #ffffff !important;
   color: #999999;
+}
+
+/* 亮色模式下组件级 hover 覆盖 */
+[data-theme="light"] .table-loading-overlay {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="light"] .filter-btn.reset-btn:hover,
+[data-theme="light"] .btn-secondary:hover,
+[data-theme="light"] .back-btn:hover,
+[data-theme="light"] .batch-btn.secondary:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .modal-close:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+/* vxe-table 内部滚动条适配 */
+.vxe-table--body-wrapper::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 4px;
+}
+
+.vxe-table--body-wrapper::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
 }

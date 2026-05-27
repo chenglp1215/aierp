@@ -42,7 +42,7 @@ interface SalesOrder {
   sale_user_name: string | null
   order_status: string
   delivery_status: string
-  receive_status: string
+  push_status: string | null
   invoice_status: string
   finance_status: string
   total_amt: number
@@ -328,7 +328,7 @@ onMounted(() => {
             <th style="width: 80px">财务状态</th>
             <th style="width: 80px">发票状态</th>
             <th style="width: 80px">发货状态</th>
-            <th style="width: 80px">收货状态</th>
+            <th style="width: 80px">下推状态</th>
             <th style="width: 80px">业务员</th>
             <th style="width: 200px">操作</th>
           </tr>
@@ -383,8 +383,8 @@ onMounted(() => {
                 </span>
               </td>
               <td>
-                <span class="status-tag" :class="getStatusInfo(order.receive_status).class">
-                  {{ getStatusInfo(order.receive_status).label }}
+                <span class="status-tag" :class="getStatusInfo(order.push_status || 'none').class">
+                  {{ getStatusInfo(order.push_status || 'none').label }}
                 </span>
               </td>
               <td>{{ order.sale_user_name || '-' }}</td>
@@ -557,7 +557,7 @@ onMounted(() => {
 }
 
 .filter-btn.reset-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
 
@@ -599,7 +599,7 @@ onMounted(() => {
 }
 
 .batch-btn.secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
 
@@ -654,8 +654,8 @@ onMounted(() => {
 .status-tag.draft { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
 .status-tag.pending { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
 .status-tag.audited { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
-.status-tag.partial-pushed { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-.status-tag.pushed { background-color: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.status-tag.partial-pushed { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
+.status-tag.pushed { background-color: rgba(139, 92, 246, 0.1); color: var(--accent-purple); }
 .status-tag.closed { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .status-tag.cancelled { background-color: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
 .status-tag.none { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
