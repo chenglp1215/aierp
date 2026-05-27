@@ -312,7 +312,7 @@ const handleStorageChange = async (event: StorageEvent) => {
 .sidebar {
   width: var(--sidebar-width);
   height: 100vh;
-  background-color: var(--bg-primary);
+  background-color: var(--color-sidebar-bg);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -328,7 +328,7 @@ const handleStorageChange = async (event: StorageEvent) => {
 
 .sidebar-header {
   padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
 }
 
@@ -341,19 +341,19 @@ const handleStorageChange = async (event: StorageEvent) => {
 .brand-icon {
   width: 28px;
   height: 28px;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .brand-text {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-text-inverse);
 }
 
 .user-role {
   margin-top: 8px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   padding-left: 38px;
 }
 
@@ -372,20 +372,20 @@ const handleStorageChange = async (event: StorageEvent) => {
   cursor: pointer;
   transition: background-color var(--transition-fast);
   position: relative;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .nav-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--color-sidebar-hover);
 }
 
 .nav-item.active {
-  background-color: rgba(0, 120, 212, 0.15);
-  color: var(--text-primary);
+  background-color: var(--color-sidebar-active);
+  color: var(--color-text-inverse);
 }
 
 .nav-item.active .nav-icon {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .nav-icon {
@@ -434,7 +434,7 @@ const handleStorageChange = async (event: StorageEvent) => {
   height: 20px;
   padding: 0 6px;
   border-radius: 10px;
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   font-size: 11px;
   font-weight: 600;
@@ -454,7 +454,7 @@ const handleStorageChange = async (event: StorageEvent) => {
 
 .sidebar-footer {
   padding: 16px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .search-box {
@@ -462,33 +462,33 @@ const handleStorageChange = async (event: StorageEvent) => {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background-color: var(--bg-primary);
+  background-color: rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background-color var(--transition-fast);
 }
 
 .search-box:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .search-icon {
   width: 18px;
   height: 18px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .search-text {
   flex: 1;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .search-shortcut {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   padding: 2px 6px;
-  background-color: var(--bg-secondary);
+  background-color: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
 }
 
@@ -514,9 +514,9 @@ const handleStorageChange = async (event: StorageEvent) => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
+  background-color: var(--color-sidebar-bg);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--color-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -526,9 +526,9 @@ const handleStorageChange = async (event: StorageEvent) => {
 }
 
 .collapse-btn:hover {
-  background-color: var(--accent-blue);
-  color: white;
-  border-color: var(--accent-blue);
+  background-color: var(--color-interactive);
+  color: var(--color-text-inverse);
+  border-color: var(--color-interactive);
 }
 
 .collapse-btn svg {

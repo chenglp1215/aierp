@@ -147,8 +147,8 @@ const handleStorageChange = (event: StorageEvent) => {
   justify-content: space-between;
   padding: 0 24px;
   height: 64px;
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .header-left {
@@ -168,7 +168,7 @@ const handleStorageChange = (event: StorageEvent) => {
   height: 40px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -176,8 +176,8 @@ const handleStorageChange = (event: StorageEvent) => {
 }
 
 .header-action-btn:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--color-ink);
 }
 
 .header-action-btn svg {
@@ -193,7 +193,7 @@ const handleStorageChange = (event: StorageEvent) => {
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   font-size: 10px;
   font-weight: 600;
@@ -214,19 +214,19 @@ const handleStorageChange = (event: StorageEvent) => {
   padding: 6px 12px;
   border-radius: var(--radius-md);
   background-color: transparent;
-  color: var(--text-primary);
+  color: var(--color-ink);
   transition: background-color var(--transition-fast);
 }
 
 .user-btn:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .user-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-blue), #005a9e);
+  background: linear-gradient(135deg, var(--color-interactive), #005a9e);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -248,18 +248,18 @@ const handleStorageChange = (event: StorageEvent) => {
 .user-name {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .user-role {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .dropdown-arrow {
   width: 18px;
   height: 18px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   transition: transform var(--transition-fast);
 }
 
@@ -272,10 +272,9 @@ const handleStorageChange = (event: StorageEvent) => {
   top: calc(100% + 8px);
   right: 0;
   min-width: 180px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-hover);
   z-index: 200;
   overflow: hidden;
 }
@@ -287,32 +286,32 @@ const handleStorageChange = (event: StorageEvent) => {
   width: 100%;
   padding: 12px 16px;
   background-color: transparent;
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   transition: background-color var(--transition-fast);
 }
 
 .dropdown-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 .dropdown-item svg {
   width: 18px;
   height: 18px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .dropdown-item.logout {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .dropdown-item.logout svg {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .dropdown-divider {
   height: 1px;
-  background-color: var(--border-color);
+  background-color: var(--color-hairline);
   margin: 4px 0;
 }
 </style>

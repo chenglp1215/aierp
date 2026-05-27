@@ -25,8 +25,8 @@ const currentYear = new Date().getFullYear()
   justify-content: space-between;
   padding: 0 24px;
   height: 48px;
-  background-color: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .footer-left {
@@ -36,7 +36,7 @@ const currentYear = new Date().getFullYear()
 
 .footer-copyright {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .footer-right {
@@ -47,22 +47,22 @@ const currentYear = new Date().getFullYear()
 
 .footer-version {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .footer-divider {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .footer-link {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   transition: color var(--transition-fast);
 }
 
 .footer-link:hover {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 @media (max-width: 768px) {

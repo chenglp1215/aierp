@@ -392,7 +392,7 @@ onMounted(async () => {
 .app-layout {
   display: flex;
   height: 100vh;
-  background-color: var(--bg-primary);
+  background-color: var(--color-canvas);
 }
 
 .main-content {
@@ -420,7 +420,7 @@ onMounted(async () => {
 
 .breadcrumb-item {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .tabs-bar {
@@ -428,8 +428,8 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border-bottom: 1px solid var(--color-hairline);
   height: 44px;
 }
 
@@ -451,7 +451,7 @@ onMounted(async () => {
   gap: 8px;
   padding: 10px 16px;
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 13px;
   border: none;
   border-bottom: 2px solid transparent;
@@ -461,14 +461,14 @@ onMounted(async () => {
 }
 
 .tab-item:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .tab-item.active {
-  color: var(--accent-blue);
-  border-bottom-color: var(--accent-blue);
-  background-color: rgba(0, 120, 212, 0.1);
+  color: var(--color-ink);
+  border-bottom-color: var(--color-ink);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 .tab-close {
@@ -477,7 +477,7 @@ onMounted(async () => {
   border-radius: 50%;
   background-color: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -486,8 +486,8 @@ onMounted(async () => {
 }
 
 .tab-close:hover {
-  background-color: rgba(255, 255, 255, 0.12);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--color-ink);
 }
 
 .tab-close svg {
