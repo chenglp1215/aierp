@@ -41,7 +41,7 @@ defineProps<{
 
 <style scoped>
 .stat-card {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-card);
@@ -56,7 +56,7 @@ defineProps<{
 
 .stat-title {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .stat-icon {
@@ -68,10 +68,10 @@ defineProps<{
   justify-content: center;
 }
 
-.stat-icon.blue { background-color: rgba(0, 120, 212, 0.15); color: var(--accent-blue); }
-.stat-icon.green { background-color: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
-.stat-icon.red { background-color: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
-.stat-icon.yellow { background-color: rgba(245, 158, 11, 0.15); color: var(--accent-yellow); }
+.stat-icon.blue { background-color: var(--color-info-bg); color: var(--color-interactive); }
+.stat-icon.green { background-color: rgba(16, 185, 129, 0.15); color: var(--color-success); }
+.stat-icon.red { background-color: rgba(239, 68, 68, 0.15); color: var(--color-danger); }
+.stat-icon.yellow { background-color: rgba(245, 158, 11, 0.15); color: var(--color-warning); }
 
 .stat-icon svg {
   width: 20px;
@@ -81,7 +81,7 @@ defineProps<{
 .stat-value {
   font-size: 28px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin-bottom: 8px;
 }
 
@@ -93,7 +93,7 @@ defineProps<{
 
 .stat-subtitle {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .stat-trend {
@@ -101,7 +101,7 @@ defineProps<{
   font-weight: 500;
 }
 
-.stat-trend.up { color: var(--accent-green); }
-.stat-trend.down { color: var(--accent-red); }
-.stat-trend.neutral { color: var(--text-muted); }
+.stat-trend.up { color: var(--color-success); }
+.stat-trend.down { color: var(--color-danger); }
+.stat-trend.neutral { color: var(--color-muted); }
 </style>

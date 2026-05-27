@@ -187,15 +187,15 @@ const handleLogin = async () => {
 }
 
 [data-theme="light"] .bg-gradient {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-interactive) 0%, var(--color-accent) 100%);
 }
 
 .bg-grid {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(0, 120, 212, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 120, 212, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
   background-size: 50px 50px;
 }
 
@@ -227,7 +227,7 @@ const handleLogin = async () => {
 .logo-icon {
   width: 48px;
   height: 48px;
-  background: linear-gradient(135deg, var(--color-interactive) 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-interactive) 0%, var(--color-accent) 100%);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -401,7 +401,7 @@ const handleLogin = async () => {
   justify-content: center;
   gap: 8px;
   padding: 14px;
-  background: linear-gradient(135deg, var(--color-interactive) 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-interactive) 0%, var(--color-accent) 100%);
   color: white;
   border: none;
   border-radius: var(--radius-sm);

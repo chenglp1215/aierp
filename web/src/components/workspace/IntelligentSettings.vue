@@ -60,7 +60,7 @@ const switchTab = (key: TabKey) => {
 .settings-tabs {
   display: flex;
   gap: 8px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   padding: 12px 16px;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
@@ -70,7 +70,7 @@ const switchTab = (key: TabKey) => {
   padding: 10px 20px;
   border-radius: var(--radius-md);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 14px;
   font-weight: 500;
   border: none;
@@ -79,12 +79,12 @@ const switchTab = (key: TabKey) => {
 }
 
 .tab-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .tab-btn.active {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
 }
 

@@ -930,7 +930,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .filter-btn.reset-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
   color: var(--color-ink);
 }
 
@@ -960,7 +960,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .btn-link.danger {
@@ -968,7 +968,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .btn-link.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
 }
 
 .stock-link {
@@ -990,12 +990,12 @@ const handleEscKey = (e: KeyboardEvent) => {
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 12px;
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
   color: var(--color-danger);
 }
 
 .active-tag.active {
-  background-color: rgba(16, 185, 129, 0.1);
+  background-color: var(--color-success-bg);
   color: var(--color-success);
 }
 
@@ -1077,7 +1077,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.06);
   color: var(--color-ink);
 }
 
@@ -1211,7 +1211,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 
 .upload-placeholder:hover {
   border-color: var(--color-interactive);
-  background-color: rgba(0, 120, 212, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 .upload-icon {
@@ -1268,7 +1268,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .specs-table tbody tr:hover {
-  background-color: rgba(0, 120, 212, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 .specs-table .inline-input {
@@ -1310,7 +1310,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
   color: var(--color-ink);
 }
 
@@ -1350,7 +1350,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #dc2626;
+  background-color: var(--color-danger);
 }
 
 .btn-danger:disabled {

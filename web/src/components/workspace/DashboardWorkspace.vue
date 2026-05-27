@@ -114,7 +114,7 @@ const handleRowClick = (row: any) => {
 }
 
 .table-card {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-card);
@@ -130,21 +130,21 @@ const handleRowClick = (row: any) => {
 .table-card-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .view-more-btn {
   padding: 6px 12px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 12px;
-  border: 1px solid var(--accent-blue);
+  border: 1px solid var(--color-interactive);
   transition: all var(--transition-fast);
 }
 
 .view-more-btn:hover {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
 }
 

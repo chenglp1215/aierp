@@ -1908,12 +1908,12 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
-.status-tag.draft { background-color: rgba(128,128,128,0.1); color: var(--color-muted); }
-.status-tag.audited { background-color: rgba(59,130,246,0.1); color: var(--color-interactive); }
+.status-tag.draft { background-color: var(--color-neutral-bg); color: var(--color-muted); }
+.status-tag.audited { background-color: var(--color-info-bg); color: var(--color-interactive); }
 .status-tag.closed { background-color: var(--color-success-bg); color: var(--color-success); }
 .status-tag.cancelled { background-color: var(--color-danger-bg); color: var(--color-danger); }
-.status-tag.none { background-color: rgba(128,128,128,0.1); color: var(--color-muted); }
-.status-tag.partial { background-color: rgba(245,158,11,0.1); color: var(--color-warning); }
+.status-tag.none { background-color: var(--color-neutral-bg); color: var(--color-muted); }
+.status-tag.partial { background-color: var(--color-warning-bg); color: var(--color-warning); }
 .status-tag.full { background-color: var(--color-success-bg); color: var(--color-success); }
 
 .type-tag {
@@ -1923,7 +1923,7 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
-.type-tag.direct { background-color: rgba(59,130,246,0.1); color: var(--color-interactive); }
+.type-tag.direct { background-color: var(--color-info-bg); color: var(--color-interactive); }
 .type-tag.warehouse { background-color: var(--color-success-bg); color: var(--color-success); }
 
 /* ============ 操作按钮 ============ */
@@ -1955,7 +1955,7 @@ onBeforeUnmount(() => {
 .btn-link.success { color: var(--color-success); }
 .btn-link.success:hover { background-color: var(--color-success-bg); }
 .btn-link.warning { color: var(--color-warning); }
-.btn-link.warning:hover { background-color: rgba(245,158,11,0.1); }
+.btn-link.warning:hover { background-color: var(--color-warning-bg); }
 
 /* ============ 展开行 ============ */
 

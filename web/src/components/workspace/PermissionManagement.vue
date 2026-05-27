@@ -222,7 +222,7 @@ loadPermissions()
 }
 
 .tree-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-card);
@@ -238,7 +238,7 @@ loadPermissions()
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -250,9 +250,9 @@ loadPermissions()
 
 .checked-count {
   font-size: 13px;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   padding-right: 8px;
-  border-right: 1px solid var(--border-color);
+  border-right: 1px solid var(--color-hairline);
   margin-right: 4px;
 }
 
@@ -260,7 +260,7 @@ loadPermissions()
   padding: 8px 12px;
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   border-radius: var(--radius-sm);
@@ -268,11 +268,11 @@ loadPermissions()
 }
 
 .btn-text:hover {
-  background-color: rgba(59, 130, 246, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .tree-container {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-md);
   max-height: 600px;
   overflow-y: auto;
@@ -282,7 +282,7 @@ loadPermissions()
 .empty-state {
   padding: 40px;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 14px;
 }
 
@@ -303,7 +303,7 @@ loadPermissions()
 }
 
 .node-row:hover {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
 }
 
 .expand-btn {
@@ -316,14 +316,14 @@ loadPermissions()
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
+  color: var(--color-muted);
   border-radius: 4px;
   transition: all var(--transition-fast);
 }
 
 .expand-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-ink);
 }
 
 .expand-icon {
@@ -356,7 +356,7 @@ loadPermissions()
 .checkmark {
   width: 18px;
   height: 18px;
-  border: 2px solid var(--border-color);
+  border: 2px solid var(--color-hairline);
   border-radius: 4px;
   transition: all var(--transition-fast);
   display: flex;
@@ -365,12 +365,12 @@ loadPermissions()
 }
 
 .checkbox-wrapper:hover .checkmark {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .checkbox-wrapper input:checked + .checkmark {
-  background-color: var(--accent-blue);
-  border-color: var(--accent-blue);
+  background-color: var(--color-interactive);
+  border-color: var(--color-interactive);
 }
 
 .checkbox-wrapper input:checked + .checkmark::after {
@@ -398,17 +398,17 @@ loadPermissions()
 
 .node-type-icon.menu {
   background-color: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
+  color: var(--color-interactive);
 }
 
 .node-type-icon.api {
   background-color: rgba(139, 92, 246, 0.15);
-  color: var(--accent-purple);
+  color: var(--color-accent);
 }
 
 .node-type-icon.button {
   background-color: rgba(16, 185, 129, 0.15);
-  color: var(--accent-green);
+  color: var(--color-success);
 }
 
 .node-type-icon[class~="button,tools"],
@@ -431,7 +431,7 @@ loadPermissions()
 .node-name {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .type-badge {
@@ -443,17 +443,17 @@ loadPermissions()
 
 .type-badge.menu {
   background-color: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
+  color: var(--color-interactive);
 }
 
 .type-badge.api {
   background-color: rgba(139, 92, 246, 0.15);
-  color: var(--accent-purple);
+  color: var(--color-accent);
 }
 
 .type-badge.button {
   background-color: rgba(16, 185, 129, 0.15);
-  color: var(--accent-green);
+  color: var(--color-success);
 }
 
 .type-badge[class~="button,tools"],
@@ -464,13 +464,13 @@ loadPermissions()
 
 .code-text {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-family: monospace;
 }
 
 .node-path {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   margin-top: 2px;
   font-family: monospace;
 }

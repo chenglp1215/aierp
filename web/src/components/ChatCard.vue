@@ -339,10 +339,10 @@ const handleClearHistory = () => {
 
 const getAvatarGradient = (id: string) => {
   const gradients: Record<string, string> = {
-    chat: 'linear-gradient(135deg, var(--accent-blue), #005a9e)',
+    chat: 'linear-gradient(135deg, var(--color-interactive), var(--color-dark-navy))',
     order: 'linear-gradient(135deg, #10b981, #059669)',
     report: 'linear-gradient(135deg, #f59e0b, #d97706)',
-    approval: 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
+    approval: 'linear-gradient(135deg, #8b5cf6, var(--color-accent))'
   }
   return gradients[id] || gradients.chat
 }
@@ -671,7 +671,7 @@ onUnmounted(() => {
 
 <style scoped>
 .chat-card {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   overflow: hidden;
@@ -682,7 +682,7 @@ onUnmounted(() => {
 
 .card-header {
   padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -720,7 +720,7 @@ onUnmounted(() => {
 .header-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .header-status {
@@ -733,12 +733,12 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--text-muted);
+  background-color: var(--color-muted);
   transition: background-color var(--transition-fast);
 }
 
 .status-dot.connected {
-  background-color: var(--accent-green);
+  background-color: var(--color-success);
   animation: pulse 2s infinite;
 }
 
@@ -749,7 +749,7 @@ onUnmounted(() => {
 
 .status-text {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-weight: 500;
 }
 
@@ -766,30 +766,30 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   background-color: transparent;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .clear-btn:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-  border-color: var(--accent-red);
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger);
 }
 
 .clear-btn:hover svg {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .clear-btn svg {
   width: 16px;
   height: 16px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .mode-toggle {
   display: flex;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-md);
   padding: 3px;
   gap: 2px;
@@ -800,7 +800,7 @@ onUnmounted(() => {
   border: none;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -808,11 +808,11 @@ onUnmounted(() => {
 }
 
 .mode-btn:hover {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .mode-btn.active {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
 }
 
@@ -862,11 +862,11 @@ onUnmounted(() => {
 }
 
 .message-bubble {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   padding: 14px 18px;
   border-radius: var(--radius-md);
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   line-height: 1.6;
   max-width: 75%;
 }
@@ -885,7 +885,7 @@ onUnmounted(() => {
 
 .tool-calls-container {
   margin-top: 12px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
   padding-top: 12px;
 }
 
@@ -895,12 +895,12 @@ onUnmounted(() => {
   gap: 8px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
   margin-bottom: 8px;
 }
 
 .tool-calls-header svg {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .tool-loading {
@@ -935,25 +935,25 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color var(--transition-fast);
 }
 
 .file-info:hover {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
 }
 
 .file-icon {
   width: 20px;
   height: 20px;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .file-name {
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -962,7 +962,7 @@ onUnmounted(() => {
 
 .file-size {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .user-message {
@@ -989,7 +989,7 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   display: flex;
   align-items: center;
@@ -1000,11 +1000,11 @@ onUnmounted(() => {
 
 .user-name {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .user-message .message-bubble {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border-top-right-radius: 4px;
 }
@@ -1024,7 +1024,7 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--text-muted);
+  background-color: var(--color-muted);
   animation: bounce 1.4s infinite ease-in-out both;
 }
 
@@ -1061,7 +1061,7 @@ onUnmounted(() => {
   height: 60px;
   border-radius: var(--radius-sm);
   object-fit: cover;
-  border: 2px solid var(--accent-blue);
+  border: 2px solid var(--color-interactive);
 }
 
 .pending-file-info {
@@ -1069,9 +1069,9 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   padding: 6px 10px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .pending-file-info .file-icon {
@@ -1110,7 +1110,7 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--accent-red, #ef4444);
   padding: 6px 10px;
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
   border-radius: var(--radius-sm);
 }
 
@@ -1126,8 +1126,8 @@ onUnmounted(() => {
   justify-content: center;
   width: 44px;
   height: 44px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -1135,8 +1135,8 @@ onUnmounted(() => {
 }
 
 .attach-btn:hover:not(:disabled) {
-  background-color: var(--bg-card);
-  border-color: var(--accent-blue);
+  background-color: var(--color-canvas);
+  border-color: var(--color-interactive);
 }
 
 .attach-btn:disabled {
@@ -1147,7 +1147,7 @@ onUnmounted(() => {
 .attach-btn svg {
   width: 20px;
   height: 20px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .hidden-file-input {
@@ -1161,21 +1161,21 @@ onUnmounted(() => {
 .chat-input {
   width: 100%;
   padding: 14px 18px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-md);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
   transition: border-color var(--transition-fast);
 }
 
 .chat-input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .chat-input:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.15);
+  border-color: var(--color-interactive);
+  box-shadow: 0 0 0 3px var(--color-info-bg);
   outline: none;
 }
 
@@ -1184,7 +1184,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 14px 24px;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border-radius: var(--radius-md);
   font-size: 14px;
@@ -1193,7 +1193,7 @@ onUnmounted(() => {
 }
 
 .send-btn:hover:not(:disabled) {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
   transform: translateY(-1px);
 }
 
@@ -1212,8 +1212,8 @@ onUnmounted(() => {
 }
 
 .task-panel {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-md);
   padding: 12px;
 }
@@ -1227,7 +1227,7 @@ onUnmounted(() => {
 
 .task-hint {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .task-messages {
@@ -1243,14 +1243,14 @@ onUnmounted(() => {
   display: flex;
   gap: 6px;
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   padding: 6px 8px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
 }
 
 .task-msg-index {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-weight: 500;
   flex-shrink: 0;
 }
@@ -1263,7 +1263,7 @@ onUnmounted(() => {
 }
 
 .task-msg-separator {
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 12px;
 }
 
@@ -1279,9 +1279,9 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .task-file-thumb {
@@ -1294,12 +1294,12 @@ onUnmounted(() => {
 .task-file-icon {
   width: 16px;
   height: 16px;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .task-file-name {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1307,7 +1307,7 @@ onUnmounted(() => {
 }
 
 .task-msg-empty {
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-style: italic;
 }
 
@@ -1326,7 +1326,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background-color: var(--accent-green);
+  background-color: var(--color-success);
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -1337,7 +1337,7 @@ onUnmounted(() => {
 }
 
 .start-task-btn:hover:not(:disabled) {
-  background-color: #0ea572;
+  background-color: var(--color-success);
   transform: translateY(-1px);
 }
 
@@ -1409,7 +1409,7 @@ onUnmounted(() => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.06);
   border: none;
   cursor: pointer;
   display: flex;
@@ -1447,7 +1447,7 @@ onUnmounted(() => {
 .data-table-container {
   overflow-x: auto;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .data-table {
@@ -1457,23 +1457,23 @@ onUnmounted(() => {
 }
 
 .data-table th {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   padding: 10px 14px;
   text-align: left;
   font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-hairline);
   white-space: nowrap;
 }
 
 .data-table td {
   padding: 10px 14px;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .data-table tbody tr:hover {
-  background-color: rgba(0, 120, 212, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 .data-table tbody tr:last-child td {
@@ -1485,16 +1485,16 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .form-item {
   display: flex;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .form-item:last-child {
@@ -1504,12 +1504,12 @@ onUnmounted(() => {
 .form-label {
   min-width: 100px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .form-value {
   flex: 1;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .data-key-value {
@@ -1517,9 +1517,9 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 6px;
   padding: 12px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .kv-item {
@@ -1531,12 +1531,12 @@ onUnmounted(() => {
 .kv-label {
   min-width: 100px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .kv-value {
   flex: 1;
-  color: var(--text-primary);
+  color: var(--color-ink);
   word-break: break-word;
 }
 
@@ -1546,13 +1546,13 @@ onUnmounted(() => {
   gap: 10px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .next-step-label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .next-step-buttons {
@@ -1563,7 +1563,7 @@ onUnmounted(() => {
 
 .next-step-btn {
   padding: 8px 16px;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -1574,7 +1574,7 @@ onUnmounted(() => {
 }
 
 .next-step-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
   transform: translateY(-1px);
 }
 

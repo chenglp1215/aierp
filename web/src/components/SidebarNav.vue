@@ -328,7 +328,7 @@ const handleStorageChange = async (event: StorageEvent) => {
 
 .sidebar-header {
   padding: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   position: relative;
 }
 
@@ -454,7 +454,7 @@ const handleStorageChange = async (event: StorageEvent) => {
 
 .sidebar-footer {
   padding: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .search-box {
@@ -469,7 +469,7 @@ const handleStorageChange = async (event: StorageEvent) => {
 }
 
 .search-box:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.06);
 }
 
 .search-icon {
@@ -488,7 +488,7 @@ const handleStorageChange = async (event: StorageEvent) => {
   font-size: 11px;
   color: var(--color-muted);
   padding: 2px 6px;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.06);
   border-radius: 4px;
 }
 
@@ -515,7 +515,7 @@ const handleStorageChange = async (event: StorageEvent) => {
   height: 24px;
   border-radius: 50%;
   background-color: var(--color-sidebar-bg);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   color: var(--color-muted);
   display: flex;
   align-items: center;

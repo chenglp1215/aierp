@@ -254,7 +254,7 @@ const handleClose = () => {
 }
 
 .item-select-modal {
-  background: var(--bg-primary);
+  background: var(--color-canvas);
   border-radius: 8px;
   width: 850px;
   max-width: 95vw;
@@ -269,27 +269,27 @@ const handleClose = () => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 16px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .modal-close {
   background: none;
   border: none;
   font-size: 20px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   cursor: pointer;
   padding: 4px;
   line-height: 1;
 }
 
 .modal-close:hover {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -301,7 +301,7 @@ const handleClose = () => {
 .empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .table-wrapper {
@@ -318,15 +318,15 @@ const handleClose = () => {
   padding: 10px 12px;
   text-align: left;
   font-weight: 500;
-  color: var(--text-secondary);
-  border-bottom: 2px solid var(--border-color);
+  color: var(--color-muted);
+  border-bottom: 2px solid var(--color-hairline);
   white-space: nowrap;
 }
 
 .items-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
+  border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-ink);
 }
 
 .items-table tbody tr:last-child td {
@@ -339,7 +339,7 @@ const handleClose = () => {
 
 .col-reason {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   white-space: nowrap;
 }
 
@@ -354,7 +354,7 @@ const handleClose = () => {
 }
 
 .col-empty {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .status-tag {
@@ -366,22 +366,22 @@ const handleClose = () => {
 
 .status-tag.pushed {
   background: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  color: var(--color-success);
 }
 
 .status-tag.pending {
   background: rgba(255, 152, 0, 0.15);
-  color: #ff9800;
+  color: var(--color-warning);
 }
 
 .status-tag.partial {
   background: rgba(33, 150, 243, 0.15);
-  color: #2196f3;
+  color: var(--color-interactive);
 }
 
 .status-tag.skip {
   background: rgba(128, 128, 128, 0.15);
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .stock-tag {
@@ -393,22 +393,22 @@ const handleClose = () => {
 
 .stock-tag.stock-normal {
   background: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  color: var(--color-success);
 }
 
 .stock-tag.stock-low {
   background: rgba(255, 152, 0, 0.15);
-  color: #ff9800;
+  color: var(--color-warning);
 }
 
 .stock-tag.stock-out {
   background: rgba(244, 67, 54, 0.15);
-  color: #f44336;
+  color: var(--color-danger);
 }
 
 .stock-tag.stock-over {
   background: rgba(33, 150, 243, 0.15);
-  color: #2196f3;
+  color: var(--color-interactive);
 }
 
 .modal-footer {
@@ -416,16 +416,16 @@ const handleClose = () => {
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .selected-info {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .selected-info strong {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .footer-actions {
@@ -435,30 +435,30 @@ const handleClose = () => {
 
 .btn-secondary {
   padding: 8px 16px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: 4px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--color-canvas);
+  color: var(--color-ink);
   cursor: pointer;
   font-size: 13px;
 }
 
 .btn-secondary:hover {
-  background: var(--bg-secondary);
+  background: var(--color-canvas);
 }
 
 .btn-primary {
   padding: 8px 16px;
   border: none;
   border-radius: 4px;
-  background: var(--accent-blue);
+  background: var(--color-interactive);
   color: #fff;
   cursor: pointer;
   font-size: 13px;
 }
 
 .btn-primary:hover {
-  background: #0066b3;
+  background: var(--color-interactive);
 }
 
 .btn-primary:disabled {

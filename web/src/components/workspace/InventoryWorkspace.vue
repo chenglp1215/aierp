@@ -1008,17 +1008,17 @@ onMounted(() => {
   gap: 4px;
   padding: 8px 12px;
   background: transparent;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 13px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .back-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .back-icon {
@@ -1028,14 +1028,14 @@ onMounted(() => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
 .primary-btn {
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -1045,7 +1045,7 @@ onMounted(() => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .header-actions {
@@ -1054,7 +1054,7 @@ onMounted(() => {
 }
 
 .filter-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
@@ -1102,16 +1102,16 @@ onMounted(() => {
   padding-right: 24px;
   font-size: 13px;
   box-sizing: border-box;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .product-search-container.small input:focus,
 .spec-search-container.small input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .product-search-container.small .clear-btn,
@@ -1123,10 +1123,10 @@ onMounted(() => {
   width: 16px;
   height: 16px;
   font-size: 12px;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.06);
   border: none;
   border-radius: 50%;
-  color: var(--text-muted);
+  color: var(--color-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1141,8 +1141,8 @@ onMounted(() => {
   width: 320px;
   max-height: 240px;
   overflow-y: auto;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-hover);
   z-index: 100;
@@ -1152,28 +1152,28 @@ onMounted(() => {
 .filter-input {
   width: 100%;
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .filter-input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .filter-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-select {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
   min-width: 100px;
@@ -1181,13 +1181,13 @@ onMounted(() => {
 
 .filter-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-btn {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
   border: none;
@@ -1196,22 +1196,22 @@ onMounted(() => {
 }
 
 .filter-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-btn.reset-btn {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
 }
 
 .filter-btn.reset-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .table-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
@@ -1220,14 +1220,14 @@ onMounted(() => {
 .expand-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   cursor: pointer;
   font-size: 12px;
   padding: 4px;
 }
 
 .expand-btn:hover {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .product-name-info {
@@ -1237,14 +1237,14 @@ onMounted(() => {
 }
 
 .product-name {
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-weight: 500;
 }
 
 .product-category {
   font-size: 11px;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
+  color: var(--color-muted);
+  background-color: var(--color-canvas);
   padding: 2px 6px;
   border-radius: 4px;
   display: inline-block;
@@ -1260,13 +1260,13 @@ onMounted(() => {
   padding: 2px 8px;
   border-radius: 10px;
   font-size: 12px;
-  background-color: var(--bg-secondary);
-  color: var(--text-muted);
+  background-color: var(--color-canvas);
+  color: var(--color-muted);
 }
 
 .batch-count.has-data {
-  background-color: rgba(0, 120, 212, 0.1);
-  color: var(--accent-blue);
+  background-color: var(--color-info-bg);
+  color: var(--color-interactive);
 }
 
 .status-tag {
@@ -1277,23 +1277,23 @@ onMounted(() => {
 }
 
 .status-tag.normal {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .status-tag.warning {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: var(--accent-yellow);
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .status-tag.danger {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: var(--accent-red);
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .status-tag.info {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: var(--accent-blue);
+  background-color: var(--color-info-bg);
+  color: var(--color-interactive);
 }
 
 .action-btns {
@@ -1306,7 +1306,7 @@ onMounted(() => {
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
@@ -1316,15 +1316,15 @@ onMounted(() => {
 }
 
 .btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .btn-link.danger {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .btn-link.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
 }
 
 .table-loading-overlay {
@@ -1346,10 +1346,10 @@ onMounted(() => {
 
 .table-loading-content {
   padding: 20px 40px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
@@ -1364,7 +1364,7 @@ onMounted(() => {
 }
 
 .modal {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   width: 90%;
   max-width: 500px;
@@ -1382,13 +1382,13 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .modal-header h3 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -1398,15 +1398,15 @@ onMounted(() => {
   border-radius: 50%;
   background-color: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 24px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -1421,11 +1421,11 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 12px;
   padding: 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .operate-info {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   padding: 12px;
   border-radius: var(--radius-sm);
 }
@@ -1433,11 +1433,11 @@ onMounted(() => {
 .operate-info p {
   margin: 4px 0;
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .operate-info strong {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 16px;
 }
 
@@ -1452,7 +1452,7 @@ onMounted(() => {
   gap: 6px;
   cursor: pointer;
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .radio-label input {
@@ -1475,23 +1475,23 @@ onMounted(() => {
 .form-group label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .form-group input,
 .form-group select {
   padding: 10px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .spec-search-container {
@@ -1502,16 +1502,16 @@ onMounted(() => {
   width: 100%;
   padding: 10px 12px;
   padding-right: 32px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
 .spec-search-container input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .clear-btn {
@@ -1522,9 +1522,9 @@ onMounted(() => {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.06);
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 16px;
   cursor: pointer;
   display: flex;
@@ -1533,7 +1533,7 @@ onMounted(() => {
 }
 
 .clear-btn:hover {
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
 }
 
@@ -1544,8 +1544,8 @@ onMounted(() => {
   right: 0;
   max-height: 240px;
   overflow-y: auto;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-hover);
   z-index: 100;
@@ -1562,7 +1562,7 @@ onMounted(() => {
 }
 
 .spec-option:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .product-option {
@@ -1575,43 +1575,43 @@ onMounted(() => {
 }
 
 .product-option:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .product-name {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .product-code {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .spec-product {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .spec-code {
   font-size: 12px;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .spec-packaging {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .no-results {
   padding: 20px;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 13px;
 }
 
 .detail-header-info {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   padding: 16px;
   border-radius: var(--radius-md);
   margin-bottom: 16px;
@@ -1630,19 +1630,19 @@ onMounted(() => {
 
 .info-label {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   min-width: 60px;
 }
 
 .info-value {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .info-value.highlight {
   font-size: 18px;
   font-weight: 600;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .detail-batches {
@@ -1654,7 +1654,7 @@ onMounted(() => {
 .detail-batch-section h4 {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0 0 12px 0;
 }
 
@@ -1672,13 +1672,13 @@ onMounted(() => {
   gap: 8px;
   align-items: center;
   padding: 10px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
   font-size: 12px;
 }
 
 .batch-scroll-item .batch-user {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-weight: 500;
 }
 
@@ -1688,7 +1688,7 @@ onMounted(() => {
 }
 
 .batch-scroll-item .batch-time {
-  color: var(--text-muted);
+  color: var(--color-muted);
   text-align: right;
 }
 
@@ -1696,21 +1696,21 @@ onMounted(() => {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 14px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   transition: all var(--transition-fast);
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .btn-primary {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   border: none;
@@ -1718,7 +1718,7 @@ onMounted(() => {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .btn-primary:disabled {
@@ -1750,23 +1750,23 @@ onMounted(() => {
 .detail-tab-btn {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
+  background-color: var(--color-canvas);
+  color: var(--color-muted);
   font-size: 13px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .detail-tab-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .detail-tab-btn.active {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .detail-tab-content {
@@ -1779,7 +1779,7 @@ onMounted(() => {
 
 .batch-detail-item {
   padding: 10px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
   font-size: 12px;
   display: flex;
@@ -1794,26 +1794,26 @@ onMounted(() => {
 }
 
 .batch-detail-label {
-  color: var(--text-muted);
+  color: var(--color-muted);
   min-width: 50px;
 }
 
 .batch-detail-value {
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-weight: 500;
 }
 
 .batch-detail-value.success {
-  color: var(--accent-green);
+  color: var(--color-success);
 }
 
 .text-expired {
-  color: var(--accent-red) !important;
+  color: var(--color-danger) !important;
   font-weight: 600;
 }
 
 .text-expiring {
-  color: var(--accent-yellow) !important;
+  color: var(--color-warning) !important;
   font-weight: 600;
 }
 </style>

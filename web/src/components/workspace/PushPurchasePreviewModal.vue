@@ -193,7 +193,7 @@ const handleClose = () => {
 }
 
 .preview-modal {
-  background: var(--bg-primary);
+  background: var(--color-canvas);
   border-radius: 8px;
   width: 900px;
   max-width: 95vw;
@@ -208,27 +208,27 @@ const handleClose = () => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 16px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .modal-close {
   background: none;
   border: none;
   font-size: 20px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   cursor: pointer;
   padding: 4px;
   line-height: 1;
 }
 
 .modal-close:hover {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -240,7 +240,7 @@ const handleClose = () => {
 .empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .order-list {
@@ -250,7 +250,7 @@ const handleClose = () => {
 }
 
 .order-card {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -260,7 +260,7 @@ const handleClose = () => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: var(--bg-secondary);
+  background: var(--color-canvas);
 }
 
 .order-card-title {
@@ -278,23 +278,23 @@ const handleClose = () => {
 
 .type-tag.direct {
   background: rgba(255, 152, 0, 0.15);
-  color: #ff9800;
+  color: var(--color-warning);
 }
 
 .type-tag.warehouse {
   background: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  color: var(--color-success);
 }
 
 .brand-name {
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .btn-remove-order {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -303,7 +303,7 @@ const handleClose = () => {
 }
 
 .btn-remove-order:hover {
-  color: #ef5350;
+  color: var(--color-danger);
   background: rgba(239, 83, 80, 0.1);
 }
 
@@ -322,7 +322,7 @@ const handleClose = () => {
 
 .field-row label {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   min-width: 70px;
   flex-shrink: 0;
 }
@@ -330,16 +330,16 @@ const handleClose = () => {
 .field-input {
   flex: 1;
   padding: 6px 10px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: 4px;
   font-size: 13px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--color-canvas);
+  color: var(--color-ink);
   outline: none;
 }
 
 .field-input:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .items-table-wrapper {
@@ -356,15 +356,15 @@ const handleClose = () => {
   padding: 8px 12px;
   text-align: left;
   font-weight: 500;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-hairline);
   white-space: nowrap;
 }
 
 .items-table td {
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
+  border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-ink);
 }
 
 .items-table tbody tr:last-child td {
@@ -379,7 +379,7 @@ const handleClose = () => {
 .btn-remove-item {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   cursor: pointer;
   padding: 2px;
   border-radius: 3px;
@@ -388,7 +388,7 @@ const handleClose = () => {
 }
 
 .btn-remove-item:hover {
-  color: #ef5350;
+  color: var(--color-danger);
   background: rgba(239, 83, 80, 0.1);
 }
 
@@ -396,12 +396,12 @@ const handleClose = () => {
   padding: 10px 16px;
   text-align: right;
   font-size: 13px;
-  color: var(--text-secondary);
-  border-top: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .order-card-footer strong {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .modal-footer {
@@ -409,16 +409,16 @@ const handleClose = () => {
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .total-info {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .total-info strong {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 16px;
 }
 
@@ -429,30 +429,30 @@ const handleClose = () => {
 
 .btn-secondary {
   padding: 8px 16px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: 4px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--color-canvas);
+  color: var(--color-ink);
   cursor: pointer;
   font-size: 13px;
 }
 
 .btn-secondary:hover {
-  background: var(--bg-secondary);
+  background: var(--color-canvas);
 }
 
 .btn-primary {
   padding: 8px 16px;
   border: none;
   border-radius: 4px;
-  background: var(--accent-blue);
+  background: var(--color-interactive);
   color: #fff;
   cursor: pointer;
   font-size: 13px;
 }
 
 .btn-primary:hover {
-  background: #0066b3;
+  background: var(--color-interactive);
 }
 
 .btn-primary:disabled {

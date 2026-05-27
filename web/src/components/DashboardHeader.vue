@@ -226,7 +226,7 @@ const handleStorageChange = (event: StorageEvent) => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-interactive), #005a9e);
+  background: linear-gradient(135deg, var(--color-interactive), var(--color-dark-navy));
   display: flex;
   align-items: center;
   justify-content: center;

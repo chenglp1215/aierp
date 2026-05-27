@@ -84,17 +84,17 @@ const handleAction = (actionId: string, row: Record<string, any>) => {
 
 .data-table th {
   padding: 12px 16px;
-  background-color: var(--bg-secondary);
-  color: var(--text-muted);
+  background-color: var(--color-canvas);
+  color: var(--color-muted);
   font-weight: 500;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .data-table td {
   padding: 12px 16px;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .data-table tbody tr {
@@ -125,32 +125,32 @@ const handleAction = (actionId: string, row: Record<string, any>) => {
 
 .action-btn.default {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
 }
 
 .action-btn.default:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .action-btn.primary {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border: none;
 }
 
 .action-btn.primary:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .action-btn.danger {
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   border: none;
 }
 
 .action-btn.danger:hover {
-  background-color: #dc2626;
+  background-color: var(--color-danger);
 }
 </style>

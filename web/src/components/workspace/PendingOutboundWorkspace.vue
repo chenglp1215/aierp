@@ -841,14 +841,14 @@ onUnmounted(() => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
 /* ============ 筛选区 ============ */
 
 .filter-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 16px 20px;
   box-shadow: var(--shadow-card);
@@ -873,10 +873,10 @@ onUnmounted(() => {
 .filter-input,
 .filter-select {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   outline: none;
   transition: border-color var(--transition-fast);
@@ -884,7 +884,7 @@ onUnmounted(() => {
 
 .filter-input:focus,
 .filter-select:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-input {
@@ -898,7 +898,7 @@ onUnmounted(() => {
 .filter-btn {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
   border: none;
@@ -907,18 +907,18 @@ onUnmounted(() => {
 }
 
 .filter-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-btn.reset-btn {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
 }
 
 .filter-btn.reset-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 /* ============ 表格区 ============ */
@@ -927,7 +927,7 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-card);
@@ -947,9 +947,9 @@ onUnmounted(() => {
 
 .table-loading-content {
   padding: 12px 24px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
@@ -958,7 +958,7 @@ onUnmounted(() => {
 .readonly-value {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   padding: 4px 0;
 }
 .status-tag {
@@ -968,13 +968,13 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-.status-tag.pending { background-color: rgba(245,158,11,0.1); color: var(--accent-yellow); }
-.status-tag.partial { background-color: rgba(59,130,246,0.1); color: var(--accent-blue); }
-.status-tag.full { background-color: rgba(16,185,129,0.1); color: var(--accent-green); }
-.status-tag.cancelled { background-color: rgba(128,128,128,0.1); color: var(--text-muted); }
+.status-tag.pending { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.status-tag.partial { background-color: var(--color-info-bg); color: var(--color-interactive); }
+.status-tag.full { background-color: var(--color-success-bg); color: var(--color-success); }
+.status-tag.cancelled { background-color: var(--color-neutral-bg); color: var(--color-muted); }
 
 .text-muted {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 /* ============ 操作按钮 ============ */
@@ -990,7 +990,7 @@ onUnmounted(() => {
   padding: 4px 8px;
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   border-radius: 4px;
@@ -998,11 +998,11 @@ onUnmounted(() => {
 }
 
 .btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
-.btn-link.success { color: var(--accent-green); }
-.btn-link.success:hover { background-color: rgba(16,185,129,0.1); }
+.btn-link.success { color: var(--color-success); }
+.btn-link.success:hover { background-color: var(--color-success-bg); }
 
 /* ============ 弹窗 ============ */
 
@@ -1017,7 +1017,7 @@ onUnmounted(() => {
 }
 
 .modal {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   display: flex;
@@ -1034,14 +1034,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .modal-close {
@@ -1049,7 +1049,7 @@ onUnmounted(() => {
   height: 32px;
   border: none;
   background: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 24px;
   cursor: pointer;
   border-radius: var(--radius-sm);
@@ -1060,8 +1060,8 @@ onUnmounted(() => {
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -1076,7 +1076,7 @@ onUnmounted(() => {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 /* ============ 详情展示 ============ */
@@ -1103,13 +1103,13 @@ onUnmounted(() => {
 
 .detail-item label {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-weight: 500;
 }
 
 .detail-item span {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 /* ============ 表单 ============ */
@@ -1137,23 +1137,23 @@ onUnmounted(() => {
 
 .form-group label {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-weight: 500;
 }
 
 .form-control {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
   outline: none;
   transition: border-color var(--transition-fast);
 }
 
 .form-control:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 /* ============ 按钮 ============ */
@@ -1161,8 +1161,8 @@ onUnmounted(() => {
 .btn-secondary {
   padding: 8px 16px;
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   font-size: 14px;
   cursor: pointer;
@@ -1170,12 +1170,12 @@ onUnmounted(() => {
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 .btn-primary {
   padding: 8px 16px;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -1185,7 +1185,7 @@ onUnmounted(() => {
 }
 
 .btn-primary:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .btn-primary:disabled {
@@ -1198,20 +1198,20 @@ onUnmounted(() => {
 .batch-select-section {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .batch-select-section h4 {
   margin: 0 0 12px 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .batch-loading {
   text-align: center;
   padding: 16px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 13px;
 }
 
@@ -1226,15 +1226,15 @@ onUnmounted(() => {
   padding: 8px 12px;
   text-align: left;
   font-weight: 500;
-  color: var(--text-secondary);
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--color-muted);
+  background-color: var(--color-canvas);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .batch-table td {
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
+  border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-ink);
 }
 
 .batch-table tr.batch-expired {
@@ -1242,27 +1242,27 @@ onUnmounted(() => {
 }
 
 .batch-table tr.batch-expired td {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .batch-table tr.batch-expiring td {
-  color: var(--accent-yellow);
+  color: var(--color-warning);
 }
 
 .batch-qty-input {
   width: 80px;
   padding: 4px 8px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   text-align: right;
   outline: none;
 }
 
 .batch-qty-input:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .batch-qty-input:disabled {
@@ -1280,17 +1280,17 @@ onUnmounted(() => {
 
 .batch-status.expired {
   background-color: rgba(245, 108, 108, 0.15);
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .batch-status.expiring {
   background-color: rgba(230, 162, 60, 0.15);
-  color: var(--accent-yellow);
+  color: var(--color-warning);
 }
 
 .batch-status.normal {
   background-color: rgba(103, 194, 58, 0.15);
-  color: var(--accent-green);
+  color: var(--color-success);
 }
 
 .batch-summary {
@@ -1298,12 +1298,12 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   padding: 8px 0;
 }
 
 .batch-error {
-  color: var(--accent-red);
+  color: var(--color-danger);
   font-weight: 500;
 }
 
@@ -1312,7 +1312,7 @@ onUnmounted(() => {
 .select-all-banner {
   margin-bottom: 12px;
   padding: 10px 16px;
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
   border-radius: var(--radius-sm);
   border: 1px solid rgba(0, 120, 212, 0.2);
 }
@@ -1322,7 +1322,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .banner-icon {
@@ -1334,7 +1334,7 @@ onUnmounted(() => {
 .banner-link {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1350,7 +1350,7 @@ onUnmounted(() => {
   margin-left: auto;
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 18px;
   cursor: pointer;
   padding: 0 4px;
@@ -1358,7 +1358,7 @@ onUnmounted(() => {
 }
 
 .banner-close:hover {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 /* ============ 批量操作下拉菜单 ============ */
@@ -1374,23 +1374,23 @@ onUnmounted(() => {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
   font-size: 13px;
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
+  border: 1px solid var(--color-hairline);
+  background-color: var(--color-canvas);
+  color: var(--color-muted);
   cursor: not-allowed;
   transition: all var(--transition-fast);
   user-select: none;
 }
 
 .batch-action-btn.active {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
   cursor: pointer;
 }
 
 .batch-action-btn.active:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .batch-count {
@@ -1412,8 +1412,8 @@ onUnmounted(() => {
   top: calc(100% + 6px);
   right: 0;
   min-width: 160px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-hover);
   z-index: 200;
@@ -1428,7 +1428,7 @@ onUnmounted(() => {
   padding: 10px 16px;
   background: none;
   border: none;
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
   transition: background-color var(--transition-fast);
@@ -1436,13 +1436,13 @@ onUnmounted(() => {
 }
 
 .batch-dropdown-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 .batch-dropdown-item svg {
   width: 16px;
   height: 16px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 /* ============ 响应式 ============ */
@@ -1468,29 +1468,29 @@ onUnmounted(() => {
 }
 
 .warning-text {
-  color: var(--accent-yellow);
+  color: var(--color-warning);
   font-size: 14px;
   margin-bottom: 16px;
   padding: 8px 12px;
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--color-warning-bg);
   border-radius: 4px;
 }
 .btn-link.primary {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 .btn-link.warning {
-  color: var(--accent-yellow);
+  color: var(--color-warning);
 }
 .btn-danger {
   padding: 8px 20px;
-  background: var(--accent-red);
+  background: var(--color-danger);
   color: #fff;
   border: none;
   border-radius: 4px;
   cursor: pointer;
 }
 .btn-danger:hover {
-  background: var(--accent-red);
+  background: var(--color-danger);
   filter: brightness(1.15);
 }
 .btn-danger:disabled {
@@ -1498,8 +1498,8 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 .status-tag.shipped {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 /* 数量合并列样式 */
@@ -1518,13 +1518,13 @@ onUnmounted(() => {
 
 .qty-label {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   min-width: 28px;
 }
 
 .qty-value {
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-weight: 500;
 }
 
@@ -1536,32 +1536,32 @@ onUnmounted(() => {
 }
 
 .receiver-phone {
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 12px;
 }
 
 /* 物流状态标签样式 */
-.status-tag.logistics-pending { background-color: rgba(245,158,11,0.1); color: var(--accent-yellow); }
-.status-tag.logistics-picked-up { background-color: rgba(59,130,246,0.1); color: var(--accent-blue); }
-.status-tag.logistics-in-transit { background-color: rgba(99,102,241,0.1); color: #6366f1; }
-.status-tag.logistics-delivered { background-color: rgba(16,185,129,0.1); color: var(--accent-green); }
-.status-tag.logistics-exception { background-color: rgba(245,108,108,0.15); color: var(--accent-red); }
+.status-tag.logistics-pending { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.status-tag.logistics-picked-up { background-color: var(--color-info-bg); color: var(--color-interactive); }
+.status-tag.logistics-in-transit { background-color: rgba(99,102,241,0.1); color: var(--color-accent); }
+.status-tag.logistics-delivered { background-color: var(--color-success-bg); color: var(--color-success); }
+.status-tag.logistics-exception { background-color: rgba(245,108,108,0.15); color: var(--color-danger); }
 
 /* ============ vxe-table 行 hover/焦点覆盖 ============ */
 
 :deep(.vxe-body--column) {
   &.expand--cell,
   &.col--actived {
-    background-color: var(--bg-card) !important;
+    background-color: var(--color-canvas) !important;
   }
 }
 
 :deep(.vxe-body--row) > td {
-  background-color: var(--bg-card) !important;
+  background-color: var(--color-canvas) !important;
 }
 
 :deep(.vxe-body--row:hover) > td {
-  background-color: var(--bg-secondary) !important;
+  background-color: var(--color-canvas) !important;
 }
 
 /* ============ 亮色主题覆盖 ============ */
@@ -1575,11 +1575,11 @@ onUnmounted(() => {
 [data-theme="light"] .btn-secondary:hover,
 [data-theme="light"] .modal-close:hover {
   background-color: rgba(0, 0, 0, 0.05);
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 [data-theme="light"] .warning-text {
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--color-warning-bg);
 }
 
 [data-theme="light"] .batch-action-btn:not(.active) {

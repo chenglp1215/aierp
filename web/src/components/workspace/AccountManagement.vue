@@ -63,13 +63,13 @@ const switchTab = (tab: TabType) => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .tabs-bar {
   display: flex;
   gap: 4px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 8px;
   box-shadow: var(--shadow-card);
@@ -79,7 +79,7 @@ const switchTab = (tab: TabType) => {
   padding: 10px 24px;
   border-radius: var(--radius-md);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 14px;
   font-weight: 500;
   border: none;
@@ -88,12 +88,12 @@ const switchTab = (tab: TabType) => {
 }
 
 .tab-btn:hover {
-  color: var(--text-primary);
-  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-ink);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 .tab-btn.active {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
 }
 

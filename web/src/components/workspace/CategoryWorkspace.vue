@@ -197,7 +197,7 @@ const getLevelColor = (level: number) => {
     2: 'var(--color-success)',
     3: 'var(--accent-orange)'
   }
-  return colors[level] || 'var(--text-muted)'
+  return colors[level] || 'var(--color-muted)'
 }
 
 onMounted(() => {
@@ -439,7 +439,7 @@ onMounted(() => {
   gap: 8px;
   padding: 12px 16px;
   background-color: var(--color-neutral-bg);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   font-size: 12px;
   font-weight: 500;
   color: var(--color-muted);
@@ -456,7 +456,7 @@ onMounted(() => {
   gap: 8px;
   padding: 10px 16px;
   align-items: center;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   cursor: pointer;
   transition: background-color var(--transition-fast);
   font-size: 13px;
@@ -621,7 +621,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .modal-header h3 {
@@ -718,7 +718,7 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .btn-secondary {

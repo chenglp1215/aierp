@@ -401,7 +401,7 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   padding: 4px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
 }
 
@@ -415,7 +415,7 @@ onMounted(() => {
   border: none;
   border-radius: var(--radius-md);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -423,12 +423,12 @@ onMounted(() => {
 }
 
 .tab-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .tab-btn.active {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   box-shadow: 0 2px 8px rgba(0, 120, 212, 0.3);
 }
@@ -443,7 +443,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 14px;
 }
 

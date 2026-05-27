@@ -556,7 +556,7 @@ onMounted(() => {
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid var(--border-color);
+  border: 3px solid var(--color-hairline);
   border-top-color: var(--color-interactive);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -694,7 +694,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .modal-header h3 {
@@ -832,7 +832,7 @@ onMounted(() => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   border: none;
   cursor: pointer;
@@ -849,7 +849,7 @@ onMounted(() => {
   justify-content: center;
   width: 120px;
   height: 120px;
-  border: 2px dashed var(--border-color);
+  border: 2px dashed var(--color-hairline);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -875,7 +875,7 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .btn-secondary {
@@ -917,7 +917,7 @@ onMounted(() => {
 .btn-danger {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   font-size: 14px;
   border: none;
@@ -937,8 +937,8 @@ onMounted(() => {
 
 <style>
 .vxe-pager {
-  background-color: var(--bg-card) !important;
-  border-top: 1px solid var(--border-color);
+  background-color: var(--color-canvas) !important;
+  border-top: 1px solid var(--color-hairline);
 }
 
 .vxe-pager * {
@@ -955,24 +955,24 @@ onMounted(() => {
 .vxe-pager .vxe-pager--goto {
   background-color: transparent !important;
   border: none !important;
-  color: var(--text-secondary) !important;
+  color: var(--color-muted) !important;
 }
 
 .vxe-pager .vxe-pager--num-btn.is--active {
-  background-color: var(--accent-blue) !important;
+  background-color: var(--color-interactive) !important;
   color: white !important;
   border-color: var(--color-interactive);
 }
 
 .vxe-pager .vxe-pager--sizes .vxe-input,
 .vxe-pager--sizes .vxe-input {
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-color) !important;
+  background-color: var(--color-canvas) !important;
+  border: 1px solid var(--color-hairline) !important;
 }
 
 .vxe-pager .vxe-pager--total {
   background-color: transparent !important;
-  color: var(--text-secondary) !important;
+  color: var(--color-muted) !important;
 }
 
 </style>
