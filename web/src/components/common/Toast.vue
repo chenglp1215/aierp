@@ -84,9 +84,9 @@ defineExpose({ success, error, warning, info })
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 280px;
   max-width: 400px;
@@ -94,35 +94,35 @@ defineExpose({ success, error, warning, info })
 }
 
 .toast.success {
-  border-left: 4px solid var(--accent-green);
+  border-left: 4px solid var(--color-success);
 }
 
 .toast.success .toast-icon {
-  color: var(--accent-green);
+  color: var(--color-success);
 }
 
 .toast.error {
-  border-left: 4px solid var(--accent-red);
+  border-left: 4px solid var(--color-danger);
 }
 
 .toast.error .toast-icon {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .toast.warning {
-  border-left: 4px solid var(--accent-yellow);
+  border-left: 4px solid var(--color-warning);
 }
 
 .toast.warning .toast-icon {
-  color: var(--accent-yellow);
+  color: var(--color-warning);
 }
 
 .toast.info {
-  border-left: 4px solid var(--accent-blue);
+  border-left: 4px solid var(--color-interactive);
 }
 
 .toast.info .toast-icon {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .toast-icon {
@@ -139,7 +139,7 @@ defineExpose({ success, error, warning, info })
 .toast-message {
   flex: 1;
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .toast-close {
@@ -149,7 +149,7 @@ defineExpose({ success, error, warning, info })
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--color-muted);
   cursor: pointer;
   border-radius: 4px;
   display: flex;
@@ -159,8 +159,8 @@ defineExpose({ success, error, warning, info })
 }
 
 .toast-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-ink);
 }
 
 .toast-close svg {

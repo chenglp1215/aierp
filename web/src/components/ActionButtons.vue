@@ -60,13 +60,13 @@ const handleClick = (id: string) => {
   font-size: 14px;
   font-weight: 500;
   transition: all var(--transition-fast);
-  background-color: var(--bg-card);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline);
 }
 
 .action-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.06);
   transform: translateY(-1px);
 }
 
@@ -75,17 +75,17 @@ const handleClick = (id: string) => {
 }
 
 .action-btn.primary {
-  background-color: var(--accent-blue);
-  border-color: var(--accent-blue);
+  background-color: var(--color-interactive);
+  border-color: var(--color-interactive);
   color: white;
 }
 
 .action-btn.primary:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .action-btn.secondary {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
 }
 
 .btn-icon {
@@ -108,7 +108,7 @@ const handleClick = (id: string) => {
 .btn-badge {
   padding: 2px 8px;
   border-radius: 10px;
-  background-color: var(--accent-green);
+  background-color: var(--color-success);
   color: white;
   font-size: 10px;
   font-weight: 600;

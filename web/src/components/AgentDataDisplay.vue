@@ -300,7 +300,7 @@ const effectiveListData = computed(() => {
 .data-list-container {
   overflow-x: auto;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .data-table {
@@ -310,12 +310,12 @@ const effectiveListData = computed(() => {
 }
 
 .data-table th {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   padding: 10px 14px;
   text-align: left;
   font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-hairline);
   white-space: nowrap;
 }
 
@@ -329,21 +329,21 @@ const effectiveListData = computed(() => {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: var(--accent-blue);
+  accent-color: var(--color-interactive);
 }
 
 .data-table tbody tr.selected {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .data-table td {
   padding: 10px 14px;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .data-table tbody tr:hover {
-  background-color: rgba(0, 120, 212, 0.05);
+  background-color: rgba(24, 99, 220, 0.06);
 }
 
 .data-table tbody tr:last-child td {
@@ -355,16 +355,16 @@ const effectiveListData = computed(() => {
   flex-direction: column;
   gap: 6px;
   padding: 12px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .info-item {
   display: flex;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .info-item:last-child {
@@ -374,12 +374,12 @@ const effectiveListData = computed(() => {
 .info-label {
   min-width: 100px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .info-value {
   flex: 1;
-  color: var(--text-primary);
+  color: var(--color-ink);
   word-break: break-word;
 }
 
@@ -388,9 +388,9 @@ const effectiveListData = computed(() => {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .form-item {
@@ -398,7 +398,7 @@ const effectiveListData = computed(() => {
   flex-direction: column;
   gap: 6px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .form-item:last-child {
@@ -407,7 +407,7 @@ const effectiveListData = computed(() => {
 
 .form-label {
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 13px;
 }
 
@@ -418,53 +418,53 @@ const effectiveListData = computed(() => {
 .form-select {
   width: 100%;
   padding: 8px 12px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
 }
 
 .form-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .form-input {
   width: 100%;
   padding: 8px 12px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .form-input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .form-value {
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .data-fallback {
   padding: 12px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .fallback-title {
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
   margin-bottom: 8px;
   font-size: 12px;
 }
@@ -472,10 +472,10 @@ const effectiveListData = computed(() => {
 .fallback-content {
   margin: 0;
   padding: 8px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
@@ -486,13 +486,13 @@ const effectiveListData = computed(() => {
   flex-direction: column;
   gap: 10px;
   padding-top: 12px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .next-step-label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .next-step-buttons {
@@ -503,7 +503,7 @@ const effectiveListData = computed(() => {
 
 .next-step-btn {
   padding: 8px 16px;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -514,7 +514,7 @@ const effectiveListData = computed(() => {
 }
 
 .next-step-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
   transform: translateY(-1px);
 }
 
@@ -524,13 +524,13 @@ const effectiveListData = computed(() => {
 
 .data-error {
   padding: 12px;
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--accent-red);
+  border: 1px solid var(--color-danger);
 }
 
 .error-text {
-  color: var(--accent-red);
+  color: var(--color-danger);
   font-size: 13px;
 }
 </style>

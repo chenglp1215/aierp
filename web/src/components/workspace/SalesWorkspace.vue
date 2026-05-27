@@ -465,13 +465,13 @@ onMounted(() => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .primary-btn {
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -481,12 +481,12 @@ onMounted(() => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 /* 筛选区域 */
 .filter-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 16px 20px;
   box-shadow: var(--shadow-card);
@@ -512,24 +512,24 @@ onMounted(() => {
 .filter-input {
   width: 100%;
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .filter-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-select {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
   min-width: 120px;
@@ -538,7 +538,7 @@ onMounted(() => {
 .filter-btn {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
   border: none;
@@ -547,18 +547,18 @@ onMounted(() => {
 }
 
 .filter-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-btn.reset-btn {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
 }
 
 .filter-btn.reset-btn:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--color-ink);
 }
 
 /* 批量操作 */
@@ -567,20 +567,20 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
   border-radius: var(--radius-md);
 }
 
 .selected-count {
   font-size: 14px;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-weight: 500;
 }
 
 .batch-btn {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
   border: none;
@@ -589,23 +589,23 @@ onMounted(() => {
 }
 
 .batch-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .batch-btn.secondary {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
 }
 
 .batch-btn.secondary:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--color-ink);
 }
 
 /* 表格区域 */
 .table-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-card);
@@ -621,26 +621,26 @@ onMounted(() => {
 .data-table td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .data-table th {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
+  color: var(--color-muted);
+  background-color: var(--color-neutral-bg);
 }
 
 .data-table td {
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .loading-cell,
 .empty-cell {
   text-align: center;
   padding: 40px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 /* 状态标签 */
@@ -651,33 +651,33 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.status-tag.draft { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
-.status-tag.pending { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
-.status-tag.audited { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
-.status-tag.partial-pushed { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
-.status-tag.pushed { background-color: rgba(139, 92, 246, 0.1); color: var(--accent-purple); }
-.status-tag.closed { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
-.status-tag.cancelled { background-color: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
-.status-tag.none { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
-.status-tag.partial { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
-.status-tag.full { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+.status-tag.draft { background-color: var(--color-neutral-bg); color: var(--color-muted); }
+.status-tag.pending { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.status-tag.audited { background-color: var(--color-info-bg); color: var(--color-interactive); }
+.status-tag.partial-pushed { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.status-tag.pushed { background-color: var(--color-accent-soft); color: var(--color-accent); }
+.status-tag.closed { background-color: var(--color-success-bg); color: var(--color-success); }
+.status-tag.cancelled { background-color: var(--color-danger-bg); color: var(--color-danger); }
+.status-tag.none { background-color: var(--color-neutral-bg); color: var(--color-muted); }
+.status-tag.partial { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.status-tag.full { background-color: var(--color-success-bg); color: var(--color-success); }
 
 /* 展开行 */
 .expand-btn {
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   cursor: pointer;
   padding: 4px;
   font-size: 12px;
 }
 
 .expand-btn:hover {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .expanded-row {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
 }
 
 .expanded-content {
@@ -687,7 +687,7 @@ onMounted(() => {
 .items-detail-table {
   width: 100%;
   border-collapse: collapse;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -696,31 +696,31 @@ onMounted(() => {
 .items-detail-table td {
   padding: 8px 12px;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   font-size: 12px;
 }
 
 .items-detail-table th {
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
+  color: var(--color-muted);
+  background-color: var(--color-neutral-bg);
 }
 
 .items-detail-table td {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 /* 选中行 */
 .selected-row {
-  background-color: rgba(0, 120, 212, 0.05) !important;
+  background-color: var(--color-info-bg) !important;
 }
 
 /* 利润颜色 */
 .profit-positive {
-  color: var(--accent-green);
+  color: var(--color-success);
 }
 
 .profit-negative {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 /* 操作按钮 */
@@ -732,7 +732,7 @@ onMounted(() => {
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
@@ -742,28 +742,28 @@ onMounted(() => {
 }
 
 .btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .btn-link.highlight {
-  color: var(--accent-green);
+  color: var(--color-success);
   font-weight: 500;
 }
 
 .btn-link.success {
-  color: var(--accent-green);
+  color: var(--color-success);
 }
 
 .btn-link.success:hover {
-  background-color: rgba(16, 185, 129, 0.1);
+  background-color: var(--color-success-bg);
 }
 
 .btn-link.warning {
-  color: var(--accent-yellow);
+  color: var(--color-warning);
 }
 
 .btn-link.warning:hover {
-  background-color: rgba(245, 158, 11, 0.1);
+  background-color: var(--color-warning-bg);
 }
 
 /* 分页 */
@@ -774,29 +774,29 @@ onMounted(() => {
   gap: 16px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .pagination-info {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .pagination-btn {
   padding: 6px 12px;
   border-radius: var(--radius-sm);
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  background-color: var(--color-neutral-bg);
+  color: var(--color-ink);
   font-size: 13px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   transition: all var(--transition-fast);
   cursor: pointer;
 }
 
 .pagination-btn:hover:not(:disabled) {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .pagination-btn:disabled {
@@ -806,6 +806,6 @@ onMounted(() => {
 
 .pagination-current {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 </style>

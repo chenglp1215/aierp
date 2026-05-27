@@ -114,7 +114,7 @@ const handleAction = (actionId: string, row: any) => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .header-actions {
@@ -125,7 +125,7 @@ const handleAction = (actionId: string, row: any) => {
 .primary-btn {
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -133,7 +133,7 @@ const handleAction = (actionId: string, row: any) => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .stats-row {
@@ -143,7 +143,7 @@ const handleAction = (actionId: string, row: any) => {
 }
 
 .stat-box {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 20px;
   display: flex;
@@ -154,22 +154,22 @@ const handleAction = (actionId: string, row: any) => {
 
 .stat-label {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .stat-value {
   font-size: 24px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .stat-sub {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .table-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-card);
@@ -185,7 +185,7 @@ const handleAction = (actionId: string, row: any) => {
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .section-actions {
@@ -197,14 +197,14 @@ const handleAction = (actionId: string, row: any) => {
   padding: 6px 14px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 13px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   transition: all var(--transition-fast);
 }
 
 .action-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 </style>

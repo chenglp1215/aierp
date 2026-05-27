@@ -336,16 +336,16 @@ const formatDiscount = (value: number) => {
   height: 36px;
   padding: 0;
   background-color: transparent;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--color-muted);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .icon-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .refresh-icon {
@@ -359,17 +359,17 @@ const formatDiscount = (value: number) => {
   gap: 4px;
   padding: 8px 12px;
   background-color: transparent;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 13px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .back-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .back-icon {
@@ -379,12 +379,12 @@ const formatDiscount = (value: number) => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
 .table-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
@@ -398,7 +398,7 @@ const formatDiscount = (value: number) => {
 
 .discount-value {
   font-weight: 600;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .status-tag {
@@ -409,13 +409,13 @@ const formatDiscount = (value: number) => {
 }
 
 .status-tag.active {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .status-tag.inactive {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: var(--accent-yellow);
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .action-btns {
@@ -428,7 +428,7 @@ const formatDiscount = (value: number) => {
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
@@ -438,15 +438,15 @@ const formatDiscount = (value: number) => {
 }
 
 .btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .btn-link.danger {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .btn-link.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
 }
 
 .modal-overlay {
@@ -460,7 +460,7 @@ const formatDiscount = (value: number) => {
 }
 
 .modal {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   width: 95%;
   max-width: 500px;
@@ -478,17 +478,17 @@ const formatDiscount = (value: number) => {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   position: sticky;
   top: 0;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   z-index: 1;
 }
 
 .modal-header h3 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -498,15 +498,15 @@ const formatDiscount = (value: number) => {
   border-radius: 50%;
   background-color: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 24px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -521,10 +521,10 @@ const formatDiscount = (value: number) => {
   justify-content: flex-end;
   gap: 12px;
   padding: 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
   position: sticky;
   bottom: 0;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
 }
 
 .form-group {
@@ -536,27 +536,27 @@ const formatDiscount = (value: number) => {
 .form-group label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .form-group .required {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .form-group input,
 .form-group select {
   padding: 10px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .discount-input-group {
@@ -567,7 +567,7 @@ const formatDiscount = (value: number) => {
 
 .discount-hint {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .checkbox-label {
@@ -585,22 +585,22 @@ const formatDiscount = (value: number) => {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 14px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .btn-primary {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   border: none;
@@ -609,7 +609,7 @@ const formatDiscount = (value: number) => {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .btn-primary:disabled {
@@ -620,7 +620,7 @@ const formatDiscount = (value: number) => {
 .primary-btn {
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -630,7 +630,7 @@ const formatDiscount = (value: number) => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .table-loading-overlay {
@@ -652,10 +652,9 @@ const formatDiscount = (value: number) => {
 
 .table-loading-content {
   padding: 20px 40px;
-  background-color: var(--bg-card);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  color: var(--text-primary);
+  background-color: var(--color-canvas);
+  border-radius: var(--radius-sm);
+    color: var(--color-ink);
   font-size: 14px;
 }
 </style>

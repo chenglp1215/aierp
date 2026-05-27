@@ -569,14 +569,14 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   align-items: center;
   justify-content: center;
   padding: 80px 20px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .loading-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--accent-blue);
+  border: 3px solid var(--color-hairline);
+  border-top-color: var(--color-interactive);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 12px;
@@ -591,11 +591,11 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   justify-content: space-between;
   margin-bottom: 20px;
   padding: 14px 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--bg-primary);
+  background: var(--color-canvas);
 }
 
 .header-left {
@@ -610,23 +610,23 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   gap: 6px;
   padding: 7px 12px;
   background: none;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 13px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .back-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .order-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -649,7 +649,7 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 
 /* 区块卡片 */
 .section-card {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
   box-shadow: var(--shadow-card);
@@ -659,10 +659,10 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 .section-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0 0 14px 0;
   padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 /* 信息网格 */
@@ -680,12 +680,12 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 
 .info-item label {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .info-item span {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 /* 信息行内 */
@@ -697,11 +697,11 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 
 .info-tag {
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .info-tag strong {
-  color: var(--text-secondary);
+  color: var(--color-muted);
   margin-right: 4px;
 }
 
@@ -720,7 +720,7 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 
 .status-row label {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   min-width: 70px;
 }
 
@@ -733,15 +733,15 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   white-space: nowrap;
 }
 
-.status-tag.pending-review { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
-.status-tag.ready-purchase { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
-.status-tag.purchasing { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
-.status-tag.completed { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
-.status-tag.closed { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
-.status-tag.cancelled { background-color: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
-.status-tag.none { background-color: rgba(128, 128, 128, 0.1); color: var(--text-muted); }
-.status-tag.partial { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); }
-.status-tag.full { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+.status-tag.pending-review { background-color: var(--color-neutral-bg); color: var(--color-muted); }
+.status-tag.ready-purchase { background-color: var(--color-info-bg); color: var(--color-interactive); }
+.status-tag.purchasing { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.status-tag.completed { background-color: var(--color-success-bg); color: var(--color-success); }
+.status-tag.closed { background-color: var(--color-success-bg); color: var(--color-success); }
+.status-tag.cancelled { background-color: var(--color-danger-bg); color: var(--color-danger); }
+.status-tag.none { background-color: var(--color-neutral-bg); color: var(--color-muted); }
+.status-tag.partial { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.status-tag.full { background-color: var(--color-success-bg); color: var(--color-success); }
 
 /* 物流表单 */
 .logistics-form {
@@ -764,21 +764,21 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 
 .form-item label {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .form-item input {
   padding: 8px 10px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .form-item input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .form-actions {
@@ -800,17 +800,17 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 .data-table th {
   text-align: left;
   padding: 9px 12px;
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
+  background-color: var(--color-neutral-bg);
+  color: var(--color-muted);
   font-weight: 500;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   white-space: nowrap;
 }
 
 .data-table td {
   padding: 9px 12px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
+  border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-ink);
 }
 
 .col-num {
@@ -819,7 +819,7 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 }
 
 .order-link {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   cursor: pointer;
   text-decoration: none;
 }
@@ -843,17 +843,17 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 
 .amount-label {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .amount-value {
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .amount-row.highlight .amount-value {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 17px;
 }
 
@@ -861,23 +861,23 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 .supplier-select {
   width: 100%;
   padding: 6px 10px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
 }
 
 .supplier-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 /* 备注 */
 .remarks-text {
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   line-height: 1.6;
   margin: 0;
 }
@@ -886,7 +886,7 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 .empty-state {
   padding: 28px;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 13px;
 }
 
@@ -903,7 +903,7 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   top: 0;
   bottom: 0;
   width: 2px;
-  background-color: var(--border-color);
+  background-color: var(--color-hairline);
 }
 
 .flow-item {
@@ -920,8 +920,8 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background-color: var(--accent-blue);
-  border: 2px solid var(--bg-card);
+  background-color: var(--color-interactive);
+  border: 2px solid var(--color-canvas);
 }
 
 .flow-content {
@@ -930,19 +930,19 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   gap: 3px;
 }
 
-.flow-time { font-size: 12px; color: var(--text-muted); }
-.flow-desc { font-size: 13px; color: var(--text-primary); }
+.flow-time { font-size: 12px; color: var(--color-muted); }
+.flow-desc { font-size: 13px; color: var(--color-ink); }
 .flow-field { font-weight: 500; margin-right: 8px; }
-.flow-old { color: var(--text-muted); text-decoration: line-through; margin-right: 4px; }
-.flow-arrow { color: var(--text-muted); margin-right: 4px; }
-.flow-new { color: var(--accent-blue); font-weight: 500; }
-.flow-operator { font-size: 12px; color: var(--text-muted); }
-.flow-remark { font-size: 12px; color: var(--text-muted); font-style: italic; }
+.flow-old { color: var(--color-muted); text-decoration: line-through; margin-right: 4px; }
+.flow-arrow { color: var(--color-muted); margin-right: 4px; }
+.flow-new { color: var(--color-interactive); font-weight: 500; }
+.flow-operator { font-size: 12px; color: var(--color-muted); }
+.flow-remark { font-size: 12px; color: var(--color-muted); font-style: italic; }
 
 /* 按钮 */
 .btn-primary {
   padding: 8px 16px;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -951,12 +951,12 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   transition: all var(--transition-fast);
 }
 
-.btn-primary:hover { background-color: var(--accent-blue-hover); }
+.btn-primary:hover { background-color: var(--color-interactive-hover); }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-warning {
   padding: 8px 16px;
-  background-color: #f59e0b;
+  background-color: var(--color-warning);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -965,12 +965,12 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   transition: all var(--transition-fast);
 }
 
-.btn-warning:hover { background-color: #d97706; }
+.btn-warning:hover { background-color: var(--color-warning); filter: brightness(1.15); }
 .btn-warning:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-danger {
   padding: 8px 16px;
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -979,7 +979,7 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   transition: all var(--transition-fast);
 }
 
-.btn-danger:hover { background-color: #dc2626; }
+.btn-danger:hover { background-color: var(--color-danger); filter: brightness(1.15); }
 .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ============ 物流信息弹窗 ============ */
@@ -1013,22 +1013,22 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 .logistics-modal .form-group label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .logistics-modal .form-group input {
   padding: 8px 12px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   font-size: 14px;
-  background-color: var(--bg-card);
-  color: var(--text-primary);
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   transition: border-color 0.2s;
 }
 
 .logistics-modal .form-group input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .logistics-modal .modal-footer {
@@ -1036,7 +1036,7 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 @media (max-width: 900px) {

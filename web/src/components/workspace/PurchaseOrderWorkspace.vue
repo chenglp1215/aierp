@@ -1764,13 +1764,13 @@ onBeforeUnmount(() => {
 .workspace-title {
   font-size: 24px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
 .primary-btn {
   padding: 10px 20px;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -1781,13 +1781,13 @@ onBeforeUnmount(() => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 /* ============ 筛选区 ============ */
 
 .filter-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 16px 20px;
   box-shadow: var(--shadow-card);
@@ -1812,10 +1812,10 @@ onBeforeUnmount(() => {
 .filter-input,
 .filter-select {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   outline: none;
   transition: border-color var(--transition-fast);
@@ -1823,7 +1823,7 @@ onBeforeUnmount(() => {
 
 .filter-input:focus,
 .filter-select:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-input {
@@ -1837,7 +1837,7 @@ onBeforeUnmount(() => {
 .filter-btn {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
   border: none;
@@ -1846,25 +1846,25 @@ onBeforeUnmount(() => {
 }
 
 .filter-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-btn.reset-btn {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
 }
 
 .filter-btn.reset-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 /* ============ 表格区 ============ */
 
 .table-section {
   flex: 1;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-card);
@@ -1883,14 +1883,14 @@ onBeforeUnmount(() => {
 
 .table-loading-content {
   padding: 12px 24px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
 .order-link {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   cursor: pointer;
   text-decoration: none;
 }
@@ -1908,13 +1908,13 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
-.status-tag.draft { background-color: rgba(128,128,128,0.1); color: var(--text-muted); }
-.status-tag.audited { background-color: rgba(59,130,246,0.1); color: var(--accent-blue); }
-.status-tag.closed { background-color: rgba(16,185,129,0.1); color: var(--accent-green); }
-.status-tag.cancelled { background-color: rgba(239,68,68,0.1); color: var(--accent-red); }
-.status-tag.none { background-color: rgba(128,128,128,0.1); color: var(--text-muted); }
-.status-tag.partial { background-color: rgba(245,158,11,0.1); color: var(--accent-yellow); }
-.status-tag.full { background-color: rgba(16,185,129,0.1); color: var(--accent-green); }
+.status-tag.draft { background-color: rgba(128,128,128,0.1); color: var(--color-muted); }
+.status-tag.audited { background-color: rgba(59,130,246,0.1); color: var(--color-interactive); }
+.status-tag.closed { background-color: var(--color-success-bg); color: var(--color-success); }
+.status-tag.cancelled { background-color: var(--color-danger-bg); color: var(--color-danger); }
+.status-tag.none { background-color: rgba(128,128,128,0.1); color: var(--color-muted); }
+.status-tag.partial { background-color: rgba(245,158,11,0.1); color: var(--color-warning); }
+.status-tag.full { background-color: var(--color-success-bg); color: var(--color-success); }
 
 .type-tag {
   display: inline-block;
@@ -1923,8 +1923,8 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
-.type-tag.direct { background-color: rgba(59,130,246,0.1); color: var(--accent-blue); }
-.type-tag.warehouse { background-color: rgba(16,185,129,0.1); color: var(--accent-green); }
+.type-tag.direct { background-color: rgba(59,130,246,0.1); color: var(--color-interactive); }
+.type-tag.warehouse { background-color: var(--color-success-bg); color: var(--color-success); }
 
 /* ============ 操作按钮 ============ */
 
@@ -1939,7 +1939,7 @@ onBeforeUnmount(() => {
   padding: 4px 8px;
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   border-radius: 4px;
@@ -1947,21 +1947,21 @@ onBeforeUnmount(() => {
 }
 
 .btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
-.btn-link.danger { color: var(--accent-red); }
-.btn-link.danger:hover { background-color: rgba(239,68,68,0.1); }
-.btn-link.success { color: var(--accent-green); }
-.btn-link.success:hover { background-color: rgba(16,185,129,0.1); }
-.btn-link.warning { color: var(--accent-yellow); }
+.btn-link.danger { color: var(--color-danger); }
+.btn-link.danger:hover { background-color: var(--color-danger-bg); }
+.btn-link.success { color: var(--color-success); }
+.btn-link.success:hover { background-color: var(--color-success-bg); }
+.btn-link.warning { color: var(--color-warning); }
 .btn-link.warning:hover { background-color: rgba(245,158,11,0.1); }
 
 /* ============ 展开行 ============ */
 
 .expand-items-panel {
   padding: 12px 20px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
 }
 
 .expand-items-table {
@@ -1973,15 +1973,15 @@ onBeforeUnmount(() => {
 .expand-items-table th {
   padding: 8px 12px;
   text-align: left;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-weight: 500;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .expand-items-table td {
   padding: 8px 12px;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 /* ============ 弹窗 ============ */
@@ -1997,7 +1997,7 @@ onBeforeUnmount(() => {
 }
 
 .modal {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   display: flex;
@@ -2024,14 +2024,14 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .modal-close {
@@ -2039,7 +2039,7 @@ onBeforeUnmount(() => {
   height: 32px;
   border: none;
   background: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 24px;
   cursor: pointer;
   border-radius: var(--radius-sm);
@@ -2050,8 +2050,8 @@ onBeforeUnmount(() => {
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -2066,7 +2066,7 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 /* ============ 表单 ============ */
@@ -2078,10 +2078,10 @@ onBeforeUnmount(() => {
 .section-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2106,34 +2106,34 @@ onBeforeUnmount(() => {
 
 .form-group label {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-weight: 500;
 }
 
 .required {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .form-control {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
   outline: none;
   transition: border-color var(--transition-fast);
 }
 
 .form-control:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .form-control:disabled,
 .table-input:disabled,
 .add-item-btn:disabled {
-  background-color: var(--bg-secondary);
-  color: var(--text-muted);
+  background-color: var(--color-neutral-bg);
+  color: var(--color-muted);
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -2144,8 +2144,8 @@ onBeforeUnmount(() => {
   margin-top: 8px;
   margin-bottom: 12px;
   padding: 16px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
 }
 
@@ -2167,7 +2167,7 @@ onBeforeUnmount(() => {
 
 .warehouse-info-item .info-label {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-weight: 500;
   white-space: nowrap;
   min-width: 56px;
@@ -2175,14 +2175,14 @@ onBeforeUnmount(() => {
 
 .warehouse-info-item .info-value {
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   word-break: break-all;
 }
 
 /* ============ 商品明细表 ============ */
 
 .items-table {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -2196,47 +2196,47 @@ onBeforeUnmount(() => {
 .items-table th {
   padding: 10px 12px;
   text-align: left;
-  background-color: var(--bg-secondary);
-  color: var(--text-muted);
+  background-color: var(--color-neutral-bg);
+  color: var(--color-muted);
   font-weight: 500;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .items-table td {
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary);
+  border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-muted);
 }
 
 .table-input {
   width: 100%;
   padding: 6px 8px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: 4px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   outline: none;
 }
 
 .table-input:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .add-item-btn {
   width: 100%;
   padding: 10px;
   background: none;
-  border: 1px dashed var(--border-color);
+  border: 1px dashed var(--color-hairline);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   transition: background-color var(--transition-fast);
 }
 
 .add-item-btn:hover {
-  background-color: rgba(0, 120, 212, 0.05);
+  background-color: var(--color-info-bg);
 }
 
 /* ============ 金额汇总 ============ */
@@ -2244,7 +2244,7 @@ onBeforeUnmount(() => {
 .amount-summary {
   margin-top: 16px;
   padding: 16px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   border-radius: var(--radius-sm);
 }
 
@@ -2253,16 +2253,16 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   padding: 6px 0;
   font-size: 14px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .summary-row.total {
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
   margin-top: 8px;
   padding-top: 12px;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 /* ============ 详情 ============ */
@@ -2270,7 +2270,7 @@ onBeforeUnmount(() => {
 .detail-loading {
   text-align: center;
   padding: 40px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 14px;
 }
 
@@ -2296,22 +2296,22 @@ onBeforeUnmount(() => {
 
 .detail-item label {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-weight: 500;
 }
 
 .detail-item span {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .amount-highlight {
   font-weight: 600;
-  color: var(--accent-blue) !important;
+  color: var(--color-interactive) !important;
 }
 
 .detail-table {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   overflow-x: auto;
 }
@@ -2325,17 +2325,17 @@ onBeforeUnmount(() => {
 .detail-table th {
   padding: 10px 12px;
   text-align: left;
-  background-color: var(--bg-secondary);
-  color: var(--text-muted);
+  background-color: var(--color-neutral-bg);
+  color: var(--color-muted);
   font-weight: 500;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   white-space: nowrap;
 }
 
 .detail-table td {
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary);
+  border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-muted);
   white-space: nowrap;
 }
 
@@ -2355,7 +2355,7 @@ onBeforeUnmount(() => {
 
 .status-group label {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-weight: 500;
 }
 
@@ -2375,9 +2375,9 @@ onBeforeUnmount(() => {
 }
 
 .btn-sm:hover { opacity: 0.8; }
-.btn-sm.btn-success { background-color: var(--accent-green); color: white; }
-.btn-sm.btn-warning { background-color: var(--accent-yellow); color: white; }
-.btn-sm.btn-danger { background-color: var(--accent-red); color: white; }
+.btn-sm.btn-success { background-color: var(--color-success); color: white; }
+.btn-sm.btn-warning { background-color: var(--color-warning); color: white; }
+.btn-sm.btn-danger { background-color: var(--color-danger); color: white; }
 
 /* ============ 状态流转 ============ */
 
@@ -2393,7 +2393,7 @@ onBeforeUnmount(() => {
   top: 0;
   bottom: 0;
   width: 2px;
-  background-color: var(--border-color);
+  background-color: var(--color-hairline);
 }
 
 .flow-item {
@@ -2408,8 +2408,8 @@ onBeforeUnmount(() => {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background-color: var(--accent-blue);
-  border: 2px solid var(--bg-card);
+  background-color: var(--color-interactive);
+  border: 2px solid var(--color-canvas);
 }
 
 .flow-content {
@@ -2418,13 +2418,13 @@ onBeforeUnmount(() => {
 
 .flow-time {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   margin-bottom: 4px;
 }
 
 .flow-detail {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2433,29 +2433,29 @@ onBeforeUnmount(() => {
 
 .flow-field {
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .flow-old {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .flow-arrow {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .flow-new {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .flow-operator {
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 12px;
 }
 
 .flow-remark {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   margin-top: 4px;
   font-style: italic;
 }
@@ -2471,8 +2471,8 @@ onBeforeUnmount(() => {
   top: 100%;
   left: 0;
   right: 0;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-card);
   z-index: 100;
@@ -2491,20 +2491,20 @@ onBeforeUnmount(() => {
 }
 
 .search-option:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .product-name-small {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .spec-code {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .spec-price {
   margin-left: auto;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 /* ============ 按钮 ============ */
@@ -2512,8 +2512,8 @@ onBeforeUnmount(() => {
 .btn-secondary {
   padding: 8px 16px;
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   font-size: 14px;
   cursor: pointer;
@@ -2521,12 +2521,12 @@ onBeforeUnmount(() => {
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 .btn-primary {
   padding: 8px 16px;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -2536,7 +2536,7 @@ onBeforeUnmount(() => {
 }
 
 .btn-primary:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .btn-primary:disabled {
@@ -2546,7 +2546,7 @@ onBeforeUnmount(() => {
 
 .btn-success {
   padding: 8px 16px;
-  background-color: var(--accent-green);
+  background-color: var(--color-success);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -2556,7 +2556,7 @@ onBeforeUnmount(() => {
 
 .btn-warning {
   padding: 8px 16px;
-  background-color: var(--accent-yellow);
+  background-color: var(--color-warning);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -2566,7 +2566,7 @@ onBeforeUnmount(() => {
 
 .btn-danger {
   padding: 8px 16px;
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -2583,16 +2583,16 @@ onBeforeUnmount(() => {
 
 :deep(.vxe-body--column) {
   &.expand--cell, &.col--actived {
-    background-color: var(--bg-card) !important;
+    background-color: var(--color-canvas) !important;
   }
 }
 
 :deep(.vxe-body--row.expand--row > td) {
-  background-color: var(--bg-card) !important;
+  background-color: var(--color-canvas) !important;
 }
 
 :deep(.vxe-body--row.expand--row:hover > td) {
-  background-color: var(--bg-secondary) !important;
+  background-color: var(--color-neutral-bg) !important;
 }
 
 /* ============ 响应式 ============ */
@@ -2648,22 +2648,22 @@ onBeforeUnmount(() => {
 .logistics-modal .form-group label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .logistics-modal .form-group input {
   padding: 8px 12px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   font-size: 14px;
-  background-color: var(--bg-card);
-  color: var(--text-primary);
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   transition: border-color 0.2s;
 }
 
 .logistics-modal .form-group input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .logistics-modal .modal-footer {
@@ -2671,6 +2671,6 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 </style>

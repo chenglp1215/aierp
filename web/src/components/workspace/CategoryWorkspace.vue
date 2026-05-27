@@ -193,8 +193,8 @@ const getLevelName = (level: number) => {
 
 const getLevelColor = (level: number) => {
   const colors: Record<number, string> = {
-    1: 'var(--accent-blue)',
-    2: 'var(--accent-green)',
+    1: 'var(--color-interactive)',
+    2: 'var(--color-success)',
     3: 'var(--accent-orange)'
   }
   return colors[level] || 'var(--text-muted)'
@@ -364,7 +364,7 @@ onMounted(() => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -377,7 +377,7 @@ onMounted(() => {
 .text-btn {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   padding: 6px 12px;
@@ -386,13 +386,13 @@ onMounted(() => {
 }
 
 .text-btn:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .primary-btn {
   padding: 8px 16px;
   border-radius: var(--radius-md);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
   font-weight: 500;
@@ -402,7 +402,7 @@ onMounted(() => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .category-container {
@@ -416,16 +416,16 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 14px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   min-height: 300px;
 }
 
 .tree-view {
   flex: 1;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
@@ -438,11 +438,11 @@ onMounted(() => {
   grid-template-columns: 1fr 80px 120px 60px 60px 160px;
   gap: 8px;
   padding: 12px 16px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   border-bottom: 1px solid var(--border-color);
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .tree-body {
@@ -463,11 +463,11 @@ onMounted(() => {
 }
 
 .tree-row:hover {
-  background-color: rgba(0, 120, 212, 0.05);
+  background-color: var(--color-info-bg);
 }
 
 .tree-row.selected {
-  background-color: rgba(0, 120, 212, 0.12);
+  background-color: var(--color-info-bg);
 }
 
 .col-name {
@@ -484,7 +484,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--color-muted);
   transition: transform var(--transition-fast);
   flex-shrink: 0;
 }
@@ -532,7 +532,7 @@ onMounted(() => {
 
 .col-tax,
 .col-sort {
-  color: var(--text-secondary);
+  color: var(--color-muted);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -550,11 +550,11 @@ onMounted(() => {
 }
 
 .status-dot.active {
-  background-color: var(--accent-green);
+  background-color: var(--color-success);
 }
 
 .status-dot.inactive {
-  background-color: var(--text-muted);
+  background-color: var(--color-muted);
 }
 
 .col-actions {
@@ -566,7 +566,7 @@ onMounted(() => {
 .action-btn {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 12px;
   cursor: pointer;
   padding: 4px 8px;
@@ -576,15 +576,15 @@ onMounted(() => {
 }
 
 .action-btn:hover:not(:disabled) {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .action-btn.danger {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .action-btn.danger:hover:not(:disabled) {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
 }
 
 .action-btn:disabled {
@@ -603,7 +603,7 @@ onMounted(() => {
 }
 
 .modal {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   width: 95%;
   max-width: 480px;
@@ -627,7 +627,7 @@ onMounted(() => {
 .modal-header h3 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -637,7 +637,7 @@ onMounted(() => {
   border-radius: 50%;
   background-color: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 24px;
   cursor: pointer;
   display: flex;
@@ -647,8 +647,8 @@ onMounted(() => {
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -660,7 +660,7 @@ onMounted(() => {
 
 .modal-body p {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
   line-height: 1.6;
 }
@@ -674,24 +674,24 @@ onMounted(() => {
 .form-group label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .form-group input[type="text"],
 .form-group input[type="number"],
 .form-group select {
   padding: 10px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .checkbox-group {
@@ -704,7 +704,7 @@ onMounted(() => {
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -725,22 +725,22 @@ onMounted(() => {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 14px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .btn-primary {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   border: none;
@@ -749,7 +749,7 @@ onMounted(() => {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .btn-primary:disabled {
@@ -760,7 +760,7 @@ onMounted(() => {
 .btn-danger {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   font-size: 14px;
   border: none;
@@ -769,7 +769,7 @@ onMounted(() => {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #dc2626;
+  background-color: var(--color-danger);
 }
 
 .btn-danger:disabled {

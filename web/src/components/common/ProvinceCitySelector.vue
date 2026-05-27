@@ -157,10 +157,10 @@ defineExpose({
 .city-select {
   flex: 1;
   padding: 10px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
   cursor: pointer;
   min-width: 0;
@@ -169,7 +169,7 @@ defineExpose({
 .province-select:focus,
 .city-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .province-select:disabled,
@@ -179,6 +179,6 @@ defineExpose({
 }
 
 .city-select:disabled {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
 }
 </style>

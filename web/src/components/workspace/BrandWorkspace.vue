@@ -426,14 +426,14 @@ onMounted(() => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
 .primary-btn {
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -443,11 +443,11 @@ onMounted(() => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   flex-shrink: 0;
@@ -473,28 +473,28 @@ onMounted(() => {
 .filter-input {
   width: 100%;
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .filter-input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .filter-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-select {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
   min-width: 120px;
@@ -502,13 +502,13 @@ onMounted(() => {
 
 .filter-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-btn {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
   border: none;
@@ -517,18 +517,18 @@ onMounted(() => {
 }
 
 .filter-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-btn.reset-btn {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
 }
 
 .filter-btn.reset-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .brand-content {
@@ -546,9 +546,9 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 14px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   min-height: 300px;
 }
@@ -557,7 +557,7 @@ onMounted(() => {
   width: 40px;
   height: 40px;
   border: 3px solid var(--border-color);
-  border-top-color: var(--accent-blue);
+  border-top-color: var(--color-interactive);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
@@ -574,13 +574,13 @@ onMounted(() => {
 
 .empty-state p {
   margin: 0 0 16px 0;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .table-section {
   flex: 1;
   min-height: 0;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   display: flex;
@@ -611,7 +611,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 16px;
   font-weight: 600;
@@ -626,13 +626,13 @@ onMounted(() => {
 }
 
 .status-tag.active {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .status-tag.inactive {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: var(--accent-red);
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .action-btns {
@@ -645,7 +645,7 @@ onMounted(() => {
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
@@ -654,15 +654,15 @@ onMounted(() => {
 }
 
 .btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .btn-link.danger {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .btn-link.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
 }
 
 .modal-overlay {
@@ -676,7 +676,7 @@ onMounted(() => {
 }
 
 .modal {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   width: 95%;
   max-width: 480px;
@@ -700,7 +700,7 @@ onMounted(() => {
 .modal-header h3 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -710,7 +710,7 @@ onMounted(() => {
   border-radius: 50%;
   background-color: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 24px;
   cursor: pointer;
   display: flex;
@@ -720,8 +720,8 @@ onMounted(() => {
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -733,7 +733,7 @@ onMounted(() => {
 
 .modal-body p {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
   line-height: 1.6;
 }
@@ -747,17 +747,17 @@ onMounted(() => {
 .form-group label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .form-group input[type="text"],
 .form-group input[type="number"],
 .form-group textarea {
   padding: 10px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
   resize: vertical;
 }
@@ -766,7 +766,7 @@ onMounted(() => {
 .form-group input[type="number"]:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .form-group textarea {
@@ -776,17 +776,17 @@ onMounted(() => {
 .form-select {
   width: 100%;
   padding: 10px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   outline: none;
   cursor: pointer;
 }
 
 .form-select:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .checkbox-group {
@@ -799,7 +799,7 @@ onMounted(() => {
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -822,7 +822,7 @@ onMounted(() => {
   height: 120px;
   object-fit: cover;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .remove-image-btn {
@@ -856,8 +856,8 @@ onMounted(() => {
 }
 
 .upload-placeholder:hover {
-  border-color: var(--accent-blue);
-  background-color: rgba(0, 120, 212, 0.05);
+  border-color: var(--color-interactive);
+  background-color: var(--color-info-bg);
 }
 
 .upload-icon {
@@ -867,7 +867,7 @@ onMounted(() => {
 
 .upload-text {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .modal-footer {
@@ -882,22 +882,22 @@ onMounted(() => {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 14px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .btn-primary {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   border: none;
@@ -906,7 +906,7 @@ onMounted(() => {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .btn-primary:disabled {
@@ -926,7 +926,7 @@ onMounted(() => {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #dc2626;
+  background-color: var(--color-danger);
 }
 
 .btn-danger:disabled {
@@ -961,7 +961,7 @@ onMounted(() => {
 .vxe-pager .vxe-pager--num-btn.is--active {
   background-color: var(--accent-blue) !important;
   color: white !important;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .vxe-pager .vxe-pager--sizes .vxe-input,

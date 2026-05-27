@@ -871,7 +871,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -882,7 +882,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .stat-card {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 16px;
   text-align: center;
@@ -892,17 +892,17 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .stat-value {
   font-size: 28px;
   font-weight: 600;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .filter-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
@@ -928,28 +928,28 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .filter-input {
   width: 100%;
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .filter-input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .filter-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-select {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
   min-width: 100px;
@@ -957,13 +957,13 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .filter-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-btn {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
   border: none;
@@ -972,22 +972,22 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .filter-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-btn.reset-btn {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
 }
 
 .filter-btn.reset-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .table-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
@@ -1008,7 +1008,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
@@ -1018,15 +1018,15 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .btn-link.danger {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .btn-link.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
 }
 
 .btn-link.add-btn {
@@ -1043,29 +1043,29 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .type-tag.terminal {
-  background-color: rgba(139, 92, 246, 0.1);
-  color: var(--accent-purple);
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
 }
 
 .type-tag.dealer {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .status-tag.normal,
 .status-tag.active {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .status-tag.inactive {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: var(--accent-yellow);
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .status-tag.blacklisted {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: var(--accent-red);
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .modal-overlay {
@@ -1079,7 +1079,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .modal {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   width: 95%;
   max-width: 900px;
@@ -1097,10 +1097,10 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   position: sticky;
   top: 0;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   z-index: 1;
 }
 
@@ -1113,7 +1113,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .modal-header h3 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -1122,7 +1122,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  background-color: var(--accent-purple);
+  background-color: var(--color-accent);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -1132,12 +1132,12 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .ai-btn:hover {
-  background-color: #7c3aed;
+  background-color: var(--color-accent);
 }
 
 .ai-btn.active {
-  background-color: #5b21b6;
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+  background-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
 .ai-icon {
@@ -1146,8 +1146,8 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .ai-panel {
   padding: 20px;
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border-bottom: 1px solid var(--color-hairline);
   animation: slideDown 0.2s ease-out;
 }
 
@@ -1171,10 +1171,10 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .ai-panel textarea {
   width: 100%;
   padding: 12px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
   resize: vertical;
   min-height: 80px;
@@ -1182,7 +1182,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .ai-panel textarea:focus {
   outline: none;
-  border-color: var(--accent-purple);
+  border-color: var(--color-accent);
 }
 
 .image-upload input[type="file"] {
@@ -1192,10 +1192,10 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .upload-label {
   display: inline-block;
   padding: 12px 16px;
-  background-color: var(--bg-card);
-  border: 2px dashed var(--border-color);
+  background-color: var(--color-canvas);
+  border: 2px dashed var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 13px;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -1204,8 +1204,8 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .upload-label:hover {
-  border-color: var(--accent-purple);
-  color: var(--accent-purple);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .ai-panel-footer {
@@ -1221,15 +1221,15 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   border-radius: 50%;
   background-color: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 24px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -1244,10 +1244,10 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   justify-content: flex-end;
   gap: 12px;
   padding: 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
   position: sticky;
   bottom: 0;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
 }
 
 .form-section {
@@ -1259,9 +1259,9 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .section-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1282,31 +1282,31 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .form-group label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .form-group .required {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .form-group input,
 .form-group select {
   padding: 10px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .form-group input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .info-list {
@@ -1316,7 +1316,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .info-item {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   border-radius: var(--radius-sm);
   padding: 16px;
   display: flex;
@@ -1341,22 +1341,22 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .info-table {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .info-table-header {
   display: flex;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   padding: 10px 12px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .info-th {
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
   padding: 0 8px;
 }
 
@@ -1369,7 +1369,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   display: flex;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .info-tr:last-child {
@@ -1377,16 +1377,16 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .info-tr:hover {
-  background-color: rgba(0, 120, 212, 0.03);
+  background-color: var(--color-info-bg);
 }
 
 .info-tr.is-default {
-  background-color: rgba(0, 120, 212, 0.08);
-  border-left: 3px solid var(--accent-blue);
+  background-color: var(--color-info-bg);
+  border-left: 3px solid var(--color-interactive);
 }
 
 .info-tr.is-default:hover {
-  background-color: rgba(0, 120, 212, 0.12);
+  background-color: var(--color-info-bg);
 }
 
 .cell-with-badge {
@@ -1406,12 +1406,12 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   top: 50%;
   transform: translateY(-50%);
   padding: 2px 8px;
-  background: linear-gradient(135deg, #0078d4, #00bcf2);
-  color: white;
+  background: var(--color-interactive);
+  color: var(--color-text-inverse);
   font-size: 11px;
   font-weight: 500;
   border-radius: 10px;
-  box-shadow: 0 2px 4px rgba(0, 120, 212, 0.3);
+  box-shadow: 0 2px 4px var(--color-info-bg);
   pointer-events: none;
 }
 
@@ -1423,28 +1423,28 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .info-td select {
   width: 100%;
   padding: 6px 8px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .info-td input:focus,
 .info-td select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .info-td input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 12px;
 }
 
 .empty-tip {
   padding: 20px;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 13px;
 }
 
@@ -1452,22 +1452,22 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 14px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .btn-primary {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   border: none;
@@ -1476,7 +1476,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .btn-primary:disabled {
@@ -1487,7 +1487,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .btn-danger {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   font-size: 14px;
   border: none;
@@ -1496,7 +1496,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #dc2626;
+  background-color: var(--color-danger);
 }
 
 .btn-danger:disabled {
@@ -1510,7 +1510,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .confirm-modal .modal-body p {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -1520,12 +1520,12 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .transfer-info {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0 0 16px 0;
 }
 
 .transfer-info strong {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .sales-user-search {
@@ -1535,7 +1535,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .sales-user-list {
   max-height: 280px;
   overflow-y: auto;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
 }
 
@@ -1545,7 +1545,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   align-items: center;
   padding: 12px 16px;
   cursor: pointer;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   transition: background-color var(--transition-fast);
 }
 
@@ -1554,22 +1554,22 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .sales-user-item:hover {
-  background-color: rgba(0, 120, 212, 0.05);
+  background-color: var(--color-info-bg);
 }
 
 .sales-user-item.selected {
-  background-color: rgba(0, 120, 212, 0.1);
-  border-left: 3px solid var(--accent-blue);
+  background-color: var(--color-info-bg);
+  border-left: 3px solid var(--color-interactive);
 }
 
 .sales-user-name {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .sales-user-dept {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .table-loading-overlay {
@@ -1591,17 +1591,17 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .table-loading-content {
   padding: 20px 40px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
 .primary-btn {
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -1611,7 +1611,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 @media (max-width: 768px) {
@@ -1633,12 +1633,12 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 <style>
 .vxe-table {
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .vxe-table .table-header-cell {
-  background-color: var(--bg-secondary);
-  color: var(--text-muted);
+  background-color: var(--color-neutral-bg);
+  color: var(--color-muted);
   font-weight: 500;
 }
 
@@ -1674,8 +1674,8 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .vxe-pager {
   margin-top: 16px;
-  background-color: var(--bg-card) !important;
-  border-top: 1px solid var(--border-color);
+  background-color: var(--color-canvas) !important;
+  border-top: 1px solid var(--color-hairline);
 }
 
 .vxe-pager * {
@@ -1692,60 +1692,60 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .vxe-pager .vxe-pager--goto {
   background-color: transparent !important;
   border: none !important;
-  color: var(--text-secondary) !important;
+  color: var(--color-muted) !important;
 }
 
 .vxe-pager .vxe-pager--num-btn.is--active {
-  background-color: var(--accent-blue) !important;
+  background-color: var(--color-interactive) !important;
   color: white !important;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .vxe-pager .vxe-pager--sizes .vxe-input,
 .vxe-pager--sizes .vxe-input {
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-color) !important;
+  background-color: var(--color-canvas) !important;
+  border: 1px solid var(--color-hairline) !important;
 }
 
 .vxe-pager .vxe-pager--sizes .vxe-input .vxe-input--inner,
 .vxe-pager--sizes .vxe-input .vxe-input--inner {
-  background-color: var(--bg-card) !important;
-  color: var(--text-primary) !important;
-  border: 1px solid var(--border-color) !important;
+  background-color: var(--color-canvas) !important;
+  color: var(--color-ink) !important;
+  border: 1px solid var(--color-hairline) !important;
 }
 
 .vxe-pager .vxe-pager--jump-prev-btn,
 .vxe-pager .vxe-pager--jump-next-btn,
 .vxe-pager .vxe-pager--jump-number {
   background-color: transparent !important;
-  color: var(--text-secondary) !important;
+  color: var(--color-muted) !important;
 }
 
 .vxe-pager .vxe-pager--goto {
   background-color: transparent !important;
-  color: var(--text-secondary) !important;
+  color: var(--color-muted) !important;
 }
 
 .vxe-pager .vxe-pager--goto .vxe-pager--goto-input,
 .vxe-pager .vxe-pager--goto-input {
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-color) !important;
-  color: var(--text-primary) !important;
+  background-color: var(--color-canvas) !important;
+  border: 1px solid var(--color-hairline) !important;
+  color: var(--color-ink) !important;
 }
 
 .vxe-pager .vxe-pager--total {
   background-color: transparent !important;
-  color: var(--text-secondary) !important;
+  color: var(--color-muted) !important;
 }
 
 .vxe-pager .vxe-pager--sizes {
   background-color: transparent !important;
-  color: var(--text-secondary) !important;
+  color: var(--color-muted) !important;
 }
 
 [data-theme="light"] .vxe-pager {
-  background-color: #ffffff !important;
-  border-top: 1px solid #e5e7eb;
+  background-color: var(--color-canvas) !important;
+  border-top: 1px solid var(--color-hairline);
 }
 
 [data-theme="light"] .vxe-pager .vxe-pager--prev-btn,
@@ -1756,35 +1756,35 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 [data-theme="light"] .vxe-pager .vxe-pager--btn-btn,
 [data-theme="light"] .vxe-pager .vxe-pager--fulljump,
 [data-theme="light"] .vxe-pager .vxe-pager--goto {
-  color: #666666 !important;
+  color: var(--color-muted) !important;
 }
 
 [data-theme="light"] .vxe-pager .vxe-pager--num-btn.is--active {
-  color: #ffffff !important;
+  color: var(--color-text-inverse) !important;
 }
 
 [data-theme="light"] .vxe-pager .vxe-pager--sizes .vxe-input,
 [data-theme="light"] .vxe-pager--sizes .vxe-input {
-  background-color: #ffffff !important;
+  background-color: var(--color-text-inverse) !important;
   border: 1px solid #e5e7eb !important;
 }
 
 [data-theme="light"] .vxe-pager .vxe-pager--sizes .vxe-input .vxe-input--inner,
 [data-theme="light"] .vxe-pager--sizes .vxe-input .vxe-input--inner {
-  background-color: #ffffff !important;
-  color: #374151 !important;
+  background-color: var(--color-text-inverse) !important;
+  color: var(--color-ink) !important;
   border: 1px solid #e5e7eb !important;
 }
 
 [data-theme="light"] .vxe-pager .vxe-pager--goto .vxe-pager--goto-input,
 [data-theme="light"] .vxe-pager .vxe-pager--goto-input {
-  background-color: #ffffff !important;
+  background-color: var(--color-text-inverse) !important;
   border: 1px solid #e5e7eb !important;
-  color: #374151 !important;
+  color: var(--color-ink) !important;
 }
 
 [data-theme="light"] .vxe-pager .vxe-pager--total,
 [data-theme="light"] .vxe-pager .vxe-pager--sizes {
-  color: #666666 !important;
+  color: var(--color-muted) !important;
 }
 </style>

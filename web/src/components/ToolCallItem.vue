@@ -112,28 +112,28 @@ const formatResult = computed(() => {
 
 <style scoped>
 .tool-call-item {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-md);
   margin-top: 12px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(0, 0, 0, 0.03);
   transition: all var(--transition-fast);
 }
 
 .tool-call-item:hover {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .tool-call-item.success {
-  border-left: 3px solid var(--accent-green);
+  border-left: 3px solid var(--color-success);
 }
 
 .tool-call-item.error {
-  border-left: 3px solid var(--accent-red);
+  border-left: 3px solid var(--color-danger);
 }
 
 .tool-call-item.pending {
-  border-left: 3px solid var(--accent-yellow, #f59e0b);
+  border-left: 3px solid var(--color-warning);
 }
 
 .tool-header {
@@ -146,7 +146,7 @@ const formatResult = computed(() => {
 }
 
 .tool-header:hover {
-  background: rgba(0, 120, 212, 0.05);
+  background: rgba(24, 99, 220, 0.06);
 }
 
 .tool-info {
@@ -157,7 +157,7 @@ const formatResult = computed(() => {
 
 .tool-index {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-weight: 500;
   min-width: 20px;
 }
@@ -165,13 +165,13 @@ const formatResult = computed(() => {
 .tool-icon {
   display: flex;
   align-items: center;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
 }
 
 .tool-name {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .tool-status {
@@ -192,22 +192,22 @@ const formatResult = computed(() => {
 }
 
 .status-badge.success {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--accent-green);
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .status-badge.error {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--accent-red);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .status-badge.pending {
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--accent-yellow, #f59e0b);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .expand-icon {
-  color: var(--text-muted);
+  color: var(--color-muted);
   transition: transform var(--transition-fast);
 }
 
@@ -216,7 +216,7 @@ const formatResult = computed(() => {
 }
 
 .tool-details {
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -247,20 +247,20 @@ const formatResult = computed(() => {
   gap: 6px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--color-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .code-block {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--text-primary);
+  color: var(--color-ink);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
@@ -270,10 +270,10 @@ const formatResult = computed(() => {
 }
 
 .code-block.success {
-  border-left: 3px solid var(--accent-green);
+  border-left: 3px solid var(--color-success);
 }
 
 .code-block.error {
-  border-left: 3px solid var(--accent-red);
+  border-left: 3px solid var(--color-danger);
 }
 </style>

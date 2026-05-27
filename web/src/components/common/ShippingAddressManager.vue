@@ -342,7 +342,7 @@ const setProvinceCityForEdit = (addr: ShippingAddressV2, val: { province?: strin
 }
 
 .address-list {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
@@ -356,18 +356,18 @@ const setProvinceCityForEdit = (addr: ShippingAddressV2, val: { province?: strin
 .address-table td {
   padding: 10px 12px;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   font-size: 13px;
 }
 
 .address-table th {
   font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
+  color: var(--color-muted);
+  background-color: var(--color-neutral-bg);
 }
 
 .address-table td {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .address-table tbody tr:last-child td {
@@ -375,29 +375,29 @@ const setProvinceCityForEdit = (addr: ShippingAddressV2, val: { province?: strin
 }
 
 .address-table tbody tr:hover {
-  background-color: rgba(0, 120, 212, 0.03);
+  background-color: rgba(24, 99, 220, 0.06);
 }
 
 .empty-cell {
   text-align: center;
   padding: 24px;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
+  color: var(--color-muted);
+  background-color: var(--color-neutral-bg);
 }
 
 .inline-input {
   width: 100%;
   padding: 6px 8px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .inline-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .inline-checkbox {
@@ -413,7 +413,7 @@ const setProvinceCityForEdit = (addr: ShippingAddressV2, val: { province?: strin
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
@@ -422,31 +422,31 @@ const setProvinceCityForEdit = (addr: ShippingAddressV2, val: { province?: strin
 }
 
 .btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .btn-link.danger {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .btn-link.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
 }
 
 .btn-secondary {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 13px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .btn-sm {

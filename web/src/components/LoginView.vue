@@ -183,7 +183,7 @@ const handleLogin = async () => {
 .bg-gradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-primary) 100%);
+  background: linear-gradient(135deg, var(--color-canvas) 0%, var(--color-neutral-bg) 50%, var(--color-canvas) 100%);
 }
 
 [data-theme="light"] .bg-gradient {
@@ -202,13 +202,13 @@ const handleLogin = async () => {
 .login-card {
   position: relative;
   z-index: 1;
-  background: var(--bg-card);
+  background: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 48px 40px;
   width: 100%;
   max-width: 420px;
   box-shadow: var(--shadow-card);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .login-header {
@@ -227,7 +227,7 @@ const handleLogin = async () => {
 .logo-icon {
   width: 48px;
   height: 48px;
-  background: linear-gradient(135deg, var(--accent-blue) 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-interactive) 0%, #764ba2 100%);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -243,13 +243,13 @@ const handleLogin = async () => {
 .login-header h1 {
   font-size: 28px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
 .subtitle {
   font-size: 14px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   margin: 0;
 }
 
@@ -268,7 +268,7 @@ const handleLogin = async () => {
 .form-group label {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .input-wrapper {
@@ -282,33 +282,33 @@ const handleLogin = async () => {
   left: 14px;
   width: 20px;
   height: 20px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   pointer-events: none;
 }
 
 .form-group input {
   width: 100%;
   padding: 14px 16px 14px 44px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   font-size: 15px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   transition: all var(--transition-fast);
 }
 
 .form-group input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.15);
+  border-color: var(--color-interactive);
+  box-shadow: 0 0 0 3px rgba(24, 99, 220, 0.15);
 }
 
 .form-group input:disabled {
-  background-color: var(--bg-primary);
+  background-color: var(--color-canvas);
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -340,19 +340,19 @@ const handleLogin = async () => {
   position: relative;
   width: 18px;
   height: 18px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: 4px;
   transition: all var(--transition-fast);
 }
 
 .checkbox-wrapper:hover .checkmark {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .checkbox-wrapper input:checked ~ .checkmark {
-  background: var(--accent-blue);
-  border-color: var(--accent-blue);
+  background: var(--color-interactive);
+  border-color: var(--color-interactive);
 }
 
 .checkmark:after {
@@ -374,16 +374,16 @@ const handleLogin = async () => {
 
 .checkbox-label {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .error-message {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: var(--accent-red);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
   padding: 12px 16px;
   border-radius: var(--radius-sm);
   font-size: 14px;
@@ -401,7 +401,7 @@ const handleLogin = async () => {
   justify-content: center;
   gap: 8px;
   padding: 14px;
-  background: linear-gradient(135deg, var(--accent-blue) 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-interactive) 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -414,7 +414,7 @@ const handleLogin = async () => {
 
 .login-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 120, 212, 0.4);
+  box-shadow: 0 4px 16px rgba(24, 99, 220, 0.4);
 }
 
 .login-btn:active:not(:disabled) {
@@ -445,12 +445,12 @@ const handleLogin = async () => {
   text-align: center;
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .login-footer p {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   margin: 0;
 }
 
@@ -464,7 +464,7 @@ const handleLogin = async () => {
 
 .login-tips p {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   margin: 0;
 }
 

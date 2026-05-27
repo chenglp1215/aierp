@@ -513,7 +513,7 @@ onMounted(() => {
             </div>
           </div>
           <div class="location-list">
-            <div v-if="locationLoading" style="text-align: center; padding: 20px; color: var(--text-muted);">加载中...</div>
+            <div v-if="locationLoading" style="text-align: center; padding: 20px; color: var(--color-muted);">加载中...</div>
             <table v-else class="location-table">
               <thead>
                 <tr>
@@ -540,7 +540,7 @@ onMounted(() => {
                   </td>
                 </tr>
                 <tr v-if="locationList.length === 0">
-                  <td colspan="5" style="text-align: center; color: var(--text-muted);">暂无库位</td>
+                  <td colspan="5" style="text-align: center; color: var(--color-muted);">暂无库位</td>
                 </tr>
               </tbody>
             </table>
@@ -570,14 +570,14 @@ onMounted(() => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
 .primary-btn {
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -587,11 +587,11 @@ onMounted(() => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
@@ -617,28 +617,28 @@ onMounted(() => {
 .filter-input {
   width: 100%;
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .filter-input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .filter-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-select {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
   min-width: 100px;
@@ -646,13 +646,13 @@ onMounted(() => {
 
 .filter-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-btn {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
   border: none;
@@ -661,22 +661,22 @@ onMounted(() => {
 }
 
 .filter-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-btn.reset-btn {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
 }
 
 .filter-btn.reset-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .table-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
@@ -692,7 +692,7 @@ onMounted(() => {
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
@@ -702,15 +702,15 @@ onMounted(() => {
 }
 
 .btn-link:hover {
-  background-color: rgba(0, 120, 212, 0.1);
+  background-color: var(--color-info-bg);
 }
 
 .btn-link.danger {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .btn-link.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-bg);
 }
 
 .status-tag {
@@ -721,18 +721,18 @@ onMounted(() => {
 }
 
 .status-tag.active {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
+  background-color: var(--color-success-bg);
+  background-color: var(--color-success);
 }
 
 .status-tag.inactive {
-  background-color: rgba(128, 128, 128, 0.1);
-  color: var(--text-muted);
+  background-color: var(--color-neutral-bg);
+  color: var(--color-muted);
 }
 
 .status-tag.maintenance {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: var(--accent-yellow);
+  background-color: var(--color-warning-bg);
+  background-color: var(--color-warning);
 }
 
 .table-loading-overlay {
@@ -754,10 +754,9 @@ onMounted(() => {
 
 .table-loading-content {
   padding: 20px 40px;
-  background-color: var(--bg-card);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  color: var(--text-primary);
+  background-color: var(--color-canvas);
+  border-radius: var(--radius-sm);
+    color: var(--color-ink);
   font-size: 14px;
 }
 
@@ -772,7 +771,7 @@ onMounted(() => {
 }
 
 .modal {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   width: 90%;
   max-width: 600px;
@@ -792,7 +791,7 @@ onMounted(() => {
 .modal-header h3 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -802,15 +801,15 @@ onMounted(() => {
   border-radius: 50%;
   background-color: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 24px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -843,17 +842,17 @@ onMounted(() => {
 .form-group label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
   padding: 10px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
@@ -861,7 +860,7 @@ onMounted(() => {
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .form-group textarea {
@@ -872,21 +871,21 @@ onMounted(() => {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 14px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   transition: all var(--transition-fast);
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
 }
 
 .btn-primary {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   border: none;
@@ -894,7 +893,7 @@ onMounted(() => {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .btn-primary:disabled {
@@ -905,7 +904,7 @@ onMounted(() => {
 .btn-danger {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   font-size: 14px;
   border: none;
@@ -913,7 +912,7 @@ onMounted(() => {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #dc2626;
+  background-color: var(--color-danger);
 }
 
 .btn-danger:disabled {
@@ -927,7 +926,7 @@ onMounted(() => {
 
 .confirm-modal .modal-body p {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -966,13 +965,13 @@ onMounted(() => {
   text-align: left;
   padding: 8px;
   border-bottom: 1px solid var(--border-color);
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-weight: 500;
 }
 
 .location-table td {
   padding: 8px;
   border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 </style>

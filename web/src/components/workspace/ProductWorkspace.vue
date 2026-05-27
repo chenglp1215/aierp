@@ -824,7 +824,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -836,7 +836,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 .primary-btn {
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -846,11 +846,11 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
@@ -876,28 +876,28 @@ const handleEscKey = (e: KeyboardEvent) => {
 .filter-input {
   width: 100%;
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .filter-input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .filter-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-select {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
   min-width: 100px;
@@ -905,13 +905,13 @@ const handleEscKey = (e: KeyboardEvent) => {
 
 .filter-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-btn {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
   border: none;
@@ -920,22 +920,22 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .filter-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-btn.reset-btn {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
 }
 
 .filter-btn.reset-btn:hover {
   background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .table-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
@@ -951,7 +951,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
@@ -964,7 +964,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .btn-link.danger {
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .btn-link.danger:hover {
@@ -973,7 +973,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 
 .stock-link {
   background: transparent;
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   cursor: pointer;
   text-decoration: underline;
   padding: 0;
@@ -982,7 +982,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .stock-link:hover {
-  color: var(--accent-blue-hover);
+  color: var(--color-interactive-hover);
 }
 
 .active-tag {
@@ -991,12 +991,12 @@ const handleEscKey = (e: KeyboardEvent) => {
   border-radius: 4px;
   font-size: 12px;
   background-color: rgba(239, 68, 68, 0.1);
-  color: var(--accent-red);
+  color: var(--color-danger);
 }
 
 .active-tag.active {
   background-color: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
+  color: var(--color-success);
 }
 
 .table-loading-overlay {
@@ -1018,10 +1018,10 @@ const handleEscKey = (e: KeyboardEvent) => {
 
 .table-loading-content {
   padding: 20px 40px;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
@@ -1036,7 +1036,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .modal {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   width: 90%;
   max-width: 600px;
@@ -1054,13 +1054,13 @@ const handleEscKey = (e: KeyboardEvent) => {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .modal-header h3 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -1070,7 +1070,7 @@ const handleEscKey = (e: KeyboardEvent) => {
   border-radius: 50%;
   background-color: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 24px;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -1078,7 +1078,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 
 .modal-close:hover {
   background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -1093,7 +1093,7 @@ const handleEscKey = (e: KeyboardEvent) => {
   justify-content: flex-end;
   gap: 12px;
   padding: 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .form-row {
@@ -1115,7 +1115,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 .form-group label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .form-group label.checkbox-label {
@@ -1129,16 +1129,16 @@ const handleEscKey = (e: KeyboardEvent) => {
 .form-group input[type="text"],
 .form-group input[type="number"] {
   padding: 10px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .form-group input[type="checkbox"] {
@@ -1149,17 +1149,17 @@ const handleEscKey = (e: KeyboardEvent) => {
 
 .form-select {
   padding: 10px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 14px;
   width: 100%;
 }
 
 .form-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .image-upload-area {
@@ -1176,7 +1176,7 @@ const handleEscKey = (e: KeyboardEvent) => {
   height: 120px;
   object-fit: cover;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
 }
 
 .remove-image-btn {
@@ -1186,7 +1186,7 @@ const handleEscKey = (e: KeyboardEvent) => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   border: none;
   cursor: pointer;
@@ -1203,14 +1203,14 @@ const handleEscKey = (e: KeyboardEvent) => {
   justify-content: center;
   width: 120px;
   height: 120px;
-  border: 2px dashed var(--border-color);
+  border: 2px dashed var(--color-hairline);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .upload-placeholder:hover {
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
   background-color: rgba(0, 120, 212, 0.05);
 }
 
@@ -1221,7 +1221,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 
 .upload-text {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .spec-manage-header {
@@ -1231,7 +1231,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .spec-add-form {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   border-radius: var(--radius-md);
   padding: 16px;
   margin-bottom: 16px;
@@ -1253,18 +1253,18 @@ const handleEscKey = (e: KeyboardEvent) => {
 .specs-table td {
   padding: 8px 12px;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   font-size: 13px;
 }
 
 .specs-table th {
   font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
+  color: var(--color-muted);
+  background-color: var(--color-neutral-bg);
 }
 
 .specs-table td {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .specs-table tbody tr:hover {
@@ -1274,16 +1274,16 @@ const handleEscKey = (e: KeyboardEvent) => {
 .specs-table .inline-input {
   width: 100%;
   padding: 6px 8px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .specs-table .inline-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .specs-table .inline-checkbox {
@@ -1295,7 +1295,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 .specs-empty {
   text-align: center;
   padding: 20px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 13px;
 }
 
@@ -1303,21 +1303,21 @@ const handleEscKey = (e: KeyboardEvent) => {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 14px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   transition: all var(--transition-fast);
 }
 
 .btn-secondary:hover {
   background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .btn-primary {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   border: none;
@@ -1325,7 +1325,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .btn-primary:disabled,
@@ -1342,7 +1342,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 .btn-danger {
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  background-color: var(--accent-red);
+  background-color: var(--color-danger);
   color: white;
   font-size: 14px;
   border: none;
@@ -1364,7 +1364,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 
 .confirm-modal .modal-body p {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -1378,11 +1378,11 @@ const handleEscKey = (e: KeyboardEvent) => {
 
 .stock-total {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .stock-total strong {
-  color: var(--accent-blue);
+  color: var(--color-interactive);
   font-size: 18px;
 }
 
@@ -1395,24 +1395,24 @@ const handleEscKey = (e: KeyboardEvent) => {
 .stock-detail-table td {
   padding: 8px 12px;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
   font-size: 13px;
 }
 
 .stock-detail-table th {
   font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-secondary);
+  color: var(--color-muted);
+  background-color: var(--color-neutral-bg);
 }
 
 .stock-detail-table td {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .empty-cell {
   text-align: center;
   padding: 20px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 13px;
 }
 

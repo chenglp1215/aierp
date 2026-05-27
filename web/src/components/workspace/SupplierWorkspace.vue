@@ -551,14 +551,14 @@ onMounted(() => {
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-ink);
   margin: 0;
 }
 
 .primary-btn {
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -568,11 +568,11 @@ onMounted(() => {
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-blue-hover);
+  background-color: var(--color-interactive-hover);
 }
 
 .filter-section {
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
   padding: 12px 16px;
   flex-shrink: 0;
@@ -598,28 +598,28 @@ onMounted(() => {
 .filter-input {
   width: 100%;
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
 .filter-input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .filter-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .filter-select {
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
 }
@@ -646,7 +646,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border-radius: var(--radius-sm);
   font-size: 12px;
@@ -669,7 +669,7 @@ onMounted(() => {
 
 .filter-btn {
   padding: 8px 16px;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -678,8 +678,8 @@ onMounted(() => {
 }
 
 .filter-btn.reset-btn {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  background-color: var(--color-neutral-bg);
+  color: var(--color-ink);
 }
 
 .supplier-content {
@@ -697,14 +697,14 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 40px;
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .loading-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--accent-blue);
+  border: 3px solid var(--color-hairline);
+  border-top-color: var(--color-interactive);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 12px;
@@ -722,7 +722,7 @@ onMounted(() => {
 .supplier-table-wrapper {
   flex: 1;
   overflow: auto;
-  background-color: var(--bg-card);
+  background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
 }
 
@@ -736,20 +736,20 @@ onMounted(() => {
   padding: 12px 16px;
   text-align: left;
   font-weight: 500;
-  color: var(--text-secondary);
-  background-color: var(--bg-secondary);
-  border-bottom: 2px solid var(--border-color);
+  color: var(--color-muted);
+  background-color: var(--color-neutral-bg);
+  border-bottom: 2px solid var(--color-hairline);
   white-space: nowrap;
 }
 
 .supplier-table td {
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
+  border-bottom: 1px solid var(--color-hairline);
+  color: var(--color-ink);
 }
 
 .supplier-table tbody tr:hover {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
 }
 
 .brand-tags {
@@ -763,23 +763,23 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   border-radius: var(--radius-sm);
   font-size: 12px;
 }
 
 .brand-tag.priority {
-  background-color: rgba(255, 152, 0, 0.15);
-  color: #ff9800;
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .discount {
-  color: var(--text-muted);
+  color: var(--color-muted);
   font-size: 11px;
 }
 
 .priority-badge {
-  background-color: #ff9800;
+  background-color: var(--color-warning);
   color: white;
   padding: 1px 4px;
   border-radius: 2px;
@@ -795,17 +795,17 @@ onMounted(() => {
 }
 
 .status-tag.active {
-  background-color: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .status-tag.inactive {
-  background-color: rgba(158, 158, 158, 0.15);
-  color: #9e9e9e;
+  background-color: var(--color-neutral-bg);
+  color: var(--color-slate);
 }
 
 .text-muted {
-  color: var(--text-muted);
+  color: var(--color-muted);
 }
 
 .action-buttons {
@@ -815,24 +815,24 @@ onMounted(() => {
 
 .action-btn {
   padding: 4px 10px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 12px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .action-btn:hover {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .action-btn.danger:hover {
-  background-color: #ef5350;
-  border-color: #ef5350;
+  background-color: var(--color-slate);
+  border-color: var(--color-slate);
 }
 
 /* Modal styles */
@@ -847,15 +847,14 @@ onMounted(() => {
 }
 
 .modal {
-  background: var(--bg-primary);
-  border-radius: 8px;
+  background: var(--color-canvas);
+  border-radius: var(--radius-sm);
   width: 600px;
   max-width: 95vw;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-}
+  }
 
 .supplier-modal {
   width: 700px;
@@ -866,27 +865,27 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 16px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .modal-close {
   background: none;
   border: none;
   font-size: 20px;
-  color: var(--text-muted);
+  color: var(--color-muted);
   cursor: pointer;
   padding: 4px;
   line-height: 1;
 }
 
 .modal-close:hover {
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .modal-body {
@@ -898,7 +897,7 @@ onMounted(() => {
 .form-section {
   margin-bottom: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .form-section:last-of-type {
@@ -910,7 +909,7 @@ onMounted(() => {
 .form-section h4 {
   margin: 0 0 16px 0;
   font-size: 14px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .form-group {
@@ -930,7 +929,7 @@ onMounted(() => {
   display: block;
   margin-bottom: 6px;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .form-group input,
@@ -938,10 +937,10 @@ onMounted(() => {
 .form-select {
   width: 100%;
   padding: 8px 12px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
 }
 
@@ -949,7 +948,7 @@ onMounted(() => {
 .form-group textarea:focus,
 .form-select:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .form-select {
@@ -966,11 +965,11 @@ onMounted(() => {
   gap: 8px;
   cursor: pointer;
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 
 .brands-table {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -984,14 +983,14 @@ onMounted(() => {
 .brands-table td {
   padding: 10px 12px;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .brands-table th {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-neutral-bg);
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-muted);
 }
 
 .brands-table td {
@@ -1005,36 +1004,36 @@ onMounted(() => {
 
 .remove-btn {
   padding: 4px 8px;
-  background-color: rgba(239, 83, 80, 0.1);
-  color: #ef5350;
-  border: 1px solid rgba(239, 83, 80, 0.3);
+  background-color: var(--color-danger-bg);
+  color: var(--color-slate);
+  border: 1px solid var(--color-danger);
   border-radius: var(--radius-sm);
   font-size: 12px;
   cursor: pointer;
 }
 
 .remove-btn:hover {
-  background-color: #ef5350;
+  background-color: var(--color-slate);
   color: white;
-  border-color: #ef5350;
+  border-color: var(--color-slate);
 }
 
 .add-brand-btn {
   width: 100%;
   padding: 10px;
-  background-color: var(--bg-secondary);
-  border: 1px dashed var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px dashed var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--color-muted);
   font-size: 13px;
   cursor: pointer;
   margin-top: 8px;
 }
 
 .add-brand-btn:hover {
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   color: white;
-  border-color: var(--accent-blue);
+  border-color: var(--color-interactive);
 }
 
 .modal-footer {
@@ -1042,22 +1041,22 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-hairline);
 }
 
 .btn-secondary {
   padding: 8px 16px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-neutral-bg);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
 }
 
 .btn-primary {
   padding: 8px 16px;
-  background-color: var(--accent-blue);
+  background-color: var(--color-interactive);
   border: none;
   border-radius: var(--radius-sm);
   color: white;
@@ -1072,7 +1071,7 @@ onMounted(() => {
 
 .btn-danger {
   padding: 8px 16px;
-  background-color: #ef5350;
+  background-color: var(--color-slate);
   border: none;
   border-radius: var(--radius-sm);
   color: white;
@@ -1091,6 +1090,6 @@ onMounted(() => {
 
 .confirm-modal .modal-body p {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--color-ink);
 }
 </style>
