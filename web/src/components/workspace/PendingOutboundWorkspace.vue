@@ -30,6 +30,7 @@ interface PendingOutbound {
   shipping_company: string | null
   tracking_no: string | null
   logistics_status: string | null
+  freight_cost: number | null
   created_at: string
 }
 
@@ -1751,6 +1752,82 @@ onUnmounted(() => {
 .status-tag.logistics-in-transit { background-color: rgba(99,102,241,0.1); color: #4338ca; }
 .status-tag.logistics-delivered { background-color: var(--color-success-bg); color: var(--color-success); }
 .status-tag.logistics-exception { background-color: rgba(245,108,108,0.15); color: var(--color-danger); }
+
+/* ============ 详情弹窗样式 ============ */
+
+.detail-modal {
+  width: 700px;
+  max-width: 90vw;
+}
+
+.detail-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.detail-grid-3col {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 24px;
+}
+
+.detail-item-full {
+  grid-column: 1 / -1;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.detail-value {
+  font-size: 14px;
+  color: var(--color-ink);
+  word-break: break-all;
+}
+
+.detail-freight-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.freight-input {
+  width: 160px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-xs);
+  font-size: 14px;
+  color: var(--color-ink);
+  background-color: var(--color-canvas);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.freight-input:focus {
+  border-color: var(--color-interactive);
+}
+
+.freight-unit {
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+.btn-save-freight {
+  padding: 6px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.loading-placeholder {
+  text-align: center;
+  padding: 40px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
 
 /* ============ vxe-table 行 hover/焦点覆盖 ============ */
 
