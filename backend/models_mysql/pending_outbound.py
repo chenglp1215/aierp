@@ -63,6 +63,7 @@ class PendingOutboundOrder(Model):
     recipient_phone = fields.CharField(max_length=20, null=True, description="收货电话")
 
     remark = fields.TextField(null=True, description="备注")
+    freight_cost = fields.DecimalField(max_digits=10, decimal_places=2, null=True, default=None, description="运费成本")
     shipped_at = fields.DatetimeField(null=True, description="发货时间")
     shipping_company = fields.CharField(max_length=100, null=True, description="物流公司")
     tracking_no = fields.CharField(max_length=100, null=True, description="物流单号")
@@ -109,6 +110,7 @@ class PendingOutboundOrder(Model):
             "recipient_name": self.recipient_name,
             "recipient_phone": self.recipient_phone,
             "remark": self.remark,
+            "freight_cost": float(self.freight_cost) if self.freight_cost else None,
             "shipped_at": self.shipped_at.isoformat() if self.shipped_at else None,
             "shipping_company": self.shipping_company,
             "tracking_no": self.tracking_no,
