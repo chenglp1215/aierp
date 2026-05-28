@@ -9,7 +9,7 @@ from tortoise.expressions import Q
 from tortoise.functions import Sum
 from tortoise.transactions import in_transaction
 
-from models_mysql.pending_outbound import PendingOutboundOrder, PendingOutboundStatus, DeliveryType
+from models_mysql.pending_outbound import PendingOutboundOrder, PendingOutboundStatus, DeliveryType, OutboundType
 from models_mysql.warehouse import Stock, OutboundBatch, InboundBatch
 from models_mysql.sales_order import SalesOrderItem, SalesOrderCostItem, CostType, CostSourceType
 
@@ -371,6 +371,55 @@ class PendingOutboundService:
 
         logger.info(f"出库单 {pending.pending_no} 发货, 操作人: {operator}")
         return pending.to_dict()
+
+    async def update_freight_cost(
+        self,
+        outbound_id: int,
+        freight_cost: float,
+        user_id: int = None
+    ) -> Dict:
+        """更新出货单运费成本，同步创建/更新关联订单成本明细"""
+        # 1. 查询出货单
+        outbound = await PendingOutboundOrder.get_or_none(id=outbound_id)
+        if not outbound:
+            raise ValueError("出货单不存在")
+
+        # 2. 验证状态为 shipped
+        if outbound.status != PendingOutboundStatus.SHIPPED:
+            raise ValueError("仅已发货状态的出货单可录入运费")
+
+        # 3. 更新运费成本
+        outbound.freight_cost = freight_cost
+        await outbound.save()
+
+        # 4. 如果是订单出库，同步创建/更新成本明细
+        if outbound.outbound_type == OutboundType.ORDER_OUTBOUND and outbound.sales_order_id:
+            # 查找是否已有成本明细
+            existing_cost = await SalesOrderCostItem.get_or_none(
+                pending_outbound_id=outbound.id,
+                cost_type=CostType.FREIGHT
+            )
+
+            if existing_cost:
+                # 更新已有成本明细
+                existing_cost.amount = freight_cost
+                await existing_cost.save()
+            else:
+                # 创建新的成本明细
+                await SalesOrderCostItem.create(
+                    sales_order_id=outbound.sales_order_id,
+                    cost_type=CostType.FREIGHT,
+                    amount=freight_cost,
+                    source_type=CostSourceType.OUTBOUND,
+                    source_no=outbound.pending_no,
+                    pending_outbound_id=outbound.id,
+                    remark="出货单运费",
+                    creator_id=user_id,
+                    creator_name=""
+                )
+
+        # 5. 返回更新后的数据
+        return await outbound.to_dict()
 
     async def revoke_outbound(
         self,
