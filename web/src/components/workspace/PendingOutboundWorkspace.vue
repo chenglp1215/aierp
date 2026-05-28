@@ -140,6 +140,13 @@ const shipLoading = ref(false)
 const showRevokeModal = ref(false)
 const revokeLoading = ref(false)
 
+// 详情弹窗相关
+const showDetailModal = ref(false)
+const detailData = ref<any>(null)
+const detailLoading = ref(false)
+const freightCost = ref<number | undefined>(undefined)
+const freightSaving = ref(false)
+
 // 批次选择相关
 interface AvailableBatch {
   id: number
@@ -441,6 +448,50 @@ const getStatusClass = (status: string) => statusMap[status]?.class || ''
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return '-'
   return dateStr.substring(0, 10)
+}
+
+// 详情弹窗方法
+const openDetailModal = async (row: any) => {
+  showDetailModal.value = true
+  detailLoading.value = true
+  detailData.value = null
+  freightCost.value = undefined
+  try {
+    const res = await pendingOutboundApi.getById(row.id)
+    // getById 是非分页接口，apiService 自动解包 result，res 就是对象本身
+    detailData.value = res
+    freightCost.value = res.freight_cost ? Number(res.freight_cost) : undefined
+  } catch (e: any) {
+    detailData.value = null
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+const handleSaveFreight = async () => {
+  if (!freightCost.value || freightCost.value <= 0) {
+    window.showToast('请输入有效的运费金额（正数）', 'warning')
+    return
+  }
+  if (!detailData.value) return
+  freightSaving.value = true
+  try {
+    await pendingOutboundApi.updateFreightCost(detailData.value.id, {
+      freight_cost: freightCost.value
+    })
+    // 更新列表中对应行的 freight_cost
+    const idx = pendingOutbounds.value.findIndex((r: any) => r.id === detailData.value.id)
+    if (idx !== -1) {
+      pendingOutbounds.value[idx].freight_cost = freightCost.value
+    }
+    // 更新详情数据
+    detailData.value.freight_cost = freightCost.value
+    window.showToast('运费成本保存成功', 'success')
+  } catch (e: any) {
+    window.showToast(e?.message || '运费成本保存失败', 'error')
+  } finally {
+    freightSaving.value = false
+  }
 }
 
 onMounted(async () => {
@@ -1543,7 +1594,7 @@ onUnmounted(() => {
 /* 物流状态标签样式 */
 .status-tag.logistics-pending { background-color: var(--color-warning-bg); color: var(--color-warning); }
 .status-tag.logistics-picked-up { background-color: var(--color-info-bg); color: var(--color-interactive); }
-.status-tag.logistics-in-transit { background-color: rgba(99,102,241,0.1); color: var(--color-accent); }
+.status-tag.logistics-in-transit { background-color: rgba(99,102,241,0.1); color: #4338ca; }
 .status-tag.logistics-delivered { background-color: var(--color-success-bg); color: var(--color-success); }
 .status-tag.logistics-exception { background-color: rgba(245,108,108,0.15); color: var(--color-danger); }
 
