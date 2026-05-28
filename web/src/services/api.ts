@@ -1802,5 +1802,9 @@ export const pendingOutboundApi = {
     excluded_ids?: number[]
   }) => {
     return apiService.post<any>('/pending-outbounds/export', params)
-  }
+  },
+
+  // 更新运费成本
+  updateFreightCost: (id: number, data: { freight_cost: number }) =>
+    apiService.put(`/pending-outbounds/${id}/freight-cost`, data),
 }
