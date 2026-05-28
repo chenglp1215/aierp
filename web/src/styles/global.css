@@ -22,12 +22,13 @@
   --color-pale-blue: #f1f5ff;
   --color-neutral-bg: #f2f2f2;
   --color-sidebar-bg: #17171c;
+  --color-sidebar-text: #cbd5e1;
   --color-sidebar-active: rgba(255, 255, 255, 0.12);
   --color-sidebar-hover: rgba(255, 255, 255, 0.06);
 
   /* 文字 */
   --color-ink: #212121;
-  --color-muted: #93939f;
+  --color-muted: #6b7280;
   --color-slate: #75758a;
   --color-body-muted: #616161;
   --color-text-inverse: #ffffff;
@@ -37,12 +38,26 @@
   --color-border-light: #e5e7eb;
   --color-card-border: #f2f2f2;
 
+  /* 深色框架 — Header / Footer */
+  --color-header-bg: linear-gradient(90deg, #0f172a, #1e293b);
+  --color-header-border: rgba(148, 163, 184, 0.1);
+  --color-header-text: #f1f5f9;
+  --color-header-text-muted: #cbd5e1;
+  --color-footer-bg: #1e293b;
+  --color-footer-border: rgba(148, 163, 184, 0.1);
+  --color-footer-text: #cbd5e1;
+  --color-header-btn-bg: rgba(59, 130, 246, 0.15);
+  --color-header-btn-text: #3b82f6;
+  --color-header-btn-border: rgba(59, 130, 246, 0.3);
+  --color-header-btn-hover-bg: rgba(59, 130, 246, 0.25);
+
   /* 语义色 */
   --color-success: #003c33;
   --color-success-bg: #edfce9;
   --color-danger: #b30000;
   --color-danger-bg: #ffad9b;
   --color-warning: #f59e0b;
+  --color-warning-text: #92400e;
   --color-warning-bg: #eeece7;
   --color-info: #1863dc;
   --color-info-bg: #f1f5ff;
