@@ -652,6 +652,12 @@ onUnmounted(() => {
           <template #default="{ row }">
             <span class="action-btns">
               <button
+                class="btn-link"
+                @click="openDetailModal(row)"
+              >
+                详情
+              </button>
+              <button
                 v-if="row.status === 'pending'"
                 class="btn-link success"
                 @click="openOutboundModal(row)"
@@ -867,6 +873,154 @@ onUnmounted(() => {
           <button class="btn-danger" @click="handleRevoke" :disabled="revokeLoading">
             {{ revokeLoading ? '处理中...' : '确认撤销' }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 出货单详情弹窗 -->
+    <div v-if="showDetailModal" class="modal-overlay" @click.self="showDetailModal = false">
+      <div class="modal detail-modal">
+        <div class="modal-header">
+          <h3>出货单详情{{ detailData ? ' - ' + detailData.pending_no : '' }}</h3>
+          <button class="modal-close" @click="showDetailModal = false">&times;</button>
+        </div>
+        <div class="modal-body" v-if="detailLoading">
+          <div class="loading-placeholder">加载中...</div>
+        </div>
+        <div class="modal-body" v-else-if="detailData">
+          <!-- 基本信息 -->
+          <div class="detail-section">
+            <h4 class="detail-section-title">基本信息</h4>
+            <div class="detail-grid detail-grid-3col">
+              <div class="detail-item">
+                <span class="detail-label">单号</span>
+                <span class="detail-value">{{ detailData.pending_no }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">关联订单号</span>
+                <span class="detail-value">{{ detailData.sales_order_no || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">商品编码</span>
+                <span class="detail-value">{{ detailData.product_code || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">规格编码</span>
+                <span class="detail-value">{{ detailData.spec_code || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">仓库</span>
+                <span class="detail-value">{{ detailData.warehouse_name || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">锁定数量</span>
+                <span class="detail-value">{{ detailData.locked_qty ?? '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">出库类型</span>
+                <span class="detail-value">{{ getOutboundTypeLabel(detailData.outbound_type) || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">配送方式</span>
+                <span class="detail-value">{{ getDeliveryTypeLabel(detailData.delivery_type) || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">状态</span>
+                <span class="detail-value">
+                  <span class="status-tag" :class="getStatusClass(detailData.status)">
+                    {{ getStatusLabel(detailData.status) }}
+                  </span>
+                </span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">备注</span>
+                <span class="detail-value">{{ detailData.remark || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">创建时间</span>
+                <span class="detail-value">{{ formatDate(detailData.created_at) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 收货信息 -->
+          <div class="detail-section">
+            <h4 class="detail-section-title">收货信息</h4>
+            <div class="detail-grid detail-grid-3col">
+              <div class="detail-item">
+                <span class="detail-label">收货人</span>
+                <span class="detail-value">{{ detailData.recipient_name || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">收货电话</span>
+                <span class="detail-value">{{ detailData.recipient_phone || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">省份</span>
+                <span class="detail-value">{{ detailData.province || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">城市</span>
+                <span class="detail-value">{{ detailData.city || '-' }}</span>
+              </div>
+              <div class="detail-item detail-item-full">
+                <span class="detail-label">详细地址</span>
+                <span class="detail-value">{{ detailData.address || '-' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 物流信息 -->
+          <div class="detail-section">
+            <h4 class="detail-section-title">物流信息</h4>
+            <div class="detail-grid detail-grid-3col">
+              <div class="detail-item">
+                <span class="detail-label">物流公司</span>
+                <span class="detail-value">{{ detailData.shipping_company || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">物流单号</span>
+                <span class="detail-value">{{ detailData.tracking_no || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">物流状态</span>
+                <span class="detail-value">
+                  <span v-if="detailData.logistics_status" class="status-tag" :class="getLogisticsStatusClass(detailData.logistics_status)">
+                    {{ getLogisticsStatusLabel(detailData.logistics_status) }}
+                  </span>
+                  <span v-else>-</span>
+                </span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">发货时间</span>
+                <span class="detail-value">{{ detailData.shipped_at ? formatDate(detailData.shipped_at) : '-' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 运费成本（仅已发货状态显示） -->
+          <div v-if="detailData.status === 'shipped'" class="detail-section">
+            <h4 class="detail-section-title">运费成本</h4>
+            <div class="detail-freight-row">
+              <span class="detail-label">运费金额</span>
+              <input
+                type="number"
+                class="freight-input"
+                v-model.number="freightCost"
+                min="0.01"
+                step="1"
+                placeholder="请输入运费金额"
+              />
+              <span class="freight-unit">元</span>
+              <button
+                class="btn-primary btn-save-freight"
+                :disabled="freightSaving || !freightCost || freightCost <= 0"
+                @click="handleSaveFreight"
+              >
+                {{ freightSaving ? '保存中...' : '保存' }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
