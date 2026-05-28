@@ -1,14 +1,20 @@
 """
 待出库单管理 - API路由
 """
-from fastapi import APIRouter, Query, Depends, Body
+from fastapi import APIRouter, Query, Depends, Body, HTTPException
 from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field
 
 from services.pending_outbound_service import pending_outbound_service
 from .auth import require_permission
 from app.decorators import wrap_response
 
 pending_outbound_router = APIRouter(prefix="/pending-outbounds", tags=["出库管理"])
+
+
+class FreightCostUpdate(BaseModel):
+    """运费成本更新请求体"""
+    freight_cost: float = Field(..., gt=0, description="运费成本，必须为正数")
 
 
 @pending_outbound_router.get("/", response_model=dict, description="获取待出库单列表")
@@ -132,3 +138,23 @@ async def get_pending_outbounds_by_order(
     """根据销售订单号查询待出库单"""
     items = await pending_outbound_service.get_by_sales_order(sales_order_no)
     return items
+
+
+@pending_outbound_router.put("/{outbound_id}/freight-cost", response_model=dict, description="更新出货单运费成本")
+@wrap_response
+async def update_freight_cost(
+    outbound_id: int,
+    data: FreightCostUpdate,
+    current_user: dict = Depends(require_permission("warehouse.edit"))
+):
+    """更新出货单运费成本"""
+    user_id = current_user.get("user_id") or current_user.get("id")
+    try:
+        result = await pending_outbound_service.update_freight_cost(
+            outbound_id=outbound_id,
+            freight_cost=data.freight_cost,
+            user_id=user_id
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
