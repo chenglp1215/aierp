@@ -28,6 +28,8 @@ class DeliveryStatus(str, Enum):
     NONE = "none"
     PARTIAL = "partial"
     FULL = "full"
+    NO_NEED = "no_need"  # 无需发货
+    HAS_RETURN = "has_return"  # 有退货
 
 
 class ReceiveStatus(str, Enum):
@@ -42,6 +44,7 @@ class InvoiceStatus(str, Enum):
     NONE = "none"
     PARTIAL = "partial"
     FULL = "full"
+    NO_NEED = "no_need"  # 无需开票
 
 
 class CostType(str, Enum):
@@ -65,6 +68,7 @@ class FinanceStatus(str, Enum):
     PARTIAL_PAID = "partial_paid"      # 部分付款
     PAID = "paid"                      # 已付款
     RECONCILED = "reconciled"          # 已对账
+    NO_NEED = "no_need"                # 无需付款
 
 
 class ShippingMethod(str, Enum):
@@ -72,6 +76,8 @@ class ShippingMethod(str, Enum):
     DIRECT = "direct"      # 直运
     WAREHOUSE = "warehouse"  # 仓库发货
     WAREHOUSE_PICKUP = "warehouse_pickup"  # 仓库自提
+    LOGISTICS = "logistics"  # 物流
+    DELIVERY = "delivery"  # 送货
 
 
 class SalesOrder(Model):
@@ -98,6 +104,8 @@ class SalesOrder(Model):
     expect_deliver_date = fields.DateField(null=True, description="期望交货日")
     settle_type = fields.CharField(max_length=50, null=True, description="结算方式")
     remark = fields.TextField(null=True, description="备注")
+    third_party_platform = fields.CharField(max_length=50, null=True, description="第三方平台")
+    platform_order_no = fields.CharField(max_length=100, null=True, description="平台订单号")
     creator_id = fields.IntField(null=True, description="创建人ID")
     creator_name = fields.CharField(max_length=100, null=True, description="创建人名称")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
@@ -134,6 +142,8 @@ class SalesOrder(Model):
             "expect_deliver_date": self.expect_deliver_date.isoformat() if self.expect_deliver_date else None,
             "settle_type": self.settle_type,
             "remark": self.remark,
+            "third_party_platform": self.third_party_platform,
+            "platform_order_no": self.platform_order_no,
             "creator_id": self.creator_id,
             "creator_name": self.creator_name,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -171,6 +181,9 @@ class SalesOrderItem(Model):
     return_qty = fields.IntField(default=0, description="已退货数量")
     exchange_qty = fields.IntField(default=0, description="换货数量")
     supplement_qty = fields.IntField(default=0, description="补货数量")
+    tax_rate = fields.DecimalField(max_digits=5, decimal_places=4, default=0.13, description="税率")
+    item_remark = fields.TextField(null=True, description="商品备注")
+    return_info = fields.CharField(max_length=500, null=True, description="退货信息：格式'退货数量（退货方式，金额）'")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
 
@@ -231,6 +244,8 @@ class SalesOrderItem(Model):
             ShippingMethod.DIRECT: "直运",
             ShippingMethod.WAREHOUSE: "仓库发货",
             ShippingMethod.WAREHOUSE_PICKUP: "仓库自提",
+            ShippingMethod.LOGISTICS: "物流",
+            ShippingMethod.DELIVERY: "送货",
         }
         shipping_method_cn = shipping_method_map.get(self.shipping_method) if self.shipping_method else None
 
@@ -259,6 +274,9 @@ class SalesOrderItem(Model):
             "return_qty": self.return_qty,
             "exchange_qty": self.exchange_qty,
             "supplement_qty": self.supplement_qty,
+            "tax_rate": float(self.tax_rate) if self.tax_rate else 0.13,
+            "item_remark": self.item_remark,
+            "return_info": self.return_info,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
