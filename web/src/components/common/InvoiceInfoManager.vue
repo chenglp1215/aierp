@@ -22,22 +22,15 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-const INVOICE_TYPE_OPTIONS = [
-  { value: '增值税', label: '增值税' },
-  { value: '普通发票', label: '普通发票' },
-  { value: '增值税专用发票', label: '增值税专用发票' },
-  { value: '不开票', label: '不开票' }
-]
-
 const editingInvoiceId = ref<string | null>(null)
 const editingInvoiceBackup = ref<InvoiceInfo | null>(null)
 const isAddingNewInvoice = ref(false)
 const newInvoiceForm = ref<InvoiceInfo>({
   invoice_title: '',
-  invoice_type: '',
   tax_number: '',
   bank_name: '',
   bank_account: '',
+  address_phone: null,
   is_default: false
 })
 const formLoading = ref(false)
@@ -47,10 +40,10 @@ const startAddNew = () => {
   editingInvoiceId.value = null
   newInvoiceForm.value = {
     invoice_title: '',
-    invoice_type: '',
     tax_number: '',
     bank_name: '',
     bank_account: '',
+    address_phone: null,
     is_default: props.invoiceInfos.length === 0
   }
 }
@@ -59,10 +52,10 @@ const cancelAddNew = () => {
   isAddingNewInvoice.value = false
   newInvoiceForm.value = {
     invoice_title: '',
-    invoice_type: '',
     tax_number: '',
     bank_name: '',
     bank_account: '',
+    address_phone: null,
     is_default: false
   }
 }
@@ -86,10 +79,6 @@ const cancelEdit = () => {
 const validateNewForm = (): boolean => {
   if (!newInvoiceForm.value.invoice_title?.trim()) {
     window.showToast('请输入开票抬头', 'warning')
-    return false
-  }
-  if (!newInvoiceForm.value.invoice_type) {
-    window.showToast('请选择开票类型', 'warning')
     return false
   }
   if (!newInvoiceForm.value.tax_number?.trim()) {
@@ -127,10 +116,6 @@ const handleAddNew = async () => {
 const validateEditForm = (invoice: InvoiceInfo): boolean => {
   if (!invoice.invoice_title?.trim()) {
     window.showToast('请输入开票抬头', 'warning')
-    return false
-  }
-  if (!invoice.invoice_type) {
-    window.showToast('请选择开票类型', 'warning')
     return false
   }
   if (!invoice.tax_number?.trim()) {
@@ -208,31 +193,26 @@ const handleSetDefault = async (invoiceId: string) => {
         <thead>
           <tr>
             <th>开票抬头</th>
-            <th>开票类型</th>
             <th>税号</th>
             <th>开户行</th>
             <th>银行账号</th>
+            <th>地址电话</th>
             <th>默认</th>
             <th v-if="!readonly">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="invoiceInfos.length === 0 && !isAddingNewInvoice">
-            <td :colspan="readonly ? 6 : 7" class="empty-cell">暂无开票信息</td>
+            <td :colspan="readonly ? 7 : 8" class="empty-cell">暂无开票信息</td>
           </tr>
 
           <tr v-for="invoice in invoiceInfos" :key="invoice.id">
             <template v-if="editingInvoiceId === invoice.id">
               <td><input type="text" v-model="invoice.invoice_title" class="inline-input" placeholder="开票抬头" /></td>
-              <td>
-                <select v-model="invoice.invoice_type" class="inline-input">
-                  <option value="" disabled>请选择</option>
-                  <option v-for="opt in INVOICE_TYPE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                </select>
-              </td>
               <td><input type="text" v-model="invoice.tax_number" class="inline-input" placeholder="税号" /></td>
               <td><input type="text" v-model="invoice.bank_name" class="inline-input" placeholder="开户行" /></td>
               <td><input type="text" v-model="invoice.bank_account" class="inline-input" placeholder="银行账号" /></td>
+              <td><input type="text" v-model="invoice.address_phone" class="inline-input" placeholder="地址电话" /></td>
               <td><input type="checkbox" v-model="invoice.is_default" class="inline-checkbox" /></td>
               <td v-if="!readonly">
                 <button class="btn-link" @click="handleSaveEdit(invoice)">保存</button>
@@ -241,10 +221,10 @@ const handleSetDefault = async (invoiceId: string) => {
             </template>
             <template v-else>
               <td>{{ invoice.invoice_title }}</td>
-              <td>{{ invoice.invoice_type || '-' }}</td>
               <td>{{ invoice.tax_number || '-' }}</td>
               <td>{{ invoice.bank_name || '-' }}</td>
               <td>{{ invoice.bank_account || '-' }}</td>
+              <td>{{ invoice.address_phone || '-' }}</td>
               <td>{{ invoice.is_default ? '是' : '否' }}</td>
               <td v-if="!readonly">
                 <button v-if="!invoice.is_default" class="btn-link" @click="handleSetDefault(invoice.id!)">设为默认</button>
@@ -256,15 +236,10 @@ const handleSetDefault = async (invoiceId: string) => {
 
           <tr v-if="isAddingNewInvoice">
             <td><input type="text" v-model="newInvoiceForm.invoice_title" class="inline-input" placeholder="开票抬头 *" /></td>
-            <td>
-              <select v-model="newInvoiceForm.invoice_type" class="inline-input">
-                <option value="" disabled>请选择</option>
-                <option v-for="opt in INVOICE_TYPE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-              </select>
-            </td>
             <td><input type="text" v-model="newInvoiceForm.tax_number" class="inline-input" placeholder="税号 *" /></td>
             <td><input type="text" v-model="newInvoiceForm.bank_name" class="inline-input" placeholder="开户行" /></td>
             <td><input type="text" v-model="newInvoiceForm.bank_account" class="inline-input" placeholder="银行账号" /></td>
+            <td><input type="text" v-model="newInvoiceForm.address_phone" class="inline-input" placeholder="地址电话" /></td>
             <td><input type="checkbox" v-model="newInvoiceForm.is_default" class="inline-checkbox" /></td>
             <td v-if="!readonly">
               <button class="btn-link" @click="handleAddNew" :disabled="formLoading">保存</button>

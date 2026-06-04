@@ -227,6 +227,7 @@ onMounted(() => {
           <span class="col-tax">税务编码</span>
           <span class="col-sort">排序</span>
           <span class="col-display">展示</span>
+          <span class="col-count">商品数量</span>
           <span class="col-actions">操作</span>
         </div>
         <div class="tree-body">
@@ -265,6 +266,7 @@ onMounted(() => {
             <span class="col-display">
               <span :class="['status-dot', node.is_shop_display ? 'active' : 'inactive']"></span>
             </span>
+            <span class="col-count">{{ node.product_count || 0 }}</span>
             <span class="col-actions">
               <button class="action-btn" @click.stop="selectedId = node.id; openEdit()">编辑</button>
               <button
@@ -435,7 +437,7 @@ onMounted(() => {
 
 .tree-header {
   display: grid;
-  grid-template-columns: 1fr 80px 120px 60px 60px 160px;
+  grid-template-columns: 1fr 80px 120px 60px 60px 80px 160px;
   gap: 8px;
   padding: 12px 16px;
   background-color: var(--color-neutral-bg);
@@ -452,7 +454,7 @@ onMounted(() => {
 
 .tree-row {
   display: grid;
-  grid-template-columns: 1fr 80px 120px 60px 60px 160px;
+  grid-template-columns: 1fr 80px 120px 60px 60px 80px 160px;
   gap: 8px;
   padding: 10px 16px;
   align-items: center;
@@ -535,6 +537,11 @@ onMounted(() => {
   color: var(--color-muted);
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.col-count {
+  text-align: center;
+  color: var(--color-muted);
 }
 
 .col-display {

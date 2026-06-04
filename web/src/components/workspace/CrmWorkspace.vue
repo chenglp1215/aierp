@@ -2,13 +2,15 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   customerApi,
-  type Customer,
-  type CustomerListItem,
-  type InvoiceInfo,
-  type ShippingAddressV2
+  type CustomerListItem
 } from '../../services/api'
 import { authApi } from '../../services/api'
-import ProvinceCitySelector from '../common/ProvinceCitySelector.vue'
+import CustomerEditModal from './CustomerEditModal.vue'
+import CustomerDetail from './CustomerDetail.vue'
+import CustomerClaimModal from './CustomerClaimModal.vue'
+import CustomerOrderDefaultsModal from './CustomerOrderDefaultsModal.vue'
+import CustomerCreditModal from './CustomerCreditModal.vue'
+import CustomerMemberModal from './CustomerMemberModal.vue'
 
 const loading = ref(false)
 const customers = ref<CustomerListItem[]>([])
@@ -17,20 +19,22 @@ const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
 const filterType = ref('')
-const stats = ref({ total: 0, terminal_count: 0, dealer_count: 0 })
+const filterStatus = ref<number | null>(null)
+const filterSalesUserId = ref<number | null>(null)
+const filterCreatedAtStart = ref('')
+const filterCreatedAtEnd = ref('')
 
-const showCustomerModal = ref(false)
-const showDeleteConfirm = ref(false)
-const editingCustomer = ref<Customer | null>(null)
-const deleteTargetId = ref<string | null>(null)
-const formLoading = ref(false)
-const deleteLoading = ref(false)
+// 弹窗控制
+const showEditModal = ref(false)
+const showDetailModal = ref(false)
+const showClaimModal = ref(false)
+const showOrderDefaultsModal = ref(false)
+const showCreditModal = ref(false)
+const showMemberModal = ref(false)
+const currentCustomer = ref<any>(null)
+const editMode = ref<'create' | 'edit'>('create')
 
-const showAiPanel = ref(false)
-const aiInputText = ref('')
-const aiImageFile = ref<File | null>(null)
-const aiLoading = ref(false)
-
+// 转移弹窗
 const showTransferModal = ref(false)
 const transferTargetId = ref<string | null>(null)
 const transferTargetName = ref<string>('')
@@ -39,49 +43,42 @@ const selectedSalesUserId = ref<string>('')
 const salesUserKeyword = ref('')
 const transferLoading = ref(false)
 
-const customerForm = ref({
-  name: '',
-  customer_type: 'terminal' as 'terminal' | 'dealer',
-  research_group: ''
-})
+// 删除弹窗
+const showDeleteConfirm = ref(false)
+const deleteTargetId = ref<string | null>(null)
+const deleteLoading = ref(false)
 
-const contactForm = ref({
-  contact_person: '',
-  contact_phone: '',
-  contact_email: ''
-})
-
-const invoiceInfos = ref<InvoiceInfo[]>([])
-const shippingAddresses = ref<ShippingAddressV2[]>([])
-
-const customerTypes = [
-  { value: 'terminal', label: '终端' },
-  { value: 'dealer', label: '经销商' }
-]
+// 导出选中
+const selectedRows = ref<CustomerListItem[]>([])
 
 const customerTypeMap: Record<string, string> = {
   terminal: '终端',
   dealer: '经销商'
 }
 
-const statusMap: Record<string, string> = {
-  normal: '正常',
-  inactive: '停用',
-  blacklisted: '黑名单'
+const customerStatusMap: Record<number, string> = {
+  1: '正常',
+  2: '公共池'
 }
 
-const showResearchGroup = computed(() => customerForm.value.customer_type === 'terminal')
-const isEditing = computed(() => editingCustomer.value !== null)
+const hasActiveFilters = computed(() => {
+  return !!(keyword.value || filterType.value || filterStatus.value || filterSalesUserId.value || filterCreatedAtStart.value || filterCreatedAtEnd.value)
+})
 
 const loadCustomers = async () => {
   loading.value = true
   try {
-    const res = await customerApi.list({
+    const params: any = {
       page: page.value,
       page_size: pageSize.value,
       keyword: keyword.value || undefined,
-      customer_type: filterType.value || undefined
-    })
+      customer_type: filterType.value || undefined,
+      customer_status: filterStatus.value ?? undefined,
+      sales_user_id: filterSalesUserId.value ?? undefined,
+      created_at_start: filterCreatedAtStart.value || undefined,
+      created_at_end: filterCreatedAtEnd.value || undefined
+    }
+    const res = await customerApi.list(params)
     if (res) {
       customers.value = res.items || []
       total.value = res.total || 0
@@ -96,14 +93,6 @@ const loadCustomers = async () => {
   }
 }
 
-const loadStats = async () => {
-  try {
-    const res = await customerApi.getStats()
-    stats.value = res || { total: 0, terminal_count: 0, dealer_count: 0 }
-  } catch (error) {
-    console.error('加载统计数据失败:', error)
-  }
-}
 
 const handlePageChange = ({ currentPage, pageSize: newPageSize }: { currentPage: number; pageSize: number }) => {
   page.value = currentPage
@@ -116,209 +105,47 @@ const handleSearch = () => {
   loadCustomers()
 }
 
-const hasActiveFilters = computed(() => !!(keyword.value || filterType.value))
-
 const resetFilters = () => {
   keyword.value = ''
   filterType.value = ''
+  filterStatus.value = null
+  filterSalesUserId.value = null
+  filterCreatedAtStart.value = ''
+  filterCreatedAtEnd.value = ''
   page.value = 1
   loadCustomers()
 }
 
-const resetCustomerForm = () => {
-  customerForm.value = {
-    name: '',
-    customer_type: 'terminal',
-    research_group: ''
-  }
-  contactForm.value = {
-    contact_person: '',
-    contact_phone: '',
-    contact_email: ''
-  }
-  invoiceInfos.value = []
-  shippingAddresses.value = []
-  editingCustomer.value = null
-}
-
-const toggleAiPanel = () => {
-  showAiPanel.value = !showAiPanel.value
-  if (showAiPanel.value) {
-    aiInputText.value = ''
-    aiImageFile.value = null
-  }
-}
-
-const handleImageChange = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  if (target.files && target.files[0]) {
-    aiImageFile.value = target.files[0]
-  }
-}
-
-const handleAiSubmit = async () => {
-  if (!aiInputText.value && !aiImageFile.value) {
-    window.showToast('请输入文本或上传图片', 'warning')
-    return
-  }
-
-  aiLoading.value = true
-  try {
-    let filePath: string | undefined
-    if (aiImageFile.value) {
-      filePath = (aiImageFile.value as any).path
-    }
-
-    const response = await customerApi.createFromAi({
-      input: aiInputText.value || undefined,
-      file_path: filePath
-    })
-
-    if (response && response.result) {
-      const data = response.result
-      customerForm.value = {
-        name: data.name || '',
-        customer_type: data.customer_type || 'terminal',
-        research_group: data.research_group || ''
-      }
-      contactForm.value = {
-        contact_person: data.contact_person || '',
-        contact_phone: data.contact_phone || '',
-        contact_email: data.contact_email || ''
-      }
-      if (data.invoice_infos && data.invoice_infos.length > 0) {
-        invoiceInfos.value = data.invoice_infos.map((info: any) => ({
-          invoice_title: info.invoice_title || '',
-          invoice_type: info.invoice_type || '增值税',
-          tax_number: info.tax_number || '',
-          bank_name: info.bank_name || '',
-          bank_account: info.bank_account || '',
-          is_default: info.is_default || false
-        }))
-      }
-      if (data.shipping_addresses && data.shipping_addresses.length > 0) {
-        shippingAddresses.value = data.shipping_addresses.map((addr: any) => ({
-          recipient_name: addr.recipient_name || '',
-          recipient_phone: addr.recipient_phone || '',
-          province: addr.province || '',
-          province_code: addr.province_code || '',
-          city: addr.city || '',
-          city_code: addr.city_code || '',
-          address: addr.address || '',
-          is_default: addr.is_default || false
-        }))
-      }
-      showAiPanel.value = false
-      window.showToast('AI 信息已填充到表单', 'success')
-    }
-  } catch (error: any) {
-    window.showToast(error.message || 'AI 解析失败', 'error')
-  } finally {
-    aiLoading.value = false
-  }
-}
-
+// ==================== 新建/编辑客户 ====================
 const openCreateCustomer = () => {
-  resetCustomerForm()
-  showCustomerModal.value = true
+  currentCustomer.value = null
+  editMode.value = 'create'
+  showEditModal.value = true
 }
 
 const openEditCustomer = async (row: CustomerListItem) => {
   try {
-    formLoading.value = true
-    const res = await customerApi.getById(row.id)
-    const customer: Customer = res
-
-    editingCustomer.value = customer
-    customerForm.value = {
-      name: customer.name,
-      customer_type: customer.customer_type,
-      research_group: customer.research_group || ''
-    }
-    contactForm.value = {
-      contact_person: customer.contact_person || '',
-      contact_phone: customer.contact_phone || '',
-      contact_email: customer.contact_email || ''
-    }
-    invoiceInfos.value = customer.invoice_infos || []
-    shippingAddresses.value = customer.shipping_addresses || []
-
-    showCustomerModal.value = true
+    const res = await customerApi.getById(String(row.id))
+    currentCustomer.value = res
+    editMode.value = 'edit'
+    showEditModal.value = true
   } catch (error: any) {
     window.showToast(error.message || '加载客户详情失败', 'error')
-  } finally {
-    formLoading.value = false
   }
 }
 
-const validateCustomerForm = (): boolean => {
-  if (!customerForm.value.name?.trim()) {
-    window.showToast('请输入客户名称', 'warning')
-    return false
-  }
-  if (!customerForm.value.customer_type) {
-    window.showToast('请选择客户类型', 'warning')
-    return false
-  }
-  if (showResearchGroup.value && !customerForm.value.research_group?.trim()) {
-    window.showToast('请输入课题组信息', 'warning')
-    return false
-  }
-  return true
-}
-
-const handleSaveCustomer = async () => {
-  if (!validateCustomerForm()) return
-
-  formLoading.value = true
-  try {
-    const customerData: any = {
-      name: customerForm.value.name.trim(),
-      customer_type: customerForm.value.customer_type,
-      research_group: customerForm.value.research_group?.trim() || undefined,
-      contact_person: contactForm.value.contact_person?.trim() || undefined,
-      contact_phone: contactForm.value.contact_phone?.trim() || undefined,
-      contact_email: contactForm.value.contact_email?.trim() || undefined,
-      invoice_infos: invoiceInfos.value.map((info) => ({
-        id: info.id || undefined,
-        invoice_title: info.invoice_title,
-        invoice_type: info.invoice_type,
-        tax_number: info.tax_number,
-        bank_name: info.bank_name,
-        bank_account: info.bank_account,
-        is_default: info.is_default === true
-      })),
-      shipping_addresses: shippingAddresses.value.map((addr) => ({
-        id: addr.id || undefined,
-        recipient_name: addr.recipient_name,
-        recipient_phone: addr.recipient_phone,
-        province: addr.province || '',
-        province_code: addr.province_code || '',
-        city: addr.city || '',
-        city_code: addr.city_code || '',
-        address: addr.address,
-        is_default: addr.is_default === true
-      }))
+const onEditSaved = (data?: any) => {
+  if (data && data.id && editMode.value === 'edit') {
+    const idx = customers.value.findIndex(c => c.id === data.id)
+    if (idx !== -1) {
+      customers.value[idx] = { ...customers.value[idx], ...data }
     }
-
-    if (editingCustomer.value) {
-      await customerApi.update(editingCustomer.value.id, customerData)
-      window.showToast('客户更新成功', 'success')
-    } else {
-      await customerApi.create(customerData)
-      window.showToast('客户创建成功', 'success')
-    }
-
-    showCustomerModal.value = false
+  } else {
     loadCustomers()
-    loadStats()
-  } catch (error: any) {
-    window.showToast(error.message || '操作失败', 'error')
-  } finally {
-    formLoading.value = false
   }
 }
 
+// ==================== 删除客户 ====================
 const confirmDelete = (customerId: string) => {
   deleteTargetId.value = customerId
   showDeleteConfirm.value = true
@@ -326,7 +153,6 @@ const confirmDelete = (customerId: string) => {
 
 const handleDelete = async () => {
   if (!deleteTargetId.value) return
-
   deleteLoading.value = true
   try {
     await customerApi.delete(deleteTargetId.value)
@@ -335,7 +161,6 @@ const handleDelete = async () => {
     total.value--
     showDeleteConfirm.value = false
     deleteTargetId.value = null
-    loadStats()
   } catch (error: any) {
     window.showToast(error.message || '删除失败', 'error')
   } finally {
@@ -343,6 +168,7 @@ const handleDelete = async () => {
   }
 }
 
+// ==================== 转移客户 ====================
 const loadSalesUsers = async (keyword?: string) => {
   try {
     const res = await authApi.listUsers({ keyword, page_size: 100 })
@@ -357,8 +183,12 @@ const loadSalesUsers = async (keyword?: string) => {
 }
 
 const openTransferModal = async (customer: CustomerListItem) => {
+  if (customer.customer_status === 2) {
+    window.showToast('公共池客户不可转移，请先认领', 'warning')
+    return
+  }
   transferTargetId.value = customer.id
-  transferTargetName.value = customer.name
+  transferTargetName.value = customer.customer_name
   selectedSalesUserId.value = ''
   salesUserKeyword.value = ''
   await loadSalesUsers()
@@ -370,7 +200,6 @@ const handleTransfer = async () => {
     window.showToast('请选择目标销售', 'warning')
     return
   }
-
   transferLoading.value = true
   try {
     await customerApi.transfer(transferTargetId.value, selectedSalesUserId.value)
@@ -395,81 +224,91 @@ const closeTransferModal = () => {
   salesUsers.value = []
 }
 
-const addInvoiceInfo = () => {
-  invoiceInfos.value.push({
-    invoice_title: '',
-    invoice_type: '增值税',
-    tax_number: '',
-    bank_name: '',
-    bank_account: '',
-    is_default: invoiceInfos.value.length === 0
-  })
+// ==================== 弹窗触发 ====================
+const showDetail = (row: CustomerListItem) => {
+  currentCustomer.value = row
+  showDetailModal.value = true
 }
 
-const removeInvoiceInfo = (index: number) => {
-  const wasDefault = invoiceInfos.value[index].is_default
-  invoiceInfos.value.splice(index, 1)
-  if (invoiceInfos.value.length > 0) {
-    if (wasDefault || !invoiceInfos.value.some(i => i.is_default)) {
-      invoiceInfos.value[0].is_default = true
-    }
-  }
+const showClaim = (row: CustomerListItem) => {
+  currentCustomer.value = row
+  showClaimModal.value = true
 }
 
-const setDefaultInvoice = (index: number) => {
-  invoiceInfos.value.forEach((info, i) => {
-    info.is_default = i === index
-  })
+const showOrderDefaults = (row: CustomerListItem) => {
+  currentCustomer.value = row
+  showOrderDefaultsModal.value = true
 }
 
-const addShippingAddress = () => {
-  shippingAddresses.value.push({
-    recipient_name: '',
-    recipient_phone: '',
-    province: '',
-    province_code: '',
-    city: '',
-    city_code: '',
-    address: '',
-    is_default: shippingAddresses.value.length === 0
-  })
+const showCredit = (row: CustomerListItem) => {
+  currentCustomer.value = row
+  showCreditModal.value = true
 }
 
-const removeShippingAddress = (index: number) => {
-  const wasDefault = shippingAddresses.value[index].is_default
-  shippingAddresses.value.splice(index, 1)
-  if (shippingAddresses.value.length > 0) {
-    if (wasDefault || !shippingAddresses.value.some(a => a.is_default)) {
-      shippingAddresses.value[0].is_default = true
-    }
-  }
-}
-
-const setDefaultAddress = (index: number) => {
-  shippingAddresses.value.forEach((addr, i) => {
-    addr.is_default = i === index
-  })
+const showMember = (row: CustomerListItem) => {
+  currentCustomer.value = row
+  showMemberModal.value = true
 }
 
 const openDiscountSettings = (customer: CustomerListItem) => {
   const event = new CustomEvent('navigate-to-discount', {
     detail: {
       customerId: customer.id,
-      customerName: customer.name
+      customerName: customer.customer_name
     }
   })
   window.dispatchEvent(event)
 }
 
+// ==================== 认领成功回调 ====================
+const onClaimSuccess = () => {
+  loadCustomers()
+}
+
+// ==================== 导出 ====================
+const handleExport = async () => {
+  try {
+    const data: any = {}
+    if (selectedRows.value.length > 0) {
+      data.customer_ids = selectedRows.value.map((r: any) => Number(r.id))
+    } else {
+      if (filterStatus.value) data.customer_status = filterStatus.value
+      if (filterSalesUserId.value) data.sales_user_id = filterSalesUserId.value
+      if (filterCreatedAtStart.value) data.created_at_start = filterCreatedAtStart.value
+      if (filterCreatedAtEnd.value) data.created_at_end = filterCreatedAtEnd.value
+    }
+    const blob = await customerApi.exportCustomers(data)
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `客户数据_${new Date().toISOString().slice(0, 10)}.xlsx`
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error('导出失败', e)
+  }
+}
+
+// ==================== 格式化函数 ====================
+const formatAmount = (val: any) => val != null ? Number(val).toFixed(2) : '0.00'
+const formatDate = (val: string | null) => val ? val.substring(0, 10) : '-'
+
+// ==================== 生命周期 ====================
 onMounted(() => {
   loadCustomers()
-  loadStats()
+  loadSalesUsers()
 })
 
 const handleEscKey = (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
-    showCustomerModal.value = false
+    showEditModal.value = false
+    showDetailModal.value = false
+    showClaimModal.value = false
+    showOrderDefaultsModal.value = false
+    showCreditModal.value = false
+    showMemberModal.value = false
     closeTransferModal()
+    showDeleteConfirm.value = false
   }
 }
 
@@ -485,29 +324,30 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   const index = customers.value.findIndex(c => c.id === row.id)
   return index + 1 + (page.value - 1) * pageSize.value
 }
+
+// checkbox 选择
+const checkboxConfig = {
+  highlight: true,
+  reserve: true
+}
+const selectChangeEvent = ({ records }: { records: CustomerListItem[] }) => {
+  selectedRows.value = records
+}
 </script>
 
 <template>
   <div class="crm-workspace">
     <div class="workspace-header">
       <h2 class="workspace-title">客户管理</h2>
-      <button class="primary-btn" @click="openCreateCustomer">新建客户</button>
+      <div class="header-actions">
+        <button class="filter-btn" @click="handleExport" :disabled="!selectedRows.length" v-if="selectedRows.length">
+          导出({{ selectedRows.length }}条)
+        </button>
+        <button class="filter-btn" @click="handleExport" v-else>批量导出</button>
+        <button class="primary-btn" @click="openCreateCustomer">新建客户</button>
+      </div>
     </div>
 
-    <div class="stats-section">
-      <div class="stat-card">
-        <div class="stat-value">{{ stats.total || 0 }}</div>
-        <div class="stat-label">客户总数</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">{{ stats.terminal_count || 0 }}</div>
-        <div class="stat-label">终端客户</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">{{ stats.dealer_count || 0 }}</div>
-        <div class="stat-label">经销商</div>
-      </div>
-    </div>
 
     <div class="filter-section">
       <div class="filter-row">
@@ -520,10 +360,28 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
             @keyup.enter="handleSearch"
           />
         </div>
+        <select v-model="filterStatus" class="filter-select">
+          <option :value="null">全部状态</option>
+          <option :value="1">正常</option>
+          <option :value="2">公共池</option>
+        </select>
         <select v-model="filterType" class="filter-select">
           <option value="">全部类型</option>
-          <option v-for="t in customerTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
+          <option value="terminal">终端</option>
+          <option value="dealer">经销商</option>
         </select>
+        <select v-model="filterSalesUserId" class="filter-select">
+          <option :value="null">全部业务员</option>
+          <option v-for="user in salesUsers" :key="user.id" :value="Number(user.id)">
+            {{ user.full_name || user.username }}
+          </option>
+        </select>
+        <div class="filter-item">
+          <input type="date" class="filter-input" v-model="filterCreatedAtStart" placeholder="创建时间从" />
+        </div>
+        <div class="filter-item">
+          <input type="date" class="filter-input" v-model="filterCreatedAtEnd" placeholder="至" />
+        </div>
         <button class="filter-btn" @click="handleSearch">搜索</button>
         <button class="filter-btn reset-btn" @click="resetFilters" v-if="hasActiveFilters">重置</button>
       </div>
@@ -537,45 +395,90 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
         :data="customers"
         :column-config="{ resizable: true }"
         :seq-config="{ seqMethod: seqMethod }"
+        :checkbox-config="checkboxConfig"
+        @checkbox-change="selectChangeEvent"
+        @checkbox-all="selectChangeEvent"
       >
+        <vxe-column type="checkbox" width="40" fixed="left" />
         <vxe-column type="seq" title="序号" width="60" fixed="left" class-name="col--center col--header-center" />
-        <vxe-column field="name" title="客户名称" min-width="250" class-name="col--center col--header-center" />
-        <vxe-column field="customer_type" title="客户类型" min-width="120" class-name="col--center col--header-center">
+        <vxe-column field="created_at" title="创建时间" width="100" class-name="col--center col--header-center">
           <template #default="{ row }">
-            <span class="type-tag" :class="row.customer_type">
+            {{ formatDate(row.created_at) }}
+          </template>
+        </vxe-column>
+        <vxe-column field="customer_name" title="客户名称" min-width="200" class-name="col--center col--header-center">
+          <template #default="{ row }">
+            <button class="btn-link name-link" @click="showDetail(row)">{{ row.customer_name }}</button>
+          </template>
+        </vxe-column>
+        <vxe-column field="sales_user_name" title="业务员" min-width="100" class-name="col--center col--header-center">
+          <template #default="{ row }">
+            <span v-if="row.customer_status === 2" class="status-tag pool-tag">公共池</span>
+            <span v-else>{{ row.sales_user_name || '-' }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column field="member_account" title="会员账号" min-width="120" class-name="col--center col--header-center">
+          <template #default="{ row }">
+            {{ row.member_account || '-' }}
+          </template>
+        </vxe-column>
+        <vxe-column field="customer_status" title="客户状态" min-width="90" class-name="col--center col--header-center">
+          <template #default="{ row }">
+            <span class="status-tag" :class="row.customer_status === 1 ? 'normal' : 'pool'">
+              {{ customerStatusMap[row.customer_status] || '正常' }}
+            </span>
+          </template>
+        </vxe-column>
+        <vxe-column field="customer_type" title="客户类型" min-width="90" class-name="col--center col--header-center">
+          <template #default="{ row }">
+            <span class="type-tag" :class="[row.customer_type, { unknown: !customerTypeMap[row.customer_type] }]">
               {{ customerTypeMap[row.customer_type] || row.customer_type }}
             </span>
           </template>
         </vxe-column>
-        <vxe-column field="contact_person" title="联系人" min-width="120" class-name="col--center col--header-center">
+        <vxe-column field="account_balance" title="账户余额" min-width="110" class-name="col--center col--header-center">
           <template #default="{ row }">
-            {{ row.contact_person || '-' }}
+            <span class="amount-text">{{ formatAmount(row.account_balance) }}</span>
           </template>
         </vxe-column>
-        <vxe-column field="contact_phone" title="联系电话" min-width="120" class-name="col--center col--header-center">
+        <vxe-column field="debt_total" title="欠款总额" min-width="110" class-name="col--center col--header-center">
           <template #default="{ row }">
-            {{ row.contact_phone || '-' }}
+            <span class="amount-text">{{ formatAmount(row.debt_total) }}</span>
           </template>
         </vxe-column>
-        <vxe-column field="sales_user_name" title="销售人" min-width="120" class-name="col--center col--header-center">
+        <vxe-column field="is_overdue" title="是否超账期" min-width="100" class-name="col--center col--header-center">
           <template #default="{ row }">
-            {{ row.sales_user_name || '-' }}
-          </template>
-        </vxe-column>
-        <vxe-column field="status" title="状态" min-width="120" class-name="col--center col--header-center">
-          <template #default="{ row }">
-            <span class="status-tag" :class="row.status">
-              {{ statusMap[row.status] || '正常' }}
+            <span class="status-tag" :class="row.is_overdue === 1 ? 'danger' : 'success'">
+              {{ row.is_overdue === 1 ? '是' : '否' }}
             </span>
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="340" fixed="right" class-name="col--center col--header-center">
+        <vxe-column field="last_order_time" title="尾单时间" min-width="100" class-name="col--center col--header-center">
+          <template #default="{ row }">
+            {{ formatDate(row.last_order_time) }}
+          </template>
+        </vxe-column>
+        <vxe-column field="total_order_amount" title="成单金额" min-width="120" class-name="col--center col--header-center">
+          <template #default="{ row }">
+            <span class="amount-text">{{ formatAmount(row.total_order_amount) }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column title="操作" min-width="320" fixed="right" class-name="col--center col--header-center">
           <template #default="{ row }">
             <span class="action-btns">
-              <button class="btn-link" @click="openEditCustomer(row)">编辑</button>
-              <button class="btn-link" @click="openTransferModal(row)">转移</button>
-              <button class="btn-link" @click="openDiscountSettings(row)">折扣设置</button>
-              <button class="btn-link danger" @click="confirmDelete(row.id)">删除</button>
+              <button class="btn-link" @click="showDetail(row)">详情</button>
+              <template v-if="row.customer_status === 1">
+                <button class="btn-link" @click="openEditCustomer(row)">编辑</button>
+                <button class="btn-link" @click="showOrderDefaults(row)">订单默认值</button>
+                <button class="btn-link" @click="showMember(row)">注册会员</button>
+                <button class="btn-link" @click="openDiscountSettings(row)">折扣</button>
+                <button class="btn-link" @click="showCredit(row)">账期额度</button>
+                <button class="btn-link" @click="openTransferModal(row)">转移</button>
+                <button class="btn-link danger" @click="confirmDelete(row.id)">删除</button>
+              </template>
+              <template v-else-if="row.customer_status === 2">
+                <button class="btn-link claim-btn" @click="showClaim(row)">认领</button>
+              </template>
             </span>
           </template>
         </vxe-column>
@@ -590,206 +493,49 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
       />
     </div>
 
-    <!-- 客户编辑弹窗 -->
-    <div class="modal-overlay" v-if="showCustomerModal">
-      <div class="modal customer-modal">
-        <div class="modal-header">
-          <div class="modal-header-left">
-            <h3>{{ isEditing ? '编辑客户' : '新建客户' }}</h3>
-            <button v-if="!isEditing" class="ai-btn" @click="toggleAiPanel" :class="{ active: showAiPanel }">
-              <span class="ai-icon">🤖</span> AI
-            </button>
-          </div>
-          <button class="modal-close" @click="showCustomerModal = false">×</button>
-        </div>
+    <!-- 新建/编辑客户弹窗 -->
+    <CustomerEditModal
+      v-model:visible="showEditModal"
+      :customer-data="currentCustomer"
+      :mode="editMode"
+      @saved="onEditSaved"
+    />
 
-        <!-- AI 输入面板 -->
-        <div class="ai-panel" v-if="showAiPanel && !isEditing">
-          <div class="ai-panel-content">
-            <div class="form-group">
-              <label>输入文本描述</label>
-              <textarea
-                v-model="aiInputText"
-                placeholder="请输入客户信息描述，如：客户名称是xxx，联系人是xxx，电话是xxx..."
-                rows="4"
-              ></textarea>
-            </div>
-            <div class="form-group">
-              <label>或上传图片</label>
-              <div class="image-upload">
-                <input type="file" accept="image/*" @change="handleImageChange" id="ai-image-upload" />
-                <label for="ai-image-upload" class="upload-label">
-                  <span v-if="!aiImageFile">点击上传图片</span>
-                  <span v-else>{{ aiImageFile.name }}</span>
-                </label>
-              </div>
-            </div>
-            <div class="ai-panel-footer">
-              <button class="btn-secondary" @click="toggleAiPanel">取消</button>
-              <button class="btn-primary" @click="handleAiSubmit" :disabled="aiLoading">
-                {{ aiLoading ? '解析中...' : '提交解析' }}
-              </button>
-            </div>
-          </div>
-        </div>
+    <!-- 客户详情弹窗 -->
+    <CustomerDetail
+      v-model:visible="showDetailModal"
+      :customer-id="currentCustomer?.id ? Number(currentCustomer.id) : null"
+      @edit="openEditCustomer"
+      @claim="showClaim"
+    />
 
-        <div class="modal-body" v-else>
-          <!-- 基本信息 -->
-          <div class="form-section">
-            <div class="section-title">基本信息</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>客户名称 <span class="required">*</span></label>
-                <input type="text" v-model="customerForm.name" placeholder="请输入客户名称" />
-              </div>
-              <div class="form-group">
-                <label>客户类型 <span class="required">*</span></label>
-                <select v-model="customerForm.customer_type">
-                  <option v-for="t in customerTypes" :key="t.value" :value="t.value">
-                    {{ t.label }}
-                  </option>
-                </select>
-              </div>
-            </div>
-            <div class="form-row" v-if="showResearchGroup">
-              <div class="form-group">
-                <label>课题组信息</label>
-                <input type="text" v-model="customerForm.research_group" placeholder="请输入课题组信息" />
-              </div>
-              <div class="form-group" v-if="!showResearchGroup"></div>
-            </div>
-          </div>
+    <!-- 客户认领弹窗 -->
+    <CustomerClaimModal
+      v-model:visible="showClaimModal"
+      :customer-data="currentCustomer"
+      @claim-success="onClaimSuccess"
+    />
 
-          <!-- 联系人信息 -->
-          <div class="form-section">
-            <div class="section-title">联系人信息</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>联系人</label>
-                <input type="text" v-model="contactForm.contact_person" placeholder="请输入联系人姓名" />
-              </div>
-              <div class="form-group">
-                <label>联系电话</label>
-                <input type="text" v-model="contactForm.contact_phone" placeholder="请输入联系电话" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>电子邮箱</label>
-                <input type="email" v-model="contactForm.contact_email" placeholder="请输入电子邮箱" />
-              </div>
-            </div>
-          </div>
+    <!-- 订单默认值设置弹窗 -->
+    <CustomerOrderDefaultsModal
+      v-model:visible="showOrderDefaultsModal"
+      :customer-data="currentCustomer"
+      @saved="loadCustomers"
+    />
 
-          <!-- 开票信息 -->
-          <div class="form-section">
-            <div class="section-title">
-              <span>开票信息</span>
-              <button class="btn-link add-btn" @click="addInvoiceInfo">+ 添加</button>
-            </div>
-            <div class="info-table" v-if="invoiceInfos.length > 0">
-              <div class="info-table-header">
-                <div class="info-th" style="flex: 2;">开票抬头</div>
-                <div class="info-th" style="flex: 1;">开票类型</div>
-                <div class="info-th" style="flex: 1.5;">税务编码</div>
-                <div class="info-th" style="flex: 1.5;">开户银行</div>
-                <div class="info-th" style="flex: 1.5;">银行账号</div>
-                <div class="info-th" style="width: 120px;">操作</div>
-              </div>
-              <div class="info-table-body">
-                <div
-                  class="info-tr"
-                  :class="{ 'is-default': info.is_default }"
-                  v-for="(info, idx) in invoiceInfos"
-                  :key="idx"
-                >
-                  <div class="info-td" style="flex: 2;">
-                    <input type="text" v-model="info.invoice_title" placeholder="开票抬头" />
-                  </div>
-                  <div class="info-td" style="flex: 1;">
-                    <select v-model="info.invoice_type">
-                      <option value="增值税">增值税</option>
-                      <option value="普通发票">普通发票</option>
-                      <option value="增值税专用发票">增值税专用发票</option>
-                      <option value="不开票">不开票</option>
-                    </select>
-                  </div>
-                  <div class="info-td" style="flex: 1.5;">
-                    <input type="text" v-model="info.tax_number" placeholder="税务编码" />
-                  </div>
-                  <div class="info-td" style="flex: 1.5;">
-                    <input type="text" v-model="info.bank_name" placeholder="开户银行" />
-                  </div>
-                  <div class="info-td" style="flex: 1.5;">
-                    <input type="text" v-model="info.bank_account" placeholder="银行账号" />
-                  </div>
-                  <div class="info-td" style="width: 120px; display: flex; gap: 4px;">
-                    <button class="btn-link" @click="setDefaultInvoice(idx)" v-if="!info.is_default">设默认</button>
-                    <button class="btn-link danger" @click="removeInvoiceInfo(idx)" v-if="invoiceInfos.length > 1">删除</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="empty-tip" v-else>暂无开票信息</div>
-          </div>
+    <!-- 账期额度设置弹窗 -->
+    <CustomerCreditModal
+      v-model:visible="showCreditModal"
+      :customer-data="currentCustomer"
+      @saved="loadCustomers"
+    />
 
-          <!-- 收货地址 -->
-          <div class="form-section">
-            <div class="section-title">
-              <span>收货地址</span>
-              <button class="btn-link add-btn" @click="addShippingAddress">+ 添加</button>
-            </div>
-            <div class="info-table" v-if="shippingAddresses.length > 0">
-              <div class="info-table-header">
-                <div class="info-th" style="flex: 1;">收货人</div>
-                <div class="info-th" style="flex: 1.2;">联系电话</div>
-                <div class="info-th" style="flex: 1;">省份</div>
-                <div class="info-th" style="flex: 1;">城市</div>
-                <div class="info-th" style="flex: 2;">详细地址</div>
-                <div class="info-th" style="width: 120px;">操作</div>
-              </div>
-              <div class="info-table-body">
-                <div
-                  class="info-tr"
-                  :class="{ 'is-default': addr.is_default }"
-                  v-for="(addr, idx) in shippingAddresses"
-                  :key="idx"
-                >
-                  <div class="info-td" style="flex: 1;">
-                    <input type="text" v-model="addr.recipient_name" placeholder="收货人" />
-                  </div>
-                  <div class="info-td" style="flex: 1.2;">
-                    <input type="text" v-model="addr.recipient_phone" placeholder="联系电话" />
-                  </div>
-                  <div class="info-td" style="flex: 1.5;">
-                    <ProvinceCitySelector
-                      v-model:province="addr.province"
-                      v-model:provinceCode="addr.province_code"
-                      v-model:city="addr.city"
-                      v-model:cityCode="addr.city_code"
-                    />
-                  </div>
-                  <div class="info-td" style="flex: 1.5;">
-                    <input type="text" v-model="addr.address" placeholder="详细地址" />
-                  </div>
-                  <div class="info-td" style="width: 120px; display: flex; gap: 4px;">
-                    <button class="btn-link" @click="setDefaultAddress(idx)" v-if="!addr.is_default">设默认</button>
-                    <button class="btn-link danger" @click="removeShippingAddress(idx)" v-if="shippingAddresses.length > 1">删除</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="empty-tip" v-else>暂无收货地址</div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" @click="showCustomerModal = false">取消</button>
-          <button class="btn-primary" @click="handleSaveCustomer" :disabled="formLoading">
-            {{ formLoading ? '保存中...' : '保存' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- 注册会员弹窗 -->
+    <CustomerMemberModal
+      v-model:visible="showMemberModal"
+      :customer-data="currentCustomer"
+      @saved="loadCustomers"
+    />
 
     <!-- 删除确认弹窗 -->
     <div class="modal-overlay" v-if="showDeleteConfirm" @click.self="showDeleteConfirm = false">
@@ -814,7 +560,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
       <div class="modal transfer-modal">
         <div class="modal-header">
           <h3>转移客户</h3>
-          <button class="modal-close" @click="closeTransferModal">×</button>
+          <button class="modal-close" @click="closeTransferModal">&times;</button>
         </div>
         <div class="modal-body">
           <p class="transfer-info">确定将客户 <strong>{{ transferTargetName }}</strong> 转移给其他销售吗？</p>
@@ -868,6 +614,12 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   justify-content: space-between;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .workspace-title {
   font-size: 20px;
   font-weight: 600;
@@ -875,35 +627,9 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   margin: 0;
 }
 
-.stats-section {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-
-.stat-card {
-  background-color: var(--color-canvas);
-  border-radius: var(--radius-lg);
-  padding: 16px;
-  text-align: center;
-  box-shadow: var(--shadow-card);
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--color-interactive);
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
 .filter-section {
   background-color: var(--color-canvas);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
 }
@@ -930,7 +656,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   padding: 8px 12px;
   background-color: var(--color-neutral-bg);
   border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   color: var(--color-ink);
   font-size: 13px;
 }
@@ -948,7 +674,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   padding: 8px 12px;
   background-color: var(--color-neutral-bg);
   border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   color: var(--color-ink);
   font-size: 13px;
   cursor: pointer;
@@ -962,7 +688,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .filter-btn {
   padding: 8px 16px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   background-color: var(--color-interactive);
   color: white;
   font-size: 13px;
@@ -988,14 +714,28 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .table-section {
   background-color: var(--color-canvas);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   padding: 12px 16px;
   box-shadow: var(--shadow-card);
+  --vxe-ui-layout-background-color: var(--color-canvas);
 }
 
 :deep(.col--header-center .vxe-cell--title) {
   text-align: center;
   justify-content: center;
+}
+
+/* 行hover/焦点覆盖 */
+:deep(.vxe-body--column.col--actived) {
+  background-color: var(--color-canvas) !important;
+}
+
+:deep(.vxe-body--row) > td {
+  background-color: var(--color-canvas) !important;
+}
+
+:deep(.vxe-body--row:hover) > td {
+  background-color: var(--color-neutral-bg) !important;
 }
 
 .action-btns {
@@ -1012,7 +752,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition: all var(--transition-fast);
   white-space: nowrap;
 }
@@ -1029,22 +769,29 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   background-color: var(--color-danger-bg);
 }
 
-.btn-link.add-btn {
-  font-size: 12px;
-  padding: 2px 8px;
+.name-link {
+  font-weight: 500;
+}
+
+.claim-btn {
+  color: var(--color-success);
+}
+
+.claim-btn:hover {
+  background-color: var(--color-success-bg);
 }
 
 .type-tag,
 .status-tag {
   display: inline-block;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
 }
 
 .type-tag.terminal {
   background-color: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: #c4391a;
 }
 
 .type-tag.dealer {
@@ -1052,22 +799,41 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   color: var(--color-success);
 }
 
-.status-tag.normal,
-.status-tag.active {
+.type-tag.unknown {
+  background-color: #d9d9d9;
+  color: #666;
+}
+
+.status-tag.normal {
   background-color: var(--color-success-bg);
   color: var(--color-success);
 }
 
-.status-tag.inactive {
+.status-tag.pool {
   background-color: var(--color-warning-bg);
   color: var(--color-warning);
 }
 
-.status-tag.blacklisted {
+.status-tag.danger {
   background-color: var(--color-danger-bg);
   color: var(--color-danger);
 }
 
+.status-tag.success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.pool-tag {
+  background-color: var(--color-info-bg);
+  color: var(--color-interactive);
+}
+
+.amount-text {
+  font-weight: 500;
+}
+
+/* 模态弹窗基础样式 */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1080,16 +846,20 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .modal {
   background-color: var(--color-canvas);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   width: 95%;
   max-width: 900px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: var(--shadow-hover);
+  box-shadow: var(--shadow-modal);
 }
 
-.customer-modal {
-  max-width: 900px;
+.confirm-modal {
+  max-width: 400px;
+}
+
+.transfer-modal {
+  max-width: 480px;
 }
 
 .modal-header {
@@ -1104,115 +874,11 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   z-index: 1;
 }
 
-.modal-header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .modal-header h3 {
   font-size: 18px;
   font-weight: 600;
   color: var(--color-ink);
   margin: 0;
-}
-
-.ai-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  background-color: var(--color-accent);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.ai-btn:hover {
-  background-color: var(--color-accent);
-}
-
-.ai-btn.active {
-  background-color: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-accent-soft);
-}
-
-.ai-icon {
-  font-size: 14px;
-}
-
-.ai-panel {
-  padding: 20px;
-  background-color: var(--color-neutral-bg);
-  border-bottom: 1px solid var(--color-hairline);
-  animation: slideDown 0.2s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.ai-panel-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.ai-panel textarea {
-  width: 100%;
-  padding: 12px;
-  background-color: var(--color-canvas);
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-sm);
-  color: var(--color-ink);
-  font-size: 14px;
-  resize: vertical;
-  min-height: 80px;
-}
-
-.ai-panel textarea:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-.image-upload input[type="file"] {
-  display: none;
-}
-
-.upload-label {
-  display: inline-block;
-  padding: 12px 16px;
-  background-color: var(--color-canvas);
-  border: 2px dashed var(--color-hairline);
-  border-radius: var(--radius-sm);
-  color: var(--color-muted);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  width: 100%;
-  text-align: center;
-}
-
-.upload-label:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.ai-panel-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 8px;
 }
 
 .modal-close {
@@ -1239,6 +905,12 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   gap: 24px;
 }
 
+.confirm-modal .modal-body p {
+  font-size: 14px;
+  color: var(--color-ink);
+  margin: 0;
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -1262,9 +934,6 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   color: var(--color-ink);
   padding-bottom: 8px;
   border-bottom: 1px solid var(--color-hairline);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 .form-row {
@@ -1294,7 +963,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   padding: 10px 12px;
   background-color: var(--color-neutral-bg);
   border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   color: var(--color-ink);
   font-size: 14px;
 }
@@ -1307,215 +976,6 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 
 .form-group input::placeholder {
   color: var(--color-muted);
-}
-
-.info-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.info-item {
-  background-color: var(--color-neutral-bg);
-  border-radius: var(--radius-sm);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.info-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.info-row .full-width {
-  grid-column: span 2;
-}
-
-.info-row .action-col {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-}
-
-.info-table {
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.info-table-header {
-  display: flex;
-  background-color: var(--color-neutral-bg);
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.info-th {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-muted);
-  padding: 0 8px;
-}
-
-.info-table-body {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.info-tr {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.info-tr:last-child {
-  border-bottom: none;
-}
-
-.info-tr:hover {
-  background-color: var(--color-info-bg);
-}
-
-.info-tr.is-default {
-  background-color: var(--color-info-bg);
-  border-left: 3px solid var(--color-interactive);
-}
-
-.info-tr.is-default:hover {
-  background-color: var(--color-info-bg);
-}
-
-.cell-with-badge {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  width: 100%;
-}
-
-.cell-with-badge input {
-  padding-right: 40px;
-}
-
-.row-default-badge {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 2px 8px;
-  background: var(--color-interactive);
-  color: var(--color-text-inverse);
-  font-size: 11px;
-  font-weight: 500;
-  border-radius: 10px;
-  box-shadow: 0 2px 4px var(--color-info-bg);
-  pointer-events: none;
-}
-
-.info-td {
-  padding: 0 8px;
-}
-
-.info-td input,
-.info-td select {
-  width: 100%;
-  padding: 6px 8px;
-  background-color: var(--color-neutral-bg);
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-sm);
-  color: var(--color-ink);
-  font-size: 13px;
-}
-
-.info-td input:focus,
-.info-td select:focus {
-  outline: none;
-  border-color: var(--color-interactive);
-}
-
-.info-td input::placeholder {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-.empty-tip {
-  padding: 20px;
-  text-align: center;
-  color: var(--color-muted);
-  font-size: 13px;
-}
-
-.btn-secondary {
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  background-color: transparent;
-  color: var(--color-muted);
-  font-size: 14px;
-  border: 1px solid var(--color-hairline);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-secondary:hover {
-  background-color: rgba(0, 0, 0, 0.03);
-  color: var(--color-ink);
-}
-
-.btn-primary {
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-interactive);
-  color: white;
-  font-size: 14px;
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--color-interactive-hover);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-danger {
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-danger);
-  color: white;
-  font-size: 14px;
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-danger:hover:not(:disabled) {
-  background-color: var(--color-danger);
-}
-
-.btn-danger:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.confirm-modal {
-  max-width: 400px;
-}
-
-.confirm-modal .modal-body p {
-  font-size: 14px;
-  color: var(--color-ink);
-  margin: 0;
-}
-
-.transfer-modal {
-  max-width: 480px;
 }
 
 .transfer-info {
@@ -1536,7 +996,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   max-height: 280px;
   overflow-y: auto;
   border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
 }
 
 .sales-user-item {
@@ -1572,6 +1032,78 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
   color: var(--color-muted);
 }
 
+.btn-secondary {
+  padding: 10px 20px;
+  border-radius: var(--radius-xs);
+  background-color: transparent;
+  color: var(--color-muted);
+  font-size: 14px;
+  border: 1px solid var(--color-hairline);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--color-ink);
+}
+
+.btn-primary {
+  padding: 10px 20px;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-interactive);
+  color: white;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-interactive-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  padding: 10px 20px;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-danger);
+  color: white;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-danger:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.primary-btn {
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-interactive);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.primary-btn:hover {
+  background-color: var(--color-interactive-hover);
+}
+
 .table-loading-overlay {
   position: absolute;
   top: 0;
@@ -1592,33 +1124,13 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 .table-loading-content {
   padding: 20px 40px;
   background-color: var(--color-canvas);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   color: var(--color-ink);
   font-size: 14px;
 }
 
-.primary-btn {
-  padding: 10px 20px;
-  border-radius: var(--radius-md);
-  background-color: var(--color-interactive);
-  color: white;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.primary-btn:hover {
-  background-color: var(--color-interactive-hover);
-}
-
 @media (max-width: 768px) {
-  .stats-section {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .form-row {
     grid-template-columns: 1fr;
   }
@@ -1727,7 +1239,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 .vxe-pager .vxe-pager--goto .vxe-pager--goto-input,
-.vxe-pager .vxe-pager--goto-input {
+.vxe-pager--goto-input {
   background-color: var(--color-canvas) !important;
   border: 1px solid var(--color-hairline) !important;
   color: var(--color-ink) !important;
@@ -1777,7 +1289,7 @@ const seqMethod = ({ row }: { row: CustomerListItem }) => {
 }
 
 [data-theme="light"] .vxe-pager .vxe-pager--goto .vxe-pager--goto-input,
-[data-theme="light"] .vxe-pager .vxe-pager--goto-input {
+[data-theme="light"] .vxe-pager--goto-input {
   background-color: var(--color-text-inverse) !important;
   border: 1px solid #e5e7eb !important;
   color: var(--color-ink) !important;

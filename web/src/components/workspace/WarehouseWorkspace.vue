@@ -722,17 +722,17 @@ onMounted(() => {
 
 .status-tag.active {
   background-color: var(--color-success-bg);
-  background-color: var(--color-success);
+  color: var(--color-success);
 }
 
 .status-tag.inactive {
   background-color: var(--color-neutral-bg);
-  color: var(--color-muted);
+  color: var(--color-body-muted);
 }
 
 .status-tag.maintenance {
   background-color: var(--color-warning-bg);
-  background-color: var(--color-warning);
+  color: #92400e;
 }
 
 .table-loading-overlay {

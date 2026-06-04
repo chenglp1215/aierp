@@ -403,7 +403,7 @@ loadPermissions()
 
 .node-type-icon.api {
   background-color: rgba(139, 92, 246, 0.15);
-  color: var(--color-accent);
+  color: #c4391a;
 }
 
 .node-type-icon.button {
@@ -448,7 +448,7 @@ loadPermissions()
 
 .type-badge.api {
   background-color: rgba(139, 92, 246, 0.15);
-  color: var(--color-accent);
+  color: #c4391a;
 }
 
 .type-badge.button {

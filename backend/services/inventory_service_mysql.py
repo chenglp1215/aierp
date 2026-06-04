@@ -477,34 +477,51 @@ class StockService:
         return result, True
 
     async def get_stock_status_by_spec_ids(self, spec_ids: List[int]) -> Dict[str, List[Dict[str, Any]]]:
-        """获取指定规格的库存状态"""
+        """获取指定规格的库存状态（批量查询，O(1) SQL）"""
         if not spec_ids:
             return {}
 
+        # 1. 查询所有相关库存记录（1次SQL）
         stocks = await Stock.filter(spec_id__in=spec_ids).all()
-        result: Dict[str, List[Dict[str, Any]]] = {}
+        if not stocks:
+            return {}
 
-        # 获取仓库信息
+        # 2. 批量查询仓库信息（1次SQL）
         warehouse_ids = list(set(s.warehouse_id for s in stocks))
         warehouses = {w["id"]: w for w in await warehouse_service.get_warehouse_by_ids(warehouse_ids)}
 
+        # 3. 批量查询所有相关入库批次的 current_quantity 之和（1次SQL，GROUP BY）
+        from tortoise.functions import Sum
+        batch_rows = await InboundBatch.filter(
+            spec_id__in=spec_ids
+        ).group_by("spec_id", "warehouse_id").annotate(
+            total=Sum("current_quantity")
+        ).values_list("spec_id", "warehouse_id", "total")
+
+        batch_map: Dict[str, float] = {}
+        for spec_id, warehouse_id, total in batch_rows:
+            batch_map[f"{spec_id}_{warehouse_id}"] = float(total) if total else 0
+
+        # 4. 批量查询锁定量（复用已有批量方法）
+        stock_list = [{"warehouse_id": s.warehouse_id, "spec_id": s.spec_id} for s in stocks]
+        locked_map = await self._batch_calculate_locked_quantities(stock_list)
+
+        # 5. 组装结果
+        result: Dict[str, List[Dict[str, Any]]] = {}
         for stock in stocks:
             spec_id = stock.spec_id
             warehouse_id = stock.warehouse_id
-            warehouse_name = warehouses.get(warehouse_id, {}).get("name", "")
-
-            # 当前库存 = 批次 current_quantity 之和
-            batch_total = await self._calculate_batch_total(warehouse_id, spec_id)
-            # 锁定量 = PENDING/PARTIAL 待出库单 (locked_qty - out_qty) 之和
-            locked_qty = await self._calculate_locked_quantity(warehouse_id, spec_id)
+            key = f"{spec_id}_{warehouse_id}"
+            batch_total = batch_map.get(key, 0)
+            locked_qty = locked_map.get(key, 0)
             available_quantity = batch_total - locked_qty
 
-            if spec_id not in result:
+            if str(spec_id) not in result:
                 result[str(spec_id)] = []
 
             result[str(spec_id)].append({
                 "warehouse_id": warehouse_id,
-                "warehouse_name": warehouse_name,
+                "warehouse_name": warehouses.get(warehouse_id, {}).get("name", ""),
                 "quantity": batch_total,
                 "locked_quantity": locked_qty,
                 "available_quantity": available_quantity

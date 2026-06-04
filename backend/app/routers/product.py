@@ -26,10 +26,19 @@ def to_int_id(id_str: str) -> int:
 async def search_specs(
     keyword: str = Query(..., min_length=1, description="搜索关键词"),
     limit: int = Query(20, ge=1, le=50, description="返回数量"),
+    search_name: bool = Query(False, description="是否同时搜索产品名称"),
     _: dict = Depends(require_permission("product.view"))
 ):
-    """搜索商品规格（用于下拉选择等），返回规格及其关联的商品信息"""
-    items, total = await product_spec_service.get_spec_by_keyword(keyword=keyword, page=1, page_size=limit, is_formatted=True)
+    """搜索商品规格（用于下拉选择等），返回规格及其关联的商品信息
+
+    Args:
+        keyword: 搜索关键词
+        limit: 返回数量
+        search_name: 是否同时搜索产品名称（默认只搜索规格编号）
+    """
+    items, total = await product_spec_service.get_spec_by_keyword(
+        keyword=keyword, page=1, page_size=limit, is_formatted=True, search_name=search_name
+    )
     product_ids = list({s.get("product_id") for s in items if s.get("product_id")})
     products = await product_service.get_product_by_ids(product_ids)
     product_map = {p["id"]: p for p in products}

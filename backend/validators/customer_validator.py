@@ -1,146 +1,150 @@
 """
 客户管理 - 验证规则
-全新设计的客户验证规则
 """
 
 # ============ 客户验证配置 ============
 
 CUSTOMER_CREATE_CONFIG = {
-    'name': {
+    'customer_name': {
         'required': True,
         'min_length': 1,
         'max_length': 200,
         'required_msg': '客户名称为必填'
+    },
+    'customer_code': {
+        'required': False,
+        'max_length': 50,
     },
     'customer_type': {
         'required': True,
         'enum': ['terminal', 'dealer'],
         'required_msg': '客户类型为必填，可选值：terminal(终端)、dealer(经销商)'
     },
-    'research_group': {
-        'max_length': 200,
+    'customer_status': {
+        'type': (int,),
+        'enum': [1, 2],
     },
-    'contact_person': {'max_length': 100},
+    'sales_user_id': {'type': (int,), },
+    'sales_user_name': {'max_length': 50},
+    'settlement_method': {
+        'type': (int,),
+        'enum': [1, 2, 3],
+    },
+    'credit_limit': {'type': (int, float), 'min': 0},
+    'credit_days': {'type': (int,), 'min': 0},
+    'member_account': {'max_length': 100},
+    'contact_person': {'max_length': 50},
     'contact_phone': {
         'pattern': r'^1[3-9]\d{9}$',
-        'msg': '联系人手机号格式不正确'
+        'msg': '联系电话格式不正确'
     },
-    'contact_email': {
-        'pattern': r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-        'msg': '电子邮箱格式不正确'
+    'province': {'max_length': 50},
+    'city': {'max_length': 50},
+    'district': {'max_length': 50},
+    'address': {'max_length': 200},
+    'remark': {'max_length': 1000},
+    'default_shipping_address_id': {'type': (int,)},
+    'default_invoice_info_id': {'type': (int,)},
+    'default_tax_rate': {'type': (int, float), 'min': 0, 'max': 100},
+    'research_groups': {
+        'type': list,
+        'items': {
+            'research_group_name': {'required': True, 'min_length': 1, 'max_length': 100, 'required_msg': '课题组名称为必填'},
+            'research_leader': {'max_length': 50},
+            'contact_phone': {'max_length': 20},
+        }
     },
     'invoice_infos': {
         'items': {
-            'invoice_title': {
-                'required': True,
-                'min_length': 1,
-                'max_length': 200,
-                'required_msg': '开票抬头为必填'
-            },
-            'invoice_type': {
-                'required': True,
-                'enum': ['增值税', '普通发票', '增值税专用发票', '不开票'],
-                'required_msg': '开票类型为必填'
-            },
-            'tax_number': {
-                'required': True,
-                'min_length': 1,
-                'max_length': 50,
-                'required_msg': '税务编码为必填'
-            },
-            'bank_name': {
-                'required': True,
-                'min_length': 1,
-                'max_length': 200,
-                'required_msg': '银行为必填'
-            },
-            'bank_account': {
-                'required': True,
-                'min_length': 1,
-                'max_length': 50,
-                'required_msg': '银行账号为必填'
-            }
+            'invoice_title': {'required': True, 'min_length': 1, 'max_length': 200, 'required_msg': '开票抬头为必填'},
+            'tax_number': {'required': True, 'min_length': 1, 'max_length': 50, 'required_msg': '税务编码为必填'},
+            'bank_name': {'required': True, 'min_length': 1, 'max_length': 200, 'required_msg': '银行为必填'},
+            'bank_account': {'required': True, 'min_length': 1, 'max_length': 50, 'required_msg': '银行账号为必填'},
+            'address_phone': {'max_length': 200},
+            'is_default': {'type': (bool, int)},
         }
     },
     'shipping_addresses': {
         'items': {
-            'recipient_name': {
-                'required': True,
-                'min_length': 1,
-                'max_length': 100,
-                'required_msg': '收货人为必填'
-            },
-            'recipient_phone': {
-                'required': True,
-                'pattern': r'^1[3-9]\d{9}$',
-                'msg': '收货电话格式不正确'
-            },
-            'province': {
-                'required': True,
-                'min_length': 1,
-                'max_length': 100,
-                'required_msg': '收货省份为必填'
-            },
-            'province_code': {
-                'required': True,
-                'min_length': 1,
-                'max_length': 20,
-                'required_msg': '收货省份编码为必填'
-            },
-            'city': {
-                'required': True,
-                'min_length': 1,
-                'max_length': 100,
-                'required_msg': '收货城市为必填'
-            },
-            'city_code': {
-                'required': True,
-                'min_length': 1,
-                'max_length': 20,
-                'required_msg': '收货城市编码为必填'
-            },
-            'address': {
-                'required': True,
-                'min_length': 1,
-                'max_length': 500,
-                'required_msg': '详细地址为必填'
-            }
+            'receiver': {'required': True, 'min_length': 1, 'max_length': 50, 'required_msg': '收货人为必填'},
+            'phone': {'required': True, 'min_length': 1, 'max_length': 20, 'required_msg': '联系电话为必填'},
+            'province': {'required': True, 'min_length': 1, 'max_length': 100, 'required_msg': '收货省份为必填'},
+            'province_code': {'max_length': 20},
+            'city': {'required': True, 'min_length': 1, 'max_length': 100, 'required_msg': '收货城市为必填'},
+            'city_code': {'max_length': 20},
+            'district': {'max_length': 100},
+            'address': {'required': True, 'min_length': 1, 'max_length': 500, 'required_msg': '详细地址为必填'},
+            'is_default': {'type': (bool, int)},
         }
     },
-    '__conditional__': [
-        {
-            'depends_on': 'customer_type',
-            'required_value': 'terminal',
-            'field': 'research_group',
-            'message': '客户类型为终端时，课题组信息不能为空'
-        }
-    ]
 }
 
 CUSTOMER_UPDATE_CONFIG = {
-    'name': {
+    'customer_name': {
         'min_length': 1,
         'max_length': 200,
     },
     'customer_type': {
         'enum': ['terminal', 'dealer'],
     },
-    'research_group': {
-        'max_length': 200,
+    'customer_status': {
+        'type': (int,),
+        'enum': [1, 2],
     },
-    'contact_info': {
-        'fields': {
-            'contact_person': {'max_length': 100},
-            'contact_phone': {
-                'pattern': r'^1[3-9]\d{9}$',
-                'msg': '联系人手机号格式不正确'
-            },
-            'contact_email': {
-                'pattern': r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-                'msg': '电子邮箱格式不正确'
-            }
+    'sales_user_id': {'type': (int,)},
+    'sales_user_name': {'max_length': 50},
+    'settlement_method': {
+        'type': (int,),
+        'enum': [1, 2, 3],
+    },
+    'credit_limit': {'type': (int, float), 'min': 0},
+    'credit_days': {'type': (int,), 'min': 0},
+    'is_overdue': {'type': (int,), 'enum': [0, 1]},
+    'member_account': {'max_length': 100},
+    'contact_person': {'max_length': 50},
+    'contact_phone': {
+        'pattern': r'^1[3-9]\d{9}$',
+        'msg': '联系电话格式不正确'
+    },
+    'province': {'max_length': 50},
+    'city': {'max_length': 50},
+    'district': {'max_length': 50},
+    'address': {'max_length': 200},
+    'remark': {'max_length': 1000},
+    'default_shipping_address_id': {'type': (int,)},
+    'default_invoice_info_id': {'type': (int,)},
+    'default_tax_rate': {'type': (int, float), 'min': 0, 'max': 100},
+    'research_groups': {
+        'type': list,
+        'items': {
+            'research_group_name': {'required': True, 'min_length': 1, 'max_length': 100, 'required_msg': '课题组名称为必填'},
+            'research_leader': {'max_length': 50},
+            'contact_phone': {'max_length': 20},
         }
-    }
+    },
+    'invoice_infos': {
+        'items': {
+            'invoice_title': {'min_length': 1, 'max_length': 200},
+            'tax_number': {'min_length': 1, 'max_length': 50},
+            'bank_name': {'max_length': 200},
+            'bank_account': {'max_length': 50},
+            'address_phone': {'max_length': 200},
+            'is_default': {'type': (bool, int)},
+        }
+    },
+    'shipping_addresses': {
+        'items': {
+            'receiver': {'min_length': 1, 'max_length': 50},
+            'phone': {'min_length': 1, 'max_length': 20},
+            'province': {'max_length': 100},
+            'province_code': {'max_length': 20},
+            'city': {'max_length': 100},
+            'city_code': {'max_length': 20},
+            'district': {'max_length': 100},
+            'address': {'max_length': 500},
+            'is_default': {'type': (bool, int)},
+        }
+    },
 }
 
 
@@ -152,11 +156,6 @@ INVOICE_INFO_CREATE_CONFIG = {
         'min_length': 1,
         'max_length': 200,
         'required_msg': '开票抬头为必填'
-    },
-    'invoice_type': {
-        'required': True,
-        'enum': ['增值税', '普通发票', '增值税专用发票', '不开票'],
-        'required_msg': '开票类型为必填'
     },
     'tax_number': {
         'required': True,
@@ -175,6 +174,9 @@ INVOICE_INFO_CREATE_CONFIG = {
         'min_length': 1,
         'max_length': 50,
         'required_msg': '银行账号为必填'
+    },
+    'address_phone': {
+        'max_length': 200,
     }
 }
 
@@ -182,9 +184,6 @@ INVOICE_INFO_UPDATE_CONFIG = {
     'invoice_title': {
         'min_length': 1,
         'max_length': 200,
-    },
-    'invoice_type': {
-        'enum': ['增值税', '普通发票', '增值税专用发票', '不开票'],
     },
     'tax_number': {
         'min_length': 1,
@@ -197,6 +196,9 @@ INVOICE_INFO_UPDATE_CONFIG = {
     'bank_account': {
         'min_length': 1,
         'max_length': 50,
+    },
+    'address_phone': {
+        'max_length': 200,
     }
 }
 
@@ -204,16 +206,17 @@ INVOICE_INFO_UPDATE_CONFIG = {
 # ============ 收货地址验证配置 ============
 
 SHIPPING_ADDRESS_CREATE_CONFIG = {
-    'recipient_name': {
+    'receiver': {
         'required': True,
         'min_length': 1,
-        'max_length': 100,
+        'max_length': 50,
         'required_msg': '收货人为必填'
     },
-    'recipient_phone': {
+    'phone': {
         'required': True,
-        'pattern': r'^1[3-9]\d{9}$',
-        'msg': '收货电话格式不正确'
+        'min_length': 1,
+        'max_length': 20,
+        'required_msg': '联系电话为必填'
     },
     'province': {
         'required': True,
@@ -222,10 +225,7 @@ SHIPPING_ADDRESS_CREATE_CONFIG = {
         'required_msg': '收货省份为必填'
     },
     'province_code': {
-        'required': True,
-        'min_length': 1,
         'max_length': 20,
-        'required_msg': '收货省份编码为必填'
     },
     'city': {
         'required': True,
@@ -234,10 +234,10 @@ SHIPPING_ADDRESS_CREATE_CONFIG = {
         'required_msg': '收货城市为必填'
     },
     'city_code': {
-        'required': True,
-        'min_length': 1,
         'max_length': 20,
-        'required_msg': '收货城市编码为必填'
+    },
+    'district': {
+        'max_length': 100,
     },
     'address': {
         'required': True,
@@ -248,13 +248,13 @@ SHIPPING_ADDRESS_CREATE_CONFIG = {
 }
 
 SHIPPING_ADDRESS_UPDATE_CONFIG = {
-    'recipient_name': {
+    'receiver': {
         'min_length': 1,
-        'max_length': 100,
+        'max_length': 50,
     },
-    'recipient_phone': {
-        'pattern': r'^1[3-9]\d{9}$',
-        'msg': '收货电话格式不正确'
+    'phone': {
+        'min_length': 1,
+        'max_length': 20,
     },
     'province': {
         'min_length': 1,
@@ -272,26 +272,13 @@ SHIPPING_ADDRESS_UPDATE_CONFIG = {
         'min_length': 1,
         'max_length': 20,
     },
+    'district': {
+        'min_length': 1,
+        'max_length': 100,
+    },
     'address': {
         'min_length': 1,
         'max_length': 500,
-    }
-}
-
-
-# ============ 联系人信息验证配置 ============
-
-CONTACT_INFO_UPDATE_CONFIG = {
-    'contact_person': {
-        'max_length': 100,
-    },
-    'contact_phone': {
-        'pattern': r'^1[3-9]\d{9}$',
-        'msg': '联系人手机号格式不正确'
-    },
-    'contact_email': {
-        'pattern': r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-        'msg': '电子邮箱格式不正确'
     }
 }
 
@@ -322,4 +309,59 @@ CUSTOMER_DISCOUNT_UPDATE_CONFIG = {
         'min': 0,
         'max': 1,
     }
+}
+
+# ============ 新增API专用校验配置 ============
+
+# 客户认领
+CLAIM_CONFIG = {
+    'customer_id': {
+        'required': True,
+        'type': (int,),
+        'required_msg': '客户ID为必填'
+    },
+}
+
+# 注册会员
+MEMBER_CONFIG = {
+    'member_account': {
+        'required': True,
+        'min_length': 1,
+        'max_length': 100,
+        'required_msg': '会员账号为必填'
+    },
+}
+
+# 订单默认值
+ORDER_DEFAULTS_CONFIG = {
+    'default_shipping_address_id': {'type': (int,)},
+    'default_invoice_info_id': {'type': (int,)},
+    'settlement_method': {'type': (int,), 'enum': [1, 2, 3]},
+    'default_tax_rate': {'type': (int, float), 'min': 0, 'max': 100},
+}
+
+# 账期额度
+CREDIT_CONFIG = {
+    'credit_days': {
+        'required': True,
+        'type': (int,),
+        'min': 0,
+        'required_msg': '账期天数为必填'
+    },
+    'credit_limit': {
+        'required': True,
+        'type': (int, float),
+        'min': 0,
+        'required_msg': '信用额度为必填'
+    },
+}
+
+# 批量导出
+EXPORT_CONFIG = {
+    'customer_ids': {'type': list},
+    'customer_status': {'type': (int,), 'enum': [1, 2]},
+    'sales_user_id': {'type': (int,)},
+    'customer_type': {'enum': ['terminal', 'dealer']},
+    'created_at_start': {'type': str},
+    'created_at_end': {'type': str},
 }

@@ -385,9 +385,60 @@ const getStatusClass = (map: Record<string, { label: string; class: string }>, v
 const getFlowFieldName = (field: string) => {
   const map: Record<string, string> = {
     order_status: '订单状态', delivery_status: '发货状态',
-    push_status: '下推状态', invoice_status: '开票状态'
+    push_status: '下推状态', invoice_status: '开票状态',
+    finance_status: '财务状态', receive_status: '收货状态'
   }
   return map[field] || field
+}
+
+// 状态值翻译
+const getFlowValueLabel = (field: string, value: string | null) => {
+  if (!value) return value
+
+  const valueMaps: Record<string, Record<string, string>> = {
+    order_status: {
+      draft: '草稿', pending: '待审核', audited: '已审核',
+      partially_pushed_to_purchase: '部分下推', pushed_to_purchase: '已下推采购',
+      closed: '已完成', cancelled: '已取消'
+    },
+    delivery_status: {
+      none: '未发货', partial: '部分发货', full: '全部发货',
+      no_need: '无需发货', has_return: '有退货'
+    },
+    push_status: {
+      none: '未下推', partial: '部分下推', full: '已下推', not_needed: '无需下推'
+    },
+    invoice_status: {
+      none: '未开票', partial: '部分开票', full: '全部开票', no_need: '无需开票'
+    },
+    finance_status: {
+      unpaid: '未付款', partial_paid: '部分付款', paid: '已付款',
+      reconciled: '已对账', no_need: '无需付款'
+    },
+    receive_status: {
+      none: '未收货', partial: '部分收货', full: '已收货'
+    }
+  }
+
+  const map = valueMaps[field]
+  return map?.[value] || value
+}
+
+// 时间格式化：将 ISO 格式转为 YYYY-MM-DD HH:mm:ss
+const formatFlowTime = (timeStr: string) => {
+  if (!timeStr) return timeStr
+  try {
+    const date = new Date(timeStr)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const seconds = String(date.getSeconds()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  } catch {
+    return timeStr
+  }
 }
 
 // ============ 初始化 ============
@@ -772,12 +823,12 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
             <div v-for="flow in flows" :key="flow.id" class="flow-item">
               <div class="flow-dot"></div>
               <div class="flow-content">
-                <div class="flow-time">{{ flow.operate_time }}</div>
+                <div class="flow-time">{{ formatFlowTime(flow.operate_time) }}</div>
                 <div class="flow-desc">
                   <span class="flow-field">{{ getFlowFieldName(flow.field) }}</span>
-                  <span v-if="flow.old_value" class="flow-old">{{ flow.old_value }}</span>
+                  <span v-if="flow.old_value" class="flow-old">{{ getFlowValueLabel(flow.field, flow.old_value) }}</span>
                   <span v-if="flow.old_value" class="flow-arrow">→</span>
-                  <span class="flow-new">{{ flow.new_value }}</span>
+                  <span class="flow-new">{{ getFlowValueLabel(flow.field, flow.new_value) }}</span>
                 </div>
                 <div class="flow-operator">操作人: {{ flow.operator }}</div>
                 <div v-if="flow.remark" class="flow-remark">{{ flow.remark }}</div>
@@ -879,12 +930,16 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
-  padding: 14px 0;
+  padding: 14px 24px;
   border-bottom: 1px solid var(--color-hairline);
   position: sticky;
-  top: 0;
+  top: -24px;
   z-index: 10;
   background: var(--color-canvas);
+  margin-left: -24px;
+  margin-right: -24px;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 .header-left {
@@ -1033,10 +1088,10 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
 
 /* 区块卡片 */
 .section-card {
-  background-color: var(--color-canvas);
-  border-radius: var(--radius-lg);
-  padding: 18px 20px;
-  box-shadow: var(--shadow-card);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xl);
   margin-bottom: 16px;
 }
 
@@ -1139,14 +1194,14 @@ watch(() => props.orderNo, () => { if (props.orderNo) loadOrder() })
   white-space: nowrap;
 }
 
-.status-tag.draft { background-color: var(--color-neutral-bg); color: var(--color-muted); }
+.status-tag.draft { background-color: var(--color-neutral-bg); color: var(--color-body-muted); }
 .status-tag.pending { background-color: var(--color-warning-bg); color: var(--color-warning); }
 .status-tag.audited { background-color: var(--color-info-bg); color: var(--color-interactive); }
 .status-tag.partial-pushed { background-color: var(--color-warning-bg); color: var(--color-warning); }
-.status-tag.pushed { background-color: var(--color-accent-soft); color: var(--color-accent); }
+.status-tag.pushed { background-color: var(--color-accent-soft); color: #c4391a; }
 .status-tag.closed { background-color: var(--color-success-bg); color: var(--color-success); }
 .status-tag.cancelled { background-color: var(--color-danger-bg); color: var(--color-danger); }
-.status-tag.none { background-color: var(--color-neutral-bg); color: var(--color-muted); }
+.status-tag.none { background-color: var(--color-neutral-bg); color: var(--color-body-muted); }
 .status-tag.partial { background-color: var(--color-warning-bg); color: var(--color-warning); }
 .status-tag.full { background-color: var(--color-success-bg); color: var(--color-success); }
 .status-tag.reconciled { background-color: var(--color-info-bg); color: var(--color-interactive); }

@@ -289,6 +289,9 @@ const handleStorageChange = async (event: StorageEvent) => {
               <svg v-else-if="child.icon === 'product-list'" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z"/>
               </svg>
+              <svg v-else-if="child.icon === 'import'" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-8-2h2v-4h4v-2h-4V7h-2v4H7v2h4z"/>
+              </svg>
             </span>
             <span class="nav-label">{{ child.label }}</span>
           </div>
@@ -353,7 +356,7 @@ const handleStorageChange = async (event: StorageEvent) => {
 .user-role {
   margin-top: 8px;
   font-size: 12px;
-  color: var(--color-muted);
+  color: var(--color-sidebar-text);
   padding-left: 38px;
 }
 
@@ -372,7 +375,7 @@ const handleStorageChange = async (event: StorageEvent) => {
   cursor: pointer;
   transition: background-color var(--transition-fast);
   position: relative;
-  color: var(--color-muted);
+  color: var(--color-sidebar-text);
 }
 
 .nav-item:hover {
@@ -475,18 +478,18 @@ const handleStorageChange = async (event: StorageEvent) => {
 .search-icon {
   width: 18px;
   height: 18px;
-  color: var(--color-muted);
+  color: var(--color-sidebar-text);
 }
 
 .search-text {
   flex: 1;
   font-size: 13px;
-  color: var(--color-muted);
+  color: var(--color-sidebar-text);
 }
 
 .search-shortcut {
   font-size: 11px;
-  color: var(--color-muted);
+  color: var(--color-sidebar-text);
   padding: 2px 6px;
   background-color: rgba(0, 0, 0, 0.06);
   border-radius: 4px;
@@ -516,7 +519,7 @@ const handleStorageChange = async (event: StorageEvent) => {
   border-radius: 50%;
   background-color: var(--color-sidebar-bg);
   border: 1px solid rgba(0, 0, 0, 0.1);
-  color: var(--color-muted);
+  color: var(--color-sidebar-text);
   display: flex;
   align-items: center;
   justify-content: center;

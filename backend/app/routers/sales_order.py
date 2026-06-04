@@ -6,10 +6,33 @@ from typing import Optional, List, Dict, Any
 
 from services.sales_order_service_mysql import sales_order_service_mysql as sales_order_service
 from models_mysql.order_status_flow import OrderStatusFlow
+from validators.sales_order_ai_parse_validator import SalesOrderAiParseRequest
 from .auth import require_permission
 from app.decorators import wrap_response
 
 sales_order_router = APIRouter(prefix="/sales-orders", tags=["销售订单管理"])
+
+
+@sales_order_router.post("/parse-by-ai", response_model=dict)
+@wrap_response
+async def parse_sales_order_by_ai(
+    request: SalesOrderAiParseRequest,
+    current_user: dict = Depends(require_permission("order.create"))
+):
+    """
+    AI智能解析销售订单信息
+
+    接受文本描述和/或图片（base64），调用大模型提取结构化订单数据。
+    返回的数据可直接用于创建销售订单接口。
+    返回结构: { customer: {...}, order_info: {...}, items: [...], deliver_info: {...}, invoice_info: {...} }
+    """
+    from services.sales_order_ai_parse_service import SalesOrderAiParseService
+    service = SalesOrderAiParseService()
+    try:
+        result = await service.parse_by_ai(request)
+        return result
+    except RuntimeError as e:
+        raise ValueError(str(e))
 
 
 @sales_order_router.post("/", response_model=dict, description="创建销售订单")
@@ -73,12 +96,30 @@ async def list_sales_orders(
     status: Optional[str] = Query(None, description="订单状态"),
     customer_id: Optional[int] = Query(None, description="客户ID"),
     order_no: Optional[str] = Query(None, description="订单号模糊搜索"),
-    keyword: Optional[str] = Query(None, description="订单号、客户名称模糊搜索"),
-    _: dict = Depends(require_permission("order.view"))
+    keyword: Optional[str] = Query(None, description="订单号、客户名称、产品编号、规格编号模糊搜索"),
+    invoice_status: Optional[str] = Query(None, description="开票状态"),
+    delivery_status: Optional[str] = Query(None, description="发货状态"),
+    sale_user_id: Optional[int] = Query(None, description="业务员ID"),
+    order_date_start: Optional[str] = Query(None, description="订单日期开始"),
+    order_date_end: Optional[str] = Query(None, description="订单日期结束"),
+    current_user: dict = Depends(require_permission("order.view"))
 ):
+    # 业务员筛选权限校验：仅管理员可用
+    effective_sale_user_id = sale_user_id
+    if sale_user_id is not None:
+        # 检查用户角色权限（通过权限代码判断）
+        user_permissions = current_user.get("permissions", [])
+        is_admin = "admin.manage" in user_permissions or "admin" in user_permissions
+        if not is_admin:
+            # 非管理员忽略业务员筛选参数
+            effective_sale_user_id = None
+
     orders, total = await sales_order_service.list_orders(
         page=page, page_size=page_size,
-        order_status=status, customer_id=customer_id, order_no=order_no, keyword=keyword
+        order_status=status, customer_id=customer_id, order_no=order_no, keyword=keyword,
+        invoice_status=invoice_status, delivery_status=delivery_status,
+        sale_user_id=effective_sale_user_id,
+        order_date_start=order_date_start, order_date_end=order_date_end
     )
     return {"total": total, "page": page, "page_size": page_size, "items": orders}
 

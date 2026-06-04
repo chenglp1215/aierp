@@ -3,7 +3,7 @@ MySQL ORM 模型（Tortoise ORM）
 """
 from .auth import User, Role, Permission, UserStatus, RoleStatus, PermissionType
 from .product import Brand, Category, Product, ProductSpec
-from .customer import Customer, InvoiceInfo, ShippingAddress, CustomerDiscount
+from .customer import Customer, InvoiceInfo, ShippingAddress, CustomerDiscount, CustomerResearchGroup
 from .warehouse import Warehouse, Stock, InboundBatch, OutboundBatch, WarehouseLocation
 from .sales_order import (
     SalesOrder, SalesOrderItem, SalesDeliverInfo,
@@ -24,6 +24,8 @@ from .ai import (
     Skill, SkillCategory,
     Agent
 )
+
+from .import_task import ImportTask
 
 __all__ = [
     "User",
@@ -87,4 +89,6 @@ __all__ = [
     "Skill",
     "SkillCategory",
     "Agent",
+    # 导入任务
+    "ImportTask",
 ]

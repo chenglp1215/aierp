@@ -97,7 +97,9 @@ async def init_mysql():
             "models_mysql.pending_outbound",
             "models_mysql.order_status_flow",
             "models_mysql.supplier",
-            ]},
+            "models_mysql.ai",
+            "models_mysql.import_task",
+        ]},
     )
     await Tortoise.generate_schemas()
     print("[OK] MySQL (Tortoise ORM) 连接成功")

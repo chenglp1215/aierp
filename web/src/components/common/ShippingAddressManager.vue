@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { type ShippingAddressV2 } from '../../services/api'
+import { type ShippingAddress } from '../../services/api'
 import ProvinceCitySelector from './ProvinceCitySelector.vue'
 
 interface Props {
   customerId: string
-  shippingAddresses: ShippingAddressV2[]
+  shippingAddresses: ShippingAddress[]
   readonly?: boolean
 }
 
 interface Emits {
-  (e: 'add', data: ShippingAddressV2): Promise<void>
-  (e: 'update', addressId: string, data: ShippingAddressV2): Promise<void>
+  (e: 'add', data: ShippingAddress): Promise<void>
+  (e: 'update', addressId: string, data: ShippingAddress): Promise<void>
   (e: 'delete', addressId: string): Promise<void>
   (e: 'set-default', addressId: string): Promise<void>
-  (e: 'update:shippingAddresses', addresses: ShippingAddressV2[]): void
+  (e: 'update:shippingAddresses', addresses: ShippingAddress[]): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -24,15 +24,13 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const editingAddressId = ref<string | null>(null)
-const editingAddressBackup = ref<ShippingAddressV2 | null>(null)
+const editingAddressBackup = ref<ShippingAddress | null>(null)
 const isAddingNewAddress = ref(false)
-const newAddressForm = ref<ShippingAddressV2>({
-  recipient_name: '',
-  recipient_phone: '',
+const newAddressForm = ref<ShippingAddress>({
+  receiver: '',
+  phone: '',
   province: '',
-  province_code: '',
   city: '',
-  city_code: '',
   district: '',
   address: '',
   is_default: false
@@ -41,49 +39,41 @@ const formLoading = ref(false)
 
 const provinceCityValueForNew = ref({
   province: '',
-  provinceCode: '',
-  city: '',
-  cityCode: ''
+  city: ''
 })
 
 const startAddNew = () => {
   isAddingNewAddress.value = true
   editingAddressId.value = null
   newAddressForm.value = {
-    recipient_name: '',
-    recipient_phone: '',
+    receiver: '',
+    phone: '',
     province: '',
-    province_code: '',
     city: '',
-    city_code: '',
     district: '',
     address: '',
     is_default: props.shippingAddresses.length === 0
   }
   provinceCityValueForNew.value = {
     province: '',
-    provinceCode: '',
-    city: '',
-    cityCode: ''
+    city: ''
   }
 }
 
 const cancelAddNew = () => {
   isAddingNewAddress.value = false
   newAddressForm.value = {
-    recipient_name: '',
-    recipient_phone: '',
+    receiver: '',
+    phone: '',
     province: '',
-    province_code: '',
     city: '',
-    city_code: '',
     district: '',
     address: '',
     is_default: false
   }
 }
 
-const startEdit = (addr: ShippingAddressV2) => {
+const startEdit = (addr: ShippingAddress) => {
   editingAddressId.value = addr.id || null
   editingAddressBackup.value = { ...addr }
 }
@@ -100,11 +90,11 @@ const cancelEdit = () => {
 }
 
 const validateNewForm = (): boolean => {
-  if (!newAddressForm.value.recipient_name?.trim()) {
+  if (!newAddressForm.value.receiver?.trim()) {
     window.showToast('请输入收货人姓名', 'warning')
     return false
   }
-  if (!newAddressForm.value.recipient_phone?.trim()) {
+  if (!newAddressForm.value.phone?.trim()) {
     window.showToast('请输入收货电话', 'warning')
     return false
   }
@@ -148,12 +138,12 @@ const handleAddNew = async () => {
   }
 }
 
-const validateEditForm = (addr: ShippingAddressV2): boolean => {
-  if (!addr.recipient_name?.trim()) {
+const validateEditForm = (addr: ShippingAddress): boolean => {
+  if (!addr.receiver?.trim()) {
     window.showToast('请输入收货人姓名', 'warning')
     return false
   }
-  if (!addr.recipient_phone?.trim()) {
+  if (!addr.phone?.trim()) {
     window.showToast('请输入收货电话', 'warning')
     return false
   }
@@ -172,7 +162,7 @@ const validateEditForm = (addr: ShippingAddressV2): boolean => {
   return true
 }
 
-const handleSaveEdit = async (addr: ShippingAddressV2) => {
+const handleSaveEdit = async (addr: ShippingAddress) => {
   if (!validateEditForm(addr)) return
 
   if (!props.customerId) {
@@ -232,18 +222,14 @@ const handleSetDefault = async (addressId: string) => {
   }
 }
 
-const getProvinceCityForEdit = (addr: ShippingAddressV2) => ({
+const getProvinceCityForEdit = (addr: ShippingAddress) => ({
   province: addr.province || '',
-  provinceCode: addr.province_code || '',
-  city: addr.city || '',
-  cityCode: addr.city_code || ''
+  city: addr.city || ''
 })
 
-const setProvinceCityForEdit = (addr: ShippingAddressV2, val: { province?: string; provinceCode?: string; city?: string; cityCode?: string }) => {
+const setProvinceCityForEdit = (addr: ShippingAddress, val: { province?: string; city?: string }) => {
   addr.province = val.province || ''
-  addr.province_code = val.provinceCode || ''
   addr.city = val.city || ''
-  addr.city_code = val.cityCode || ''
 }
 </script>
 
@@ -269,8 +255,8 @@ const setProvinceCityForEdit = (addr: ShippingAddressV2, val: { province?: strin
 
           <tr v-for="addr in shippingAddresses" :key="addr.id">
             <template v-if="editingAddressId === addr.id">
-              <td><input type="text" v-model="addr.recipient_name" class="inline-input" placeholder="收货人" /></td>
-              <td><input type="text" v-model="addr.recipient_phone" class="inline-input" placeholder="电话" /></td>
+              <td><input type="text" v-model="addr.receiver" class="inline-input" placeholder="收货人" /></td>
+              <td><input type="text" v-model="addr.phone" class="inline-input" placeholder="电话" /></td>
               <td colspan="2">
                 <ProvinceCitySelector
                   :model-value="getProvinceCityForEdit(addr)"
@@ -286,11 +272,11 @@ const setProvinceCityForEdit = (addr: ShippingAddressV2, val: { province?: strin
               </td>
             </template>
             <template v-else>
-              <td>{{ addr.recipient_name }}</td>
-              <td>{{ addr.recipient_phone }}</td>
+              <td>{{ addr.receiver }}</td>
+              <td>{{ addr.phone }}</td>
               <td>{{ addr.province || '-' }}</td>
               <td>{{ addr.city || '-' }}</td>
-              <td>{{ [addr.province, addr.city, addr.address].filter(Boolean).join('') }}</td>
+              <td>{{ [addr.province, addr.city, addr.district, addr.address].filter(Boolean).join('') }}</td>
               <td>{{ addr.is_default ? '是' : '否' }}</td>
               <td v-if="!readonly">
                 <button v-if="!addr.is_default" class="btn-link" @click="handleSetDefault(addr.id!)">设为默认</button>
@@ -301,16 +287,14 @@ const setProvinceCityForEdit = (addr: ShippingAddressV2, val: { province?: strin
           </tr>
 
           <tr v-if="isAddingNewAddress">
-            <td><input type="text" v-model="newAddressForm.recipient_name" class="inline-input" placeholder="收货人 *" /></td>
-            <td><input type="text" v-model="newAddressForm.recipient_phone" class="inline-input" placeholder="电话 *" /></td>
+            <td><input type="text" v-model="newAddressForm.receiver" class="inline-input" placeholder="收货人 *" /></td>
+            <td><input type="text" v-model="newAddressForm.phone" class="inline-input" placeholder="电话 *" /></td>
             <td colspan="2">
               <ProvinceCitySelector
                 v-model="provinceCityValueForNew"
                 @update:model-value="(val: any) => {
                   newAddressForm.province = val.province || ''
-                  newAddressForm.province_code = val.provinceCode || ''
                   newAddressForm.city = val.city || ''
-                  newAddressForm.city_code = val.cityCode || ''
                 }"
                 :placeholder="{ province: '省份 *', city: '城市 *' }"
               />

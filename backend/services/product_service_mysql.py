@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
+from tortoise import Tortoise
 from tortoise.expressions import Q
 
 from models_mysql.product import Brand, Category, Product, ProductSpec
@@ -105,14 +106,35 @@ class BrandService:
     async def get_brand_by_keyword(
         self, keyword: Optional[str] = None, page: int = 1, page_size: int = 20
     ) -> tuple[List[Dict[str, Any]], int]:
-        """根据关键词搜索品牌"""
+        """根据关键词搜索品牌（含商品数量）"""
         query = Brand.all()
         if keyword:
             query = query.filter(Q(name__contains=keyword) | Q(description__contains=keyword))
 
         total = await query.count()
         brands = await query.offset((page - 1) * page_size).limit(page_size)
-        return [b.to_dict() for b in brands], total
+        brand_dicts = [b.to_dict() for b in brands]
+
+        # 批量查询商品数量，避免 N+1
+        brand_ids = [b.id for b in brands]
+        count_dict = await self._batch_product_count_by_brand(brand_ids)
+        for brand_dict in brand_dicts:
+            brand_dict["product_count"] = count_dict.get(brand_dict["id"], 0)
+
+        return brand_dicts, total
+
+    async def _batch_product_count_by_brand(self, brand_ids: List[int]) -> Dict[int, int]:
+        """批量查询品牌下的商品数量"""
+        if not brand_ids:
+            return {}
+        conn = Tortoise.get_connection("default")
+        rows = await conn.execute_query_dict(
+            "SELECT brand_id, COUNT(*) AS count FROM products WHERE brand_id IN ({}) GROUP BY brand_id".format(
+                ','.join(['%s'] * len(brand_ids))
+            ),
+            brand_ids,
+        )
+        return {row["brand_id"]: row["count"] for row in rows}
 
     async def get_all_brands(self) -> List[Dict[str, Any]]:
         """获取所有品牌"""
@@ -213,16 +235,46 @@ class CategoryService:
         return result
 
     async def get_category_tree(self) -> List[Dict[str, Any]]:
-        """获取分类树"""
+        """获取分类树（含商品数量）"""
         # 获取所有顶级分类
         root_categories = await Category.filter(parent_id=None).order_by("sort_order", "id").all()
+
+        # 批量查询所有分类的商品数量
+        count_dict = await self._batch_product_count_by_category()
+
         result = []
         for category in root_categories:
             cat_dict = category.to_dict()
             cat_dict["level"] = 1
             cat_dict["children"] = await category.get_children_recursive()
+            # 递归注入商品数量
+            self._inject_category_product_count(cat_dict, count_dict)
             result.append(cat_dict)
         return result
+
+    async def _batch_product_count_by_category(self) -> Dict[int, int]:
+        """批量查询所有分类下的商品数量"""
+        conn = Tortoise.get_connection("default")
+        rows = await conn.execute_query_dict(
+            "SELECT category_id, COUNT(*) AS count FROM products GROUP BY category_id"
+        )
+        return {row["category_id"]: row["count"] for row in rows}
+
+    def _inject_category_product_count(
+        self, cat_dict: Dict[str, Any], count_dict: Dict[int, int]
+    ) -> int:
+        """递归注入分类商品数量，返回当前分类及所有子分类的商品总数"""
+        cat_id = cat_dict.get("id")
+        own_count = count_dict.get(cat_id, 0)
+        children = cat_dict.get("children", [])
+
+        children_total = 0
+        for child in children:
+            children_total += self._inject_category_product_count(child, count_dict)
+
+        # product_count 仅统计当前分类直接关联的商品数
+        cat_dict["product_count"] = own_count
+        return own_count + children_total
 
     async def get_category_name(self, category_id: int) -> Optional[str]:
         """获取分类名称"""
@@ -341,12 +393,53 @@ class ProductSpecService:
         return [await s.to_dict() for s in specs]
 
     async def get_spec_by_keyword(
-        self, keyword: str, page: int = 1, page_size: int = 20, is_formatted: bool = False
+        self, keyword: str, page: int = 1, page_size: int = 20, is_formatted: bool = False,
+        search_name: bool = False
     ) -> tuple[List[Dict[str, Any]], int]:
-        """根据关键词搜索规格"""
-        query = ProductSpec.filter(spec_code__contains=keyword)
-        total = await query.count()
-        specs = await query.offset((page - 1) * page_size).limit(page_size)
+        """
+        根据关键词搜索规格
+
+        Args:
+            keyword: 搜索关键词
+            page: 页码
+            page_size: 每页数量
+            is_formatted: 是否返回格式化数据
+            search_name: 是否同时搜索产品名称（默认只搜索规格编号）
+
+        Returns:
+            (规格列表, 总数)
+        """
+        if search_name:
+            # 搜索产品名称匹配的规格
+            products = await Product.filter(name__icontains=keyword).all()
+            product_ids = [p.id for p in products]
+            if product_ids:
+                # 同时搜索规格编号匹配的规格
+                spec_by_code = await ProductSpec.filter(spec_code__icontains=keyword).all()
+                spec_by_name = await ProductSpec.filter(product_id__in=product_ids).all()
+                # 合并并去重
+                all_specs = list(spec_by_code)
+                spec_ids_set = {s.id for s in all_specs}
+                for spec in spec_by_name:
+                    if spec.id not in spec_ids_set:
+                        all_specs.append(spec)
+                total = len(all_specs)
+                # 分页处理
+                start = (page - 1) * page_size
+                end = start + page_size
+                specs = all_specs[start:end]
+            else:
+                # 仅搜索规格编号
+                specs = await ProductSpec.filter(spec_code__icontains=keyword).offset(
+                    (page - 1) * page_size
+                ).limit(page_size).all()
+                total = await ProductSpec.filter(spec_code__icontains=keyword).count()
+        else:
+            # 仅搜索规格编号
+            query = ProductSpec.filter(spec_code__icontains=keyword)
+            total = await query.count()
+            specs = await query.offset((page - 1) * page_size).limit(page_size)
+
         if is_formatted:
             return [await s.to_dict() for s in specs], total
         return [s.to_dict() for s in specs], total
@@ -489,7 +582,19 @@ class ProductService:
         products = await query.offset((page - 1) * page_size).limit(page_size)
 
         if is_formatted:
-            return [await p.to_dict(include_specs=True) for p in products], total
+            result = [await p.to_dict(include_specs=True) for p in products]
+            # 批量查询所有规格的库存状态
+            all_spec_ids = []
+            for p in result:
+                for spec in p.get("specs", []):
+                    all_spec_ids.append(spec["id"])
+            if all_spec_ids:
+                from services.inventory_service_mysql import stock_service
+                stock_status_map = await stock_service.get_stock_status_by_spec_ids(all_spec_ids)
+                for p in result:
+                    for spec in p.get("specs", []):
+                        spec["stock_status"] = stock_status_map.get(str(spec["id"]), [])
+            return result, total
         return [p.to_dict() for p in products], total
 
     async def delete_product(self, product_id: int) -> bool:

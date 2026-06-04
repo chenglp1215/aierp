@@ -254,9 +254,31 @@ export const permissionApi = {
   }
 }
 
+export const userApi = {
+  list: (params: { page?: number; page_size?: number; status?: string; keyword?: string; role?: string }) => {
+    return apiService.get<any>('/auth/users/', params)
+  },
+
+  getById: (id: string) => {
+    return apiService.get<any>(`/auth/users/${id}/`)
+  }
+}
+
 export const salesOrderApi = {
   // 获取订单列表
-  list: (params: { page?: number; page_size?: number; status?: string; customer_id?: string | number; order_no?: string; keyword?: string }) => {
+  list: (params: {
+    page?: number
+    page_size?: number
+    status?: string
+    customer_id?: string | number
+    order_no?: string
+    keyword?: string
+    invoice_status?: string
+    delivery_status?: string
+    sale_user_id?: string | number
+    order_date_start?: string
+    order_date_end?: string
+  }) => {
     return apiService.get<any>('/sales-orders/', params)
   },
 
@@ -271,6 +293,8 @@ export const salesOrderApi = {
     customer_id: string | number
     customer_name?: string
     sale_user_id?: string | number
+    third_party_platform?: string
+    platform_order_no?: string
     deliver_info?: {
       addr: string
       province: string
@@ -278,8 +302,18 @@ export const salesOrderApi = {
       person_name: string
       person_tel: string
     }
+    invoice_info?: {
+      invoice_title: string
+      invoice_type: string
+      tax_number: string
+      bank_name?: string
+      bank_account?: string
+      address?: string
+      phone?: string
+    }
     expect_deliver_date?: string
     settle_type?: string
+    freight_amt?: number
     tax_rate?: number
     remark?: string
     items: Array<{
@@ -291,7 +325,9 @@ export const salesOrderApi = {
       qty: number
       price: number
       discount?: number
-      shipping_method: 'direct' | 'warehouse'
+      tax_rate?: number
+      item_remark?: string
+      shipping_method: string
     }>
   }) => {
     return apiService.post<any>('/sales-orders/', data)
@@ -303,6 +339,8 @@ export const salesOrderApi = {
     customer_id: string | number
     customer_name?: string
     sale_user_id?: string | number
+    third_party_platform?: string
+    platform_order_no?: string
     deliver_info?: {
       addr: string
       province: string
@@ -310,8 +348,18 @@ export const salesOrderApi = {
       person_name: string
       person_tel: string
     }
+    invoice_info?: {
+      invoice_title: string
+      invoice_type: string
+      tax_number: string
+      bank_name?: string
+      bank_account?: string
+      address?: string
+      phone?: string
+    }
     expect_deliver_date?: string
     settle_type?: string
+    freight_amt?: number
     tax_rate?: number
     remark?: string
     items: Array<{
@@ -323,7 +371,9 @@ export const salesOrderApi = {
       qty: number
       price: number
       discount?: number
-      shipping_method: 'direct' | 'warehouse'
+      tax_rate?: number
+      item_remark?: string
+      shipping_method: string
     }>
   }) => {
     return apiService.post<any>('/sales-orders/create-and-submit', data)
@@ -334,8 +384,27 @@ export const salesOrderApi = {
     order_date?: string
     customer_id?: string | number
     customer_name?: string
+    third_party_platform?: string
+    platform_order_no?: string
+    deliver_info?: {
+      addr: string
+      province: string
+      city: string
+      person_name: string
+      person_tel: string
+    }
+    invoice_info?: {
+      invoice_title: string
+      invoice_type: string
+      tax_number: string
+      bank_name?: string
+      bank_account?: string
+      address?: string
+      phone?: string
+    }
     expect_deliver_date?: string
     settle_type?: string
+    freight_amt?: number
     remark?: string
     items?: Array<{
       row_no: number
@@ -346,7 +415,9 @@ export const salesOrderApi = {
       qty: number
       price: number
       discount?: number
-      shipping_method: 'direct' | 'warehouse'
+      tax_rate?: number
+      item_remark?: string
+      shipping_method: string
     }>
   }) => {
     return apiService.put<any>(`/sales-orders/${orderNo}`, data)
@@ -430,6 +501,11 @@ export const salesOrderApi = {
   // 获取订单关联的待出库单
   getPendingOutbounds: (orderNo: string) => {
     return apiService.get<any>(`/sales-orders/${orderNo}/pending-outbounds`)
+  },
+
+  // AI 智能解析销售订单 - 文本+图片 -> 结构化数据
+  parseByAi: async (data: { text?: string; images?: string[] }): Promise<any> => {
+    return apiService.post('/sales-orders/parse-by-ai', data)
   }
 }
 
@@ -600,65 +676,120 @@ export const purchaseOrderApi = {
 export interface InvoiceInfo {
   id?: string
   invoice_title: string
-  invoice_type: string
   tax_number: string
   bank_name: string
   bank_account: string
+  address_phone?: string | null
   is_default?: boolean
   created_at?: string
   updated_at?: string
 }
 
-export interface ShippingAddressV2 {
+export interface ShippingAddress {
   id?: string
-  recipient_name: string
-  recipient_phone: string
+  receiver: string
+  phone: string
   province?: string
-  province_code?: string
   city?: string
-  city_code?: string
   district?: string
-  address: string
+  address?: string
   is_default?: boolean
   created_at?: string
   updated_at?: string
+}
+
+/** 课题组信息 */
+export interface ResearchGroup {
+  id: number
+  customer_id: number
+  research_group_name: string
+  research_leader: string | null
+  contact_phone: string | null
+  created_at: string | null
+}
+
+/** 客户订单默认值 */
+export interface CustomerOrderDefaults {
+  default_shipping_address_id?: number | null
+  default_invoice_info_id?: number | null
+  settlement_method?: number
+  default_tax_rate?: number | null
+}
+
+/** 客户账期额度 */
+export interface CustomerCredit {
+  credit_days: number
+  credit_limit: number
 }
 
 export interface Customer {
   id: string
   customer_code: string
-  name: string
+  customer_name: string
   customer_type: 'terminal' | 'dealer'
-  research_group?: string
-  contact_person?: string
-  contact_phone?: string
-  contact_email?: string
-  invoice_infos: InvoiceInfo[]
-  shipping_addresses: ShippingAddressV2[]
-  sales_user_id?: string
-  sales_user_name?: string
-  status: string
-  created_at?: string
-  updated_at?: string
+  customer_status: number  // 1=正常, 2=公共池
+  sales_user_id: number | null
+  sales_user_name: string | null
+  settlement_method: number  // 1=月结, 2=现结, 3=预付
+  account_balance: number
+  debt_total: number
+  credit_limit: number
+  credit_days: number
+  is_overdue: number  // 0=否, 1=是
+  last_order_time: string | null
+  total_order_amount: number
+  member_account: string | null
+  contact_person: string | null
+  contact_phone: string | null
+  province: string | null
+  city: string | null
+  district: string | null
+  address: string | null
+  remark: string | null
+  created_by: number | null
+  default_shipping_address_id: number | null
+  default_invoice_info_id: number | null
+  default_tax_rate: number | null
+  created_at: string | null
+  updated_at: string | null
+  // 关联数据
+  research_groups?: ResearchGroup[]
+  invoice_infos?: InvoiceInfo[]
+  shipping_addresses?: ShippingAddress[]
 }
 
 export interface CustomerListItem {
   id: string
   customer_code: string
-  name: string
+  customer_name: string
   customer_type: 'terminal' | 'dealer'
-  research_group?: string
-  contact_person?: string
-  contact_phone?: string
-  sales_user_name?: string
-  status: string
-  created_at?: string
-  updated_at?: string
+  customer_status: number  // 1=正常, 2=公共池
+  sales_user_id: number | null
+  sales_user_name: string | null
+  settlement_method: number
+  account_balance: number
+  debt_total: number
+  credit_limit: number
+  credit_days: number
+  is_overdue: number
+  last_order_time: string | null
+  total_order_amount: number
+  member_account: string | null
+  contact_person: string | null
+  contact_phone: string | null
+  province: string | null
+  city: string | null
+  district: string | null
+  address: string | null
+  remark: string | null
+  created_by: number | null
+  created_at: string | null
+  updated_at: string | null
 }
 
 export const customerApi = {
   // 获取客户列表
-  list: (params: { page?: number; page_size?: number; status?: string; keyword?: string; customer_type?: string; sales_user_id?: string }) => {
+  list: (params: { page?: number; page_size?: number; keyword?: string; customer_type?: string; customer_status?: number; sales_user_id?: number; created_at_start?: string; created_at_end?: string }) => {
     return apiService.get<any>('/customers/', params)
   },
 
@@ -702,16 +833,78 @@ export const customerApi = {
     return apiService.patch<any>(`/customers/${customerId}/transfer`, { new_user_id: newUserId })
   },
 
+  /** @deprecated 请使用 parseByAi 替代 */
   // AI 创建客户（从文本或图片提取信息）
   createFromAi: (data: { input?: string; file_path?: string }) => {
     return apiService.post<any>('/customers/create_customer_from_ai', data)
   },
 
+  // AI 智能解析客户信息 - 文本+图片 -> 结构化数据
+  parseByAi: async (data: { text?: string; images?: string[] }): Promise<any> => {
+    return apiService.post('/customers/parse-by-ai', data)
+  },
+
+  // AI 智能解析收货地址信息 - 文本+图片 -> 结构化地址数据
+  parseShippingAddressByAi: async (data: { text?: string; images?: string[] }): Promise<{
+    receiver: string | null
+    phone: string | null
+    province: string | null
+    city: string | null
+    district: string | null
+    address: string | null
+  }> => {
+    return apiService.post('/customers/shipping-addresses/parse-by-ai', data)
+  },
+
+  // 客户认领
+  claim: (id: number) =>
+    apiService.post(`/customers/${id}/claim`),
+
+  // 注册会员
+  registerMember: (id: number, data: { member_account: string }) =>
+    apiService.put(`/customers/${id}/member-account`, data),
+
+  // 订单默认值设置
+  setOrderDefaults: (id: number, data: CustomerOrderDefaults) =>
+    apiService.put(`/customers/${id}/order-defaults`, data),
+
+  // 账期额度设置
+  setCredit: (id: number, data: CustomerCredit) =>
+    apiService.put(`/customers/${id}/credit`, data),
+
+  // 超账期判断
+  checkOverdue: () =>
+    apiService.get('/customers/check-overdue'),
+
+  // 批量导出
+  exportCustomers: async (data: {
+    customer_ids?: number[]
+    customer_status?: number
+    sales_user_id?: number
+    created_at_start?: string
+    created_at_end?: string
+  }) => {
+    const token = localStorage.getItem('token') || ''
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.host}/api/v1`
+    const response = await fetch(`${baseUrl}/customers/export`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    })
+    if (!response.ok) {
+      throw new Error('导出失败')
+    }
+    return response.blob()
+  },
+
   // 以下为保持向后兼容的方法（供SalesOrder等模块使用）
   // 添加收货地址 - 通过更新客户实现
-  addShippingAddress: async (customerId: string, address: ShippingAddressV2) => {
+  addShippingAddress: async (customerId: string, address: any) => {
     const detailRes = await apiService.get<any>(`/customers/${customerId}`)
-    const customer = detailRes.result
+    const customer = detailRes
     if (!customer) throw new Error('客户不存在')
 
     const shippingAddresses = [...(customer.shipping_addresses || []), { ...address, id: undefined }]
@@ -724,7 +917,7 @@ export const customerApi = {
   // 添加开票信息 - 通过更新客户实现
   addInvoiceInfo: async (customerId: string, invoice: InvoiceInfo) => {
     const detailRes = await apiService.get<any>(`/customers/${customerId}`)
-    const customer = detailRes.result
+    const customer = detailRes
     if (!customer) throw new Error('客户不存在')
 
     const invoiceInfos = [...(customer.invoice_infos || []), { ...invoice, id: undefined }]
@@ -855,6 +1048,7 @@ export interface CategoryTreeNode {
   sort_order: number
   is_shop_display: boolean
   level: number
+  product_count?: number
   children?: CategoryTreeNode[]
 }
 
@@ -1807,4 +2001,46 @@ export const pendingOutboundApi = {
   // 更新运费成本
   updateFreightCost: (id: number, data: { freight_cost: number }) =>
     apiService.put(`/pending-outbounds/${id}/freight-cost`, data),
+}
+
+export const importTaskApi = {
+  // 创建导入任务（上传文件）
+  create: async (file: File) => {
+    const res = await apiService.uploadFile<any>('/import-tasks/', file, file.name)
+    // uploadFile 返回完整响应，apiService.request 会自动解包 result
+    return res
+  },
+
+  // 获取任务详情/进度
+  get: (taskId: number) => {
+    return apiService.get<any>(`/import-tasks/${taskId}`)
+  },
+
+  // 获取任务列表
+  list: (params: { page?: number; page_size?: number; status?: string; task_type?: string }) => {
+    return apiService.get<any>('/import-tasks/', params)
+  },
+
+  // 下载错误文件
+  downloadError: async (taskId: number) => {
+    const token = localStorage.getItem('token')
+    const url = `${API_BASE_URL}/import-tasks/${taskId}/error-file`
+    const response = await fetch(url, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
+    if (!response.ok) throw new Error('下载失败')
+    const blob = await response.blob()
+    // 触发浏览器下载
+    const objectUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = `import_errors_${taskId}.xlsx`
+    a.click()
+    window.URL.revokeObjectURL(objectUrl)
+  },
+
+  // 取消任务
+  cancel: (taskId: number) => {
+    return apiService.put<any>(`/import-tasks/${taskId}/cancel`)
+  }
 }

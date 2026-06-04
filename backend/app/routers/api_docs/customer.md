@@ -1,200 +1,215 @@
 # 客户管理 API
 
-> 全新设计的客户管理接口，含客户折扣管理
-
-## 基础信息
-
-- **客户管理基础路径**: `/api/v1/customers`
-- **客户折扣管理基础路径**: `/api/v1/customer-discounts`
-- **认证方式**: Bearer Token (JWT)
-- **权限说明**: 需要携带有效 Token 访问
+客户管理模块提供客户的增删改查、状态管理、认领转移、会员注册、账期额度、订单默认值、导出等功能，以及客户折扣的独立管理。
 
 ---
 
-## 目录
+## 1. 创建客户
 
-### 客户管理
+`POST /api/v1/customers/`
 
-- [创建客户](#51-创建客户)
-- [获取客户列表](#52-获取客户列表)
-- [获取客户统计](#53-获取客户统计)
-- [获取客户详情](#54-获取客户详情)
-- [更新客户](#55-更新客户)
-- [删除客户](#56-删除客户)
-- [更新客户状态](#57-更新客户状态)
-- [转移客户](#58-转移客户)
+**权限**: `customer.create`
 
-### 客户折扣管理
+**请求体**:
 
-- [创建客户折扣](#61-创建客户折扣)
-- [获取客户折扣列表](#62-获取客户折扣列表)
-- [获取客户折扣详情](#63-获取客户折扣详情)
-- [按客户和品牌获取折扣](#64-按客户和品牌获取折扣)
-- [更新客户折扣](#65-更新客户折扣)
-- [删除客户折扣](#66-删除客户折扣)
-- [切换客户折扣状态](#67-切换客户折扣状态)
-
----
-
-## 5.1 创建客户
-
-### 接口信息
-
-| 属性 | 值 |
-|------|-----|
-| **URL** | `POST /api/v1/customers/` |
-| **Method** | POST |
-| **权限** | `customer.create` |
-
-### 请求头
-
-```
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-### 请求体
-
-```json
-{
-  "name": "string",
-  "customer_type": "terminal|dealer",
-  "research_group": "string",
-  "contact_person": "string",
-  "contact_phone": "string",
-  "contact_email": "string",
-  "invoice_infos": [
-    {
-      "invoice_title": "string",
-      "invoice_type": "增值税|普通发票|增值税专用发票|不开票",
-      "tax_number": "string",
-      "bank_name": "string",
-      "bank_account": "string",
-      "is_default": false
-    }
-  ],
-  "shipping_addresses": [
-    {
-      "recipient_name": "string",
-      "recipient_phone": "string",
-      "province": "string",
-      "city": "string",
-      "address": "string",
-      "is_default": false
-    }
-  ]
-}
-```
-
-**请求字段说明**:
-| 字段 | 类型 | 必填 | 描述 |
+| 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| name | string | 是 | 客户名称 |
-| customer_type | string | 是 | 客户类型：`terminal`(终端客户) / `dealer`(经销商) |
-| research_group | string | 条件 | 课题组信息，仅 `terminal` 类型必填 |
-| contact_person | string | 否 | 联系人姓名 |
-| contact_phone | string | 否 | 联系人电话 |
-| contact_email | string | 否 | 联系人邮箱 |
-| invoice_infos | array | 否 | 开票信息列表，可在创建时一并添加 |
-| shipping_addresses | array | 否 | 收货地址列表，可在创建时一并添加 |
+| customer_code | string | 是 | 客户编码，唯一 |
+| customer_name | string | 是 | 客户名称 |
+| customer_type | string | 否 | 客户类型: `terminal`=终端(默认), `dealer`=经销商 |
+| contact_person | string | 否 | 联系人 |
+| contact_phone | string | 否 | 联系电话 |
+| email | string | 否 | 邮箱 |
+| province | string | 否 | 省 |
+| city | string | 否 | 市 |
+| district | string | 否 | 区 |
+| address | string | 否 | 详细地址 |
+| settlement_method | int | 否 | 结算方式: 1=月结(默认), 2=现结, 3=预付 |
+| remark | string | 否 | 备注 |
 
-**说明**:
-- `customer_code` 由系统自动生成，格式：`CUST{日期}{4位随机数}`
-- `sales_user_id` 和 `sales_user_name` 由系统自动设置为当前登录用户
+**响应**: 返回创建的客户对象
 
-### 响应
-
-**成功响应**:
 ```json
 {
-  "status": "success",
-  "message": "操作成功",
+  "status": 200,
+  "message": "success",
   "result": {
     "id": 1,
-    "customer_code": "CUST202605111234",
-    "name": "某医院检验科",
+    "customer_code": "C001",
+    "customer_name": "测试客户",
     "customer_type": "terminal",
-    "research_group": "检验科课题组",
+    "customer_status": 1,
+    "sales_user_id": null,
+    "sales_user_name": null,
+    "settlement_method": 1,
+    "account_balance": 0,
+    "debt_total": 0,
+    "credit_limit": 0,
+    "credit_days": 0,
+    "is_overdue": 0,
+    "last_order_time": null,
+    "total_order_amount": 0,
+    "member_account": null,
     "contact_person": "张三",
     "contact_phone": "13800138000",
-    "contact_email": "zhangsan@example.com",
-    "invoice_infos": [],
-    "shipping_addresses": [],
-    "sales_user_id": "user123",
-    "sales_user_name": "李经理",
-    "status": "normal",
-    "created_at": "2026-05-11T10:30:00Z",
-    "updated_at": "2026-05-11T10:30:00Z"
+    "email": null,
+    "province": "北京市",
+    "city": "北京市",
+    "district": "海淀区",
+    "address": "中关村大街1号",
+    "remark": null,
+    "created_by": 1,
+    "default_shipping_address_id": null,
+    "default_invoice_info_id": null,
+    "default_tax_rate": null,
+    "created_at": "2026-05-28T10:00:00",
+    "updated_at": "2026-05-28T10:00:00"
   }
 }
 ```
 
-**错误响应（验证失败）**:
+---
+
+## 2. 获取客户列表
+
+`GET /api/v1/customers/`
+
+**权限**: `customer.view`
+
+**查询参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | int | 否 | 页码，默认 1 |
+| page_size | int | 否 | 每页数量，默认 20 |
+| keyword | string | 否 | 搜索关键词(匹配编码/名称/联系人/电话) |
+| customer_type | string | 否 | 客户类型筛选: `terminal` / `dealer` |
+| customer_status | int | 否 | 客户状态筛选: 1=正常, 2=公共池 |
+
+**响应**:
+
 ```json
 {
-  "status": "error",
-  "message": "参数验证失败",
-  "validation_errors": [
-    {
-      "field": "name",
-      "message": "客户名称为必填"
-    }
-  ]
+  "status": 200,
+  "message": "success",
+  "result": {
+    "items": [
+      {
+        "id": 1,
+        "customer_code": "C001",
+        "customer_name": "测试客户",
+        "customer_type": "terminal",
+        "customer_status": 1,
+        "sales_user_id": 1,
+        "sales_user_name": "管理员",
+        "settlement_method": 1,
+        "account_balance": 0,
+        "debt_total": 0,
+        "credit_limit": 0,
+        "credit_days": 0,
+        "is_overdue": 0,
+        "last_order_time": null,
+        "total_order_amount": 0,
+        "member_account": null,
+        "contact_person": "张三",
+        "contact_phone": "13800138000",
+        "email": null,
+        "province": "北京市",
+        "city": "北京市",
+        "district": "海淀区",
+        "address": "中关村大街1号",
+        "remark": null,
+        "created_by": 1,
+        "default_shipping_address_id": null,
+        "default_invoice_info_id": null,
+        "default_tax_rate": null,
+        "created_at": "2026-05-28T10:00:00",
+        "updated_at": "2026-05-28T10:00:00"
+      }
+    ],
+    "total": 100,
+    "page": 1,
+    "page_size": 20
+  }
 }
 ```
 
 ---
 
-## 5.2 获取客户列表
+## 3. 获取客户详情
 
-### 接口信息
+`GET /api/v1/customers/{customer_id}`
 
-| 属性 | 值 |
-|------|-----|
-| **URL** | `GET /api/v1/customers/` |
-| **Method** | GET |
-| **权限** | `customer.view` |
+**权限**: `customer.view`
 
-### 查询参数
+**路径参数**:
 
-| 参数 | 类型 | 必填 | 默认值 | 描述 |
-|------|------|------|--------|------|
-| page | int | 否 | 1 | 页码 |
-| page_size | int | 否 | 20 | 每页数量（最大100） |
-| status | string | 否 | - | 客户状态：`normal` / `inactive` / `blacklisted` |
-| customer_type | string | 否 | - | 客户类型：`terminal` / `dealer` |
-| sales_user_id | string | 否 | - | 销售人ID |
-| keyword | string | 否 | - | 搜索关键词（客户名称、客户编码） |
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| customer_id | int | 客户ID |
 
-### 请求示例
+**响应**: 返回客户对象（同创建响应结构），额外包含关联数据:
 
-```
-GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
-```
-
-### 响应
-
-**成功响应**:
 ```json
 {
-  "status": "success",
-  "message": "操作成功",
+  "status": 200,
+  "message": "success",
   "result": {
-    "total": 100,
-    "page": 1,
-    "page_size": 20,
-    "items": [
+    "id": 1,
+    "customer_code": "C001",
+    "customer_name": "测试客户",
+    "...": "同上",
+    "shipping_addresses": [
       {
         "id": 1,
-        "customer_code": "CUST202605110001",
-        "name": "某医院检验科",
-        "customer_type": "terminal",
-        "contact_person": "张三",
-        "contact_phone": "13800138000",
-        "status": "normal",
-        "sales_user_name": "李经理",
-        "created_at": "2026-05-11T10:30:00Z",
-        "updated_at": "2026-05-11T10:30:00Z"
+        "customer_id": 1,
+        "receiver": "张三",
+        "phone": "13800138000",
+        "province": "北京市",
+        "province_code": "110000",
+        "city": "北京市",
+        "city_code": "110100",
+        "district": "海淀区",
+        "address": "中关村大街1号",
+        "is_default": true,
+        "created_at": "2026-05-28T10:00:00",
+        "updated_at": "2026-05-28T10:00:00"
+      }
+    ],
+    "invoice_infos": [
+      {
+        "id": 1,
+        "customer_id": 1,
+        "invoice_title": "XX科技有限公司",
+        "tax_number": "91110000XXXXXXXX",
+        "bank_name": "中国工商银行",
+        "bank_account": "0200001234567890",
+        "address_phone": "北京市海淀区/010-12345678",
+        "is_default": true,
+        "created_at": "2026-05-28T10:00:00",
+        "updated_at": "2026-05-28T10:00:00"
+      }
+    ],
+    "research_groups": [
+      {
+        "id": 1,
+        "customer_id": 1,
+        "research_group_name": "XX课题组",
+        "research_leader": "李教授",
+        "contact_phone": "010-87654321",
+        "created_at": "2026-05-28T10:00:00"
+      }
+    ],
+    "discounts": [
+      {
+        "id": 1,
+        "customer_id": 1,
+        "brand_id": 1,
+        "brand_name": "品牌A",
+        "discount_value": 0.95,
+        "is_active": true,
+        "created_at": "2026-05-28T10:00:00",
+        "updated_at": "2026-05-28T10:00:00"
       }
     ]
   }
@@ -203,200 +218,41 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
 
 ---
 
-## 5.3 获取客户统计
+## 4. 更新客户
 
-### 接口信息
+`PUT /api/v1/customers/{customer_id}`
 
-| 属性 | 值 |
-|------|-----|
-| **URL** | `GET /api/v1/customers/stats` |
-| **Method** | GET |
-| **权限** | `customer.view` |
+**权限**: `customer.edit`
 
-### 响应
+**路径参数**:
 
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "操作成功",
-  "result": {
-    "total": 100,
-    "terminal_count": 80,
-    "dealer_count": 20
-  }
-}
-```
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| customer_id | int | 客户ID |
+
+**请求体**: 同创建客户，所有字段均为可选，只传需要更新的字段。
+
+**响应**: 返回更新后的客户对象
 
 ---
 
-## 5.4 获取客户详情
+## 5. 删除客户
 
-### 接口信息
+`DELETE /api/v1/customers/{customer_id}`
 
-| 属性 | 值 |
-|------|-----|
-| **URL** | `GET /api/v1/customers/{customer_id}` |
-| **Method** | GET |
-| **权限** | `customer.view` |
+**权限**: `customer.delete`
 
-### 路径参数
+**路径参数**:
 
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| customer_id | string | 是 | 客户ID |
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| customer_id | int | 客户ID |
 
-### 响应
-
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "操作成功",
-  "result": {
-    "id": 1,
-    "customer_code": "CUST202605110001",
-    "name": "某医院检验科",
-    "customer_type": "terminal",
-    "research_group": "检验科课题组",
-    "contact_person": "张三",
-    "contact_phone": "13800138000",
-    "contact_email": "zhangsan@example.com",
-    "invoice_infos": [
-      {
-        "id": 1,
-        "invoice_title": "某医院",
-        "invoice_type": "增值税",
-        "tax_number": "91110000000000000X",
-        "bank_name": "中国工商银行",
-        "bank_account": "6222021234567890",
-        "is_default": true
-      }
-    ],
-    "shipping_addresses": [
-      {
-        "id": 1,
-        "recipient_name": "张三",
-        "recipient_phone": "13800138000",
-        "province": "北京市",
-        "city": "北京市",
-        "address": "某街道某号",
-        "is_default": true
-      }
-    ],
-    "sales_user_id": "user123",
-    "sales_user_name": "李经理",
-    "status": "normal",
-    "created_at": "2026-05-11T10:30:00Z",
-    "updated_at": "2026-05-11T10:30:00Z"
-  }
-}
-```
-
-**错误响应**:
-```json
-{
-  "status": "error",
-  "message": "客户不存在",
-  "result": null
-}
-```
-
----
-
-## 5.5 更新客户
-
-> 通过 PUT 更新客户时，可以一并更新开票信息和收货地址
-
-### 接口信息
-
-| 属性 | 值 |
-|------|-----|
-| **URL** | `PUT /api/v1/customers/{customer_id}` |
-| **Method** | PUT |
-| **权限** | `customer.edit` |
-
-### 路径参数
-
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| customer_id | string | 是 | 客户ID |
-
-### 请求体
+**响应**:
 
 ```json
 {
-  "name": "string",
-  "customer_type": "terminal|dealer",
-  "research_group": "string",
-  "contact_person": "string",
-  "contact_phone": "string",
-  "contact_email": "string",
-  "invoice_infos": [
-    {
-      "id": 1,
-      "invoice_title": "string",
-      "invoice_type": "增值税|普通发票|增值税专用发票|不开票",
-      "tax_number": "string",
-      "bank_name": "string",
-      "bank_account": "string",
-      "is_default": false
-    }
-  ],
-  "shipping_addresses": [
-    {
-      "id": 1,
-      "recipient_name": "string",
-      "recipient_phone": "string",
-      "province": "string",
-      "city": "string",
-      "address": "string",
-      "is_default": false
-    }
-  ]
-}
-```
-
-**说明**:
-- 支持部分更新，只发送需要更新的字段
-- `invoice_infos` 和 `shipping_addresses` 会整体替换现有数据
-- 如需单独添加/删除/更新某个地址，请使用完整的数组替换
-
-### 响应
-
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "客户更新成功",
-  "result": null
-}
-```
-
----
-
-## 5.6 删除客户
-
-### 接口信息
-
-| 属性 | 值 |
-|------|-----|
-| **URL** | `DELETE /api/v1/customers/{customer_id}` |
-| **Method** | DELETE |
-| **权限** | `customer.delete` |
-
-### 路径参数
-
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| customer_id | string | 是 | 客户ID |
-
-### 响应
-
-**成功响应**:
-```json
-{
-  "status": "success",
+  "status": 200,
   "message": "客户删除成功",
   "result": null
 }
@@ -404,210 +260,197 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
 
 ---
 
-## 5.7 更新客户状态
+## 6. 获取客户统计
 
-### 接口信息
+`GET /api/v1/customers/stats`
 
-| 属性 | 值 |
-|------|-----|
-| **URL** | `PATCH /api/v1/customers/{customer_id}/status` |
-| **Method** | PATCH |
-| **权限** | `customer.edit` |
+**权限**: `customer.stats`
 
-### 路径参数
-
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| customer_id | string | 是 | 客户ID |
-
-### 请求体
+**响应**:
 
 ```json
 {
-  "status": "normal"
-}
-```
-
-**status 可选值**:
-| 值 | 描述 |
-|-----|------|
-| normal | 正常 |
-| inactive | 停用 |
-| blacklisted | 黑名单 |
-
-### 响应
-
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "客户状态更新成功",
-  "result": null
-}
-```
-
----
-
-## 5.8 转移客户
-
-> 将属于自己的客户转移给其他销售员
-
-### 接口信息
-
-| 属性 | 值 |
-|------|-----|
-| **URL** | `PATCH /api/v1/customers/{customer_id}/transfer` |
-| **Method** | PATCH |
-| **权限** | `customer.edit` |
-
-### 路径参数
-
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| customer_id | string | 是 | 客户ID |
-
-### 请求体
-
-```json
-{
-  "new_user_id": "string"
-}
-```
-
-### 响应
-
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "客户转移成功",
-  "result": null
-}
-```
-
-**错误响应**:
-```json
-{
-  "status": "error",
-  "message": "目标销售不存在或客户转移失败",
-  "result": null
-}
-```
-
-### 业务规则
-
-1. **权限控制**：只有客户当前负责人才能转移，`super_admin` 角色可以转移任何客户
-2. **数据更新**：`sales_user_id` 和 `sales_user_name` 更新为目标销售员信息
-
----
-
-## 客户折扣管理
-
-> 客户折扣独立路由，前缀为 `/api/v1/customer-discounts`
-
----
-
-## 6.1 创建客户折扣
-
-### 接口信息
-
-| 属性 | 值 |
-|------|-----|
-| **URL** | `POST /api/v1/customer-discounts/` |
-| **Method** | POST |
-| **权限** | `customer_discount.create` |
-
-### 请求体
-
-```json
-{
-  "customer_id": "string",
-  "brand_id": "string",
-  "discount_value": 0.85,
-  "is_active": true
-}
-```
-
-**请求字段说明**:
-| 字段 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| customer_id | string | 是 | 客户ID |
-| brand_id | string | 是 | 品牌ID |
-| discount_value | float | 是 | 折扣值（0-1之间，如0.85表示85折） |
-| is_active | boolean | 否 | 是否生效，默认true |
-
-### 响应
-
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "操作成功",
+  "status": 200,
+  "message": "success",
   "result": {
-    "id": 1,
-    "customer_id": "64a1b2c3d4e5f6a7b8c9d0e1",
-    "brand_id": "brand001",
-    "brand_name": "品牌A",
-    "discount_value": 0.85,
-    "is_active": true,
-    "created_at": "2026-05-01T10:00:00Z",
-    "updated_at": "2026-05-01T10:00:00Z"
+    "total": 100,
+    "normal": 85,
+    "public_pool": 15,
+    "terminal": 70,
+    "dealer": 30,
+    "overdue": 5
   }
 }
 ```
 
-**错误响应（重复配置）**:
-```json
-{
-  "status": "error",
-  "message": "该客户和品牌的折扣配置已存在",
-  "result": null
-}
-```
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| total | int | 客户总数 |
+| normal | int | 正常状态客户数 |
+| public_pool | int | 公共池客户数 |
+| terminal | int | 终端客户数 |
+| dealer | int | 经销商客户数 |
+| overdue | int | 超账期客户数 |
 
 ---
 
-## 6.2 获取客户折扣列表
+## 7. 更新客户状态
 
-### 接口信息
+`PATCH /api/v1/customers/{customer_id}/status`
 
-| 属性 | 值 |
-|------|-----|
-| **URL** | `GET /api/v1/customer-discounts/` |
-| **Method** | GET |
-| **权限** | `customer_discount.view` |
+**权限**: `customer.status`
 
-### 查询参数
+**路径参数**:
 
-| 参数 | 类型 | 必填 | 默认值 | 描述 |
-|------|------|------|--------|------|
-| page | int | 否 | 1 | 页码 |
-| page_size | int | 否 | 20 | 每页数量（最大100） |
-| customer_id | string | 否 | - | 客户ID |
-| brand_id | string | 否 | - | 品牌ID |
-| is_active | boolean | 否 | - | 是否生效 |
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| customer_id | int | 客户ID |
 
-### 响应
+**请求体**:
 
-**成功响应**:
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| customer_status | int | 是 | 目标状态: 1=正常, 2=公共池 |
+
+**响应**: 返回更新后的客户对象
+
+---
+
+## 8. 客户认领
+
+`POST /api/v1/customers/{customer_id}/claim`
+
+**权限**: `customer.claim`
+
+将公共池客户认领到当前用户名下。
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| customer_id | int | 客户ID |
+
+**响应**: 返回更新后的客户对象
+
+---
+
+## 9. 客户转移
+
+`PATCH /api/v1/customers/{customer_id}/transfer`
+
+**权限**: `customer.transfer`
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| customer_id | int | 客户ID |
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| new_user_id | int | 是 | 目标业务员用户ID |
+
+**响应**: 返回更新后的客户对象
+
+---
+
+## 10. 注册会员账号
+
+`PUT /api/v1/customers/{customer_id}/member-account`
+
+**权限**: `customer.member`
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| customer_id | int | 客户ID |
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| member_account | string | 是 | 会员账号 |
+
+**响应**: 返回更新后的客户对象
+
+---
+
+## 11. 设置订单默认值
+
+`PUT /api/v1/customers/{customer_id}/order-defaults`
+
+**权限**: `customer.order-defaults`
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| customer_id | int | 客户ID |
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| settlement_method | int | 否 | 结算方式: 1=月结, 2=现结, 3=预付 |
+| default_tax_rate | float | 否 | 默认税率(百分比, 如 13.00 表示 13%) |
+| default_shipping_address_id | int | 否 | 默认收货地址ID |
+| default_invoice_info_id | int | 否 | 默认开票信息ID |
+
+**响应**: 返回更新后的客户对象
+
+---
+
+## 12. 设置账期额度
+
+`PUT /api/v1/customers/{customer_id}/credit`
+
+**权限**: `customer.credit`
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| customer_id | int | 客户ID |
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| credit_days | int | 是 | 账期天数 |
+| credit_limit | float | 是 | 信用额度 |
+
+**响应**: 返回更新后的客户对象
+
+---
+
+## 13. 批量超账期检查
+
+`GET /api/v1/customers/check-overdue`
+
+**权限**: `customer.check-overdue`
+
+检查所有设置了账期的客户是否超期，自动更新 `is_overdue` 标记。
+
+**响应**:
+
 ```json
 {
-  "status": "success",
-  "message": "操作成功",
+  "status": 200,
+  "message": "success",
   "result": {
-    "total": 100,
-    "page": 1,
-    "page_size": 20,
-    "items": [
+    "checked": 50,
+    "overdue_count": 5,
+    "overdue_customers": [
       {
         "id": 1,
-        "customer_id": "64a1b2c3d4e5f6a7b8c9d0e1",
-        "brand_id": "brand001",
-        "brand_name": "品牌A",
-        "discount_value": 0.85,
-        "is_active": true,
-        "created_at": "2026-05-01T10:00:00Z",
-        "updated_at": "2026-05-01T10:00:00Z"
+        "customer_name": "XX公司",
+        "credit_days": 30,
+        "credit_limit": 50000,
+        "debt_total": 30000,
+        "last_order_time": "2026-04-15T10:00:00"
       }
     ]
   }
@@ -616,288 +459,383 @@ GET /api/v1/customers/?page=1&page_size=20&customer_type=terminal
 
 ---
 
-## 6.3 获取客户折扣详情
+## 14. 导出客户
 
-### 接口信息
+`POST /api/v1/customers/export`
 
-| 属性 | 值 |
-|------|-----|
-| **URL** | `GET /api/v1/customer-discounts/{discount_id}` |
-| **Method** | GET |
-| **权限** | `customer_discount.view` |
+**权限**: `customer.export`
 
-### 路径参数
+**请求体**:
 
-| 参数 | 类型 | 必填 | 描述 |
+| 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| discount_id | string | 是 | 折扣记录ID |
+| customer_ids | int[] | 否 | 指定导出的客户ID列表，为空则导出全部 |
 
-### 响应
+**响应**: 二进制 Excel 文件
 
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "操作成功",
-  "result": {
-    "id": 1,
-    "customer_id": "64a1b2c3d4e5f6a7b8c9d0e1",
-    "brand_id": "brand001",
-    "brand_name": "品牌A",
-    "discount_value": 0.85,
-    "is_active": true,
-    "created_at": "2026-05-01T10:00:00Z",
-    "updated_at": "2026-05-01T10:00:00Z"
-  }
-}
-```
-
-**错误响应**:
-```json
-{
-  "status": "error",
-  "message": "客户折扣不存在",
-  "result": null
-}
-```
+- Content-Type: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- Content-Disposition: `attachment; filename=customers_YYYYMMDD_HHMMSS.xlsx`
 
 ---
 
-## 6.4 按客户和品牌获取折扣
+## 15. 收货地址管理
 
-### 接口信息
+### 15.1 创建收货地址
 
-| 属性 | 值 |
-|------|-----|
-| **URL** | `GET /api/v1/customer-discounts/customer/{customer_id}/brand/{brand_id}` |
-| **Method** | GET |
-| **权限** | `customer_discount.view` |
+`POST /api/v1/customers/{customer_id}/shipping-addresses`
 
-### 路径参数
+**权限**: `customer.edit`
 
-| 参数 | 类型 | 必填 | 描述 |
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| customer_id | string | 是 | 客户ID |
-| brand_id | string | 是 | 品牌ID |
-
-### 响应
-
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "操作成功",
-  "result": {
-    "id": 1,
-    "customer_id": "64a1b2c3d4e5f6a7b8c9d0e1",
-    "brand_id": "brand001",
-    "brand_name": "品牌A",
-    "discount_value": 0.85,
-    "is_active": true,
-    "created_at": "2026-05-01T10:00:00Z",
-    "updated_at": "2026-05-01T10:00:00Z"
-  }
-}
-```
-
-**错误响应**:
-```json
-{
-  "status": "error",
-  "message": "该客户和品牌的折扣配置不存在",
-  "result": null
-}
-```
-
----
-
-## 6.5 更新客户折扣
-
-### 接口信息
-
-| 属性 | 值 |
-|------|-----|
-| **URL** | `PUT /api/v1/customer-discounts/{discount_id}` |
-| **Method** | PUT |
-| **权限** | `customer_discount.edit` |
-
-### 路径参数
-
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| discount_id | string | 是 | 折扣记录ID |
-
-### 请求体
-
-```json
-{
-  "discount_value": 0.8,
-  "is_active": false
-}
-```
-
-### 响应
-
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "客户折扣更新成功",
-  "result": null
-}
-```
-
----
-
-## 6.6 删除客户折扣
-
-### 接口信息
-
-| 属性 | 值 |
-|------|-----|
-| **URL** | `DELETE /api/v1/customer-discounts/{discount_id}` |
-| **Method** | DELETE |
-| **权限** | `customer_discount.delete` |
-
-### 路径参数
-
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| discount_id | string | 是 | 折扣记录ID |
-
-### 响应
-
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "客户折扣删除成功",
-  "result": null
-}
-```
-
----
-
-## 6.7 切换客户折扣状态
-
-### 接口信息
-
-| 属性 | 值 |
-|------|-----|
-| **URL** | `PATCH /api/v1/customer-discounts/{discount_id}/status` |
-| **Method** | PATCH |
-| **权限** | `customer_discount.edit` |
-
-### 路径参数
-
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| discount_id | string | 是 | 折扣记录ID |
-
-### 查询参数
-
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| is_active | boolean | 是 | 是否生效 |
-
-### 请求示例
-
-```
-PATCH /api/v1/customer-discounts/DIS001/status?is_active=false
-```
-
-### 响应
-
-**成功响应**:
-```json
-{
-  "status": "success",
-  "message": "客户折扣状态更新成功",
-  "result": null
-}
-```
-
----
-
-## 数据结构
-
-### 客户 (Customer)
-
-| 字段 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| id | integer | 否 | 客户ID（创建时由系统自动生成） |
-| customer_code | string | 是 | 客户编码（系统自动生成，格式：`CUST{日期}{4位随机数}`） |
-| name | string | 是 | 客户名称 |
-| customer_type | string | 是 | 客户类型：`terminal`(终端) / `dealer`(经销商) |
-| research_group | string | 条件 | 课题组信息（终端客户时必填） |
-| contact_person | string | 否 | 联系人姓名 |
-| contact_phone | string | 否 | 联系人电话 |
-| contact_email | string | 否 | 联系人邮箱 |
-| sales_user_id | string | 否 | 销售负责人ID（系统自动设置） |
-| sales_user_name | string | 否 | 销售负责人姓名（系统自动设置） |
-| status | string | 否 | 客户状态：`normal` / `inactive` / `blacklisted` |
-| invoice_infos | array | 否 | 开票信息列表 |
-| shipping_addresses | array | 否 | 收货地址列表 |
-| created_at | datetime | 否 | 创建时间 |
-| updated_at | datetime | 否 | 更新时间 |
-
-### 开票信息 (InvoiceInfo)
-
-| 字段 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| id | integer | 否 | 开票信息ID（更新时需提供） |
-| invoice_title | string | 是 | 开票抬头 |
-| invoice_type | string | 是 | 开票类型：`增值税` / `普通发票` / `增值税专用发票` / `不开票` |
-| tax_number | string | 是 | 税务登记号 |
-| bank_name | string | 是 | 开户银行 |
-| bank_account | string | 是 | 银行账号 |
-| is_default | boolean | 否 | 是否默认（默认 false） |
-
-### 收货地址 (ShippingAddress)
-
-| 字段 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| id | integer | 否 | 地址ID（更新时需提供） |
-| recipient_name | string | 是 | 收货人姓名 |
-| recipient_phone | string | 是 | 收货人电话 |
+| receiver | string | 是 | 收货人 |
+| phone | string | 是 | 联系电话 |
 | province | string | 是 | 省份 |
+| province_code | string | 否 | 省份代码 |
 | city | string | 是 | 城市 |
+| city_code | string | 否 | 城市代码 |
+| district | string | 否 | 区县 |
 | address | string | 是 | 详细地址 |
-| is_default | boolean | 否 | 是否默认（默认 false） |
+| is_default | bool | 否 | 是否默认，默认 false |
 
-### 客户折扣 (CustomerDiscount)
+**响应**: 返回创建的收货地址对象
 
-| 字段 | 类型 | 必填 | 描述 |
+### 15.2 更新收货地址
+
+`PUT /api/v1/customers/{customer_id}/shipping-addresses/{address_id}`
+
+**权限**: `customer.edit`
+
+**请求体**: 同创建，所有字段可选。
+
+**响应**: 返回更新后的收货地址对象
+
+### 15.3 删除收货地址
+
+`DELETE /api/v1/customers/{customer_id}/shipping-addresses/{address_id}`
+
+**权限**: `customer.edit`
+
+**响应**:
+
+```json
+{
+  "status": 200,
+  "message": "收货地址删除成功",
+  "result": null
+}
+```
+
+---
+
+## 16. 开票信息管理
+
+### 16.1 创建开票信息
+
+`POST /api/v1/customers/{customer_id}/invoice-infos`
+
+**权限**: `customer.edit`
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| id | integer | 否 | 折扣记录ID（系统自动生成） |
-| customer_id | string | 是 | 客户ID |
-| brand_id | string | 是 | 品牌ID |
+| invoice_title | string | 是 | 开票抬头 |
+| tax_number | string | 是 | 税务编码 |
+| bank_name | string | 是 | 银行开户行 |
+| bank_account | string | 是 | 银行账号 |
+| address_phone | string | 否 | 地址、电话 |
+| is_default | bool | 否 | 是否默认，默认 false |
+
+**响应**: 返回创建的开票信息对象
+
+### 16.2 更新开票信息
+
+`PUT /api/v1/customers/{customer_id}/invoice-infos/{invoice_id}`
+
+**权限**: `customer.edit`
+
+**请求体**: 同创建，所有字段可选。
+
+**响应**: 返回更新后的开票信息对象
+
+### 16.3 删除开票信息
+
+`DELETE /api/v1/customers/{customer_id}/invoice-infos/{invoice_id}`
+
+**权限**: `customer.edit`
+
+**响应**:
+
+```json
+{
+  "status": 200,
+  "message": "开票信息删除成功",
+  "result": null
+}
+```
+
+---
+
+## 17. 课题组管理
+
+### 17.1 创建课题组
+
+`POST /api/v1/customers/{customer_id}/research-groups`
+
+**权限**: `customer.edit`
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| research_group_name | string | 是 | 课题组名称 |
+| research_leader | string | 否 | 课题组负责人 |
+| contact_phone | string | 否 | 联系电话 |
+
+**响应**: 返回创建的课题组对象
+
+### 17.2 更新课题组
+
+`PUT /api/v1/customers/{customer_id}/research-groups/{group_id}`
+
+**权限**: `customer.edit`
+
+**请求体**: 同创建，所有字段可选。
+
+**响应**: 返回更新后的课题组对象
+
+### 17.3 删除课题组
+
+`DELETE /api/v1/customers/{customer_id}/research-groups/{group_id}`
+
+**权限**: `customer.edit`
+
+**响应**:
+
+```json
+{
+  "status": 200,
+  "message": "课题组删除成功",
+  "result": null
+}
+```
+
+---
+
+## 18. 客户折扣管理
+
+折扣管理通过独立的路由前缀 `/api/v1/customer-discounts/` 提供服务。
+
+### 18.1 创建客户折扣
+
+`POST /api/v1/customer-discounts/`
+
+**权限**: `customer-discount.create`
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| customer_id | int | 是 | 客户ID |
+| brand_id | int | 是 | 品牌ID |
 | brand_name | string | 否 | 品牌名称 |
-| discount_value | float | 是 | 折扣值（0-1之间，如0.85表示85折） |
-| is_active | boolean | 否 | 是否生效（默认 true） |
-| created_at | datetime | 否 | 创建时间 |
-| updated_at | datetime | 否 | 更新时间 |
+| discount_value | float | 是 | 折扣值(如 0.95 表示 95 折) |
+
+**响应**: 返回创建的折扣对象
+
+```json
+{
+  "status": 200,
+  "message": "success",
+  "result": {
+    "id": 1,
+    "customer_id": 1,
+    "brand_id": 1,
+    "brand_name": "品牌A",
+    "discount_value": 0.95,
+    "is_active": true,
+    "created_at": "2026-05-28T10:00:00",
+    "updated_at": "2026-05-28T10:00:00"
+  }
+}
+```
+
+**约束**: 同一客户同一品牌只能有一个折扣记录（`customer_id` + `brand_id` 唯一）。
+
+### 18.2 获取折扣列表
+
+`GET /api/v1/customer-discounts/`
+
+**权限**: `customer-discount.view`
+
+**查询参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| customer_id | int | 否 | 按客户ID筛选 |
+| brand_id | int | 否 | 按品牌ID筛选 |
+| is_active | bool | 否 | 按生效状态筛选 |
+
+**响应**:
+
+```json
+{
+  "status": 200,
+  "message": "success",
+  "result": [
+    {
+      "id": 1,
+      "customer_id": 1,
+      "brand_id": 1,
+      "brand_name": "品牌A",
+      "discount_value": 0.95,
+      "is_active": true,
+      "created_at": "2026-05-28T10:00:00",
+      "updated_at": "2026-05-28T10:00:00"
+    }
+  ]
+}
+```
+
+### 18.3 更新折扣
+
+`PUT /api/v1/customer-discounts/{discount_id}`
+
+**权限**: `customer-discount.edit`
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| discount_id | int | 折扣ID |
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| discount_value | float | 否 | 折扣值 |
+| brand_name | string | 否 | 品牌名称 |
+
+**响应**: 返回更新后的折扣对象
+
+### 18.4 切换折扣状态
+
+`PATCH /api/v1/customer-discounts/{discount_id}/status`
+
+**权限**: `customer-discount.edit`
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| discount_id | int | 折扣ID |
+
+**查询参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| is_active | bool | 是 | 是否生效: `true` / `false` |
+
+**响应**: 返回更新后的折扣对象
+
+### 18.5 删除折扣
+
+`DELETE /api/v1/customer-discounts/{discount_id}`
+
+**权限**: `customer-discount.delete`
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| discount_id | int | 折扣ID |
+
+**响应**:
+
+```json
+{
+  "status": 200,
+  "message": "折扣删除成功",
+  "result": null
+}
+```
 
 ---
 
-## 权限代码
+## 通用说明
 
-| 权限 | 描述 |
-|------|------|
-| customer.view | 查看客户 |
-| customer.create | 创建客户 |
-| customer.edit | 编辑客户 |
-| customer.delete | 删除客户 |
-| customer_discount.view | 查看客户折扣 |
-| customer_discount.create | 创建客户折扣 |
-| customer_discount.edit | 编辑客户折扣 |
-| customer_discount.delete | 删除客户折扣 |
+### 统一响应格式
 
----
+所有接口均返回统一的 JSON 格式:
 
-## 变更记录
+```json
+{
+  "status": 200,
+  "message": "success",
+  "result": {},
+  "exc": null
+}
+```
 
-| 日期 | 变更内容 |
-|------|---------|
-| 2026-05-11 | 重构客户管理模块，移除独立的开票/收货地址CRUD接口，改为在客户create/update时整体处理 |
-| 2026-05-11 | 客户折扣管理合并到客户模块 |
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| status | int | 状态码，200 表示成功 |
+| message | string | 消息描述 |
+| result | any | 业务数据 |
+| exc | string \| null | 异常信息 |
+
+### 常见错误码
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 成功 |
+| 400 | 请求参数错误 |
+| 401 | 未认证（token 缺失或过期） |
+| 403 | 无权限 |
+| 404 | 资源不存在 |
+| 422 | 数据验证失败 |
+| 500 | 服务器内部错误 |
+
+### 认证方式
+
+所有接口需要在请求头中携带 Bearer Token:
+
+```
+Authorization: Bearer <access_token>
+```
+
+通过 `POST /api/v1/auth/login` 获取 token。
+
+### 枚举值速查
+
+**客户类型** (`customer_type`):
+
+| 值 | 说明 |
+|----|------|
+| terminal | 终端客户 |
+| dealer | 经销商 |
+
+**客户状态** (`customer_status`):
+
+| 值 | 说明 |
+|----|------|
+| 1 | 正常 |
+| 2 | 公共池 |
+
+**结算方式** (`settlement_method`):
+
+| 值 | 说明 |
+|----|------|
+| 1 | 月结 |
+| 2 | 现结 |
+| 3 | 预付 |
+
+**是否超账期** (`is_overdue`):
+
+| 值 | 说明 |
+|----|------|
+| 0 | 否 |
+| 1 | 是 |

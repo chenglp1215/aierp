@@ -76,7 +76,7 @@ ORDER_STATUS_UPDATE_CONFIG = {
 DELIVERY_STATUS_UPDATE_CONFIG = {
     'delivery_status': {
         'required': True,
-        'enum': ['none', 'partial', 'full'],
+        'enum': ['none', 'partial', 'full', 'no_need', 'has_return'],
         'required_msg': '发货状态为必填',
     },
 }
@@ -96,7 +96,7 @@ RECEIVE_STATUS_UPDATE_CONFIG = {
 INVOICE_STATUS_UPDATE_CONFIG = {
     'invoice_status': {
         'required': True,
-        'enum': ['none', 'partial', 'full'],
+        'enum': ['none', 'partial', 'full', 'no_need'],
         'required_msg': '开票状态为必填',
     },
 }

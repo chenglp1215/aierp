@@ -46,18 +46,40 @@ class SalesOrderService:
             "warehouse": ShippingMethod.WAREHOUSE,
             "仓库自提": ShippingMethod.WAREHOUSE_PICKUP,
             "warehouse_pickup": ShippingMethod.WAREHOUSE_PICKUP,
+            "物流": ShippingMethod.LOGISTICS,
+            "logistics": ShippingMethod.LOGISTICS,
+            "送货": ShippingMethod.DELIVERY,
+            "delivery": ShippingMethod.DELIVERY,
         }
         return shipping_map.get(value, ShippingMethod.WAREHOUSE)
 
     # ============ 订单号生成 ============
 
     async def generate_order_no(self) -> str:
-        """生成订单号: SO + 日期 + 4位序列号"""
+        """生成订单号: SO + 日期 + 4位序列号
+
+        使用当天最大订单号+1的方式，避免并发重复问题
+        """
         today = datetime.now().strftime("%Y%m%d")
         prefix = f"SO{today}"
-        # 查询当天最大序号
-        count = await SalesOrder.filter(order_no__startswith=prefix).count()
-        sequence = count + 1
+
+        # 查询当天最大订单号
+        last_order = await SalesOrder.filter(
+            order_no__startswith=prefix
+        ).order_by("-order_no").first()
+
+        if last_order and last_order.order_no:
+            # 从订单号中提取序号，如 SO202606040003 -> 3
+            try:
+                last_sequence = int(last_order.order_no[len(prefix):])
+                sequence = last_sequence + 1
+            except ValueError:
+                # 如果解析失败，使用 count + 1
+                count = await SalesOrder.filter(order_no__startswith=prefix).count()
+                sequence = count + 1
+        else:
+            sequence = 1
+
         return f"{prefix}{sequence:04d}"
 
     # ============ 金额计算 ============
@@ -464,6 +486,8 @@ class SalesOrderService:
             expect_deliver_date=data.get("expect_deliver_date"),
             settle_type=data.get("settle_type"),
             remark=data.get("remark"),
+            third_party_platform=data.get("third_party_platform"),
+            platform_order_no=data.get("platform_order_no"),
             creator_id=current_user.get("id"),
             creator_name=current_user.get("full_name") or current_user.get("username"),
         )
@@ -483,6 +507,8 @@ class SalesOrderService:
                 discounted_price=item.get("discounted_price"),
                 amt=item.get("amt"),
                 shipping_method=self._parse_shipping_method(item.get("shipping_method")),
+                tax_rate=item.get("tax_rate", 0.13),
+                item_remark=item.get("item_remark"),
             )
 
         # 创建发货信息
@@ -587,8 +613,27 @@ class SalesOrderService:
         customer_id: int = None,
         order_no: str = None,
         keyword: str = None,
+        invoice_status: str = None,
+        delivery_status: str = None,
+        sale_user_id: int = None,
+        order_date_start: str = None,
+        order_date_end: str = None,
     ) -> Tuple[List[Dict], int]:
-        """获取订单列表"""
+        """获取订单列表
+
+        Args:
+            page: 页码
+            page_size: 每页数量
+            order_status: 订单状态
+            customer_id: 客户ID
+            order_no: 订单号（模糊搜索）
+            keyword: 关键字搜索（订单号、客户名称、产品编号、规格编号、品牌名称）
+            invoice_status: 开票状态
+            delivery_status: 发货状态
+            sale_user_id: 业务员ID
+            order_date_start: 订单日期开始
+            order_date_end: 订单日期结束
+        """
         query = SalesOrder.all()
 
         if order_status:
@@ -597,16 +642,45 @@ class SalesOrderService:
             query = query.filter(customer_id=customer_id)
         if order_no:
             query = query.filter(order_no__contains=order_no)
+        if invoice_status:
+            query = query.filter(invoice_status=invoice_status)
+        if delivery_status:
+            query = query.filter(delivery_status=delivery_status)
+        if sale_user_id:
+            query = query.filter(sale_user_id=sale_user_id)
+        if order_date_start:
+            query = query.filter(order_date__gte=order_date_start)
+        if order_date_end:
+            query = query.filter(order_date__lte=order_date_end)
+
+        # 关键字搜索扩展：订单号、客户名称、产品编号、规格编号、品牌名称
         if keyword:
-            query = query.filter(
-                Q(order_no__contains=keyword) |
-                Q(customer_name__contains=keyword)
-            )
+            # 先按订单号和客户名称筛选
+            base_q = Q(order_no__contains=keyword) | Q(customer_name__contains=keyword)
+
+            # 扩展搜索：通过订单明细搜索产品编号、规格编号、品牌名称
+            # 先查找匹配的订单ID
+            matching_item_order_ids = await SalesOrderItem.filter(
+                Q(product_code__contains=keyword) |
+                Q(spec_code__contains=keyword)
+            ).values_list("sales_order_id", flat=True)
+
+            # 查找匹配品牌的订单ID
+            if matching_item_order_ids:
+                matching_item_order_ids = list(set(matching_item_order_ids))
+            else:
+                matching_item_order_ids = []
+
+            # 组合查询条件
+            if matching_item_order_ids:
+                query = query.filter(base_q | Q(id__in=matching_item_order_ids))
+            else:
+                query = query.filter(base_q)
 
         total = await query.count()
         orders = await query.offset((page - 1) * page_size).limit(page_size)
 
-        # 获取每个订单的成本、利润和商品明细
+        # 获取每个订单的成本、利润、商品明细和收件信息
         result = []
         for order in orders:
             order_dict = order.to_dict()
@@ -623,6 +697,10 @@ class SalesOrderService:
             ).order_by("row_no")
             order_dict["items"] = [await item.to_dict() for item in items]
 
+            # 获取收件信息（阶段3）
+            deliver_info = await SalesDeliverInfo.filter(sales_order_id=order.id).first()
+            order_dict["deliver_info"] = deliver_info.to_dict() if deliver_info else {}
+
             result.append(order_dict)
 
         return result, total
@@ -630,16 +708,31 @@ class SalesOrderService:
     # ============ 更新订单 ============
 
     async def update_order(self, order_no: str, data: Dict[str, Any], current_user: Dict = None) -> bool:
-        """更新订单（仅草稿状态可修改）"""
+        """更新订单
+
+        编辑条件：草稿 OR (已审核 AND 未下推)
+        - 草稿状态：可自由编辑
+        - 已审核且未下推状态：可编辑（编辑后保持已审核状态）
+        """
         order = await SalesOrder.filter(order_no=order_no).first()
         if not order:
             raise ValueError(f"订单不存在: {order_no}")
 
-        if order.order_status not in [OrderStatus.DRAFT, OrderStatus.CANCELLED]:
-            raise ValueError("只能修改草稿或已取消的订单")
+        # 判断是否可编辑：草稿 OR (已审核 AND 未下推)
+        can_edit = False
+        if order.order_status == OrderStatus.DRAFT:
+            can_edit = True
+        elif order.order_status == OrderStatus.AUDITED:
+            # 已审核状态，检查是否未下推
+            if order.push_status in [PushStatus.NONE, PushStatus.NOT_NEEDED, None]:
+                can_edit = True
+
+        if not can_edit:
+            raise ValueError("只能修改草稿状态或已审核且未下推的订单")
 
         # 更新主表字段
-        for field in ["order_date", "customer_id", "customer_name", "expect_deliver_date", "settle_type", "remark"]:
+        for field in ["order_date", "customer_id", "customer_name", "expect_deliver_date",
+                      "settle_type", "remark", "third_party_platform", "platform_order_no"]:
             if field in data:
                 setattr(order, field, data[field])
 
@@ -669,6 +762,8 @@ class SalesOrderService:
                     discounted_price=calc["discounted_price"],
                     amt=calc["amt"],
                     shipping_method=self._parse_shipping_method(item.get("shipping_method")),
+                    tax_rate=item.get("tax_rate", 0.13),
+                    item_remark=item.get("item_remark"),
                 )
 
         # 更新发货信息

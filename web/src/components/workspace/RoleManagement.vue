@@ -960,7 +960,7 @@ onMounted(() => {
 
 .perm-type-icon.api {
   background-color: rgba(139, 92, 246, 0.15);
-  color: var(--color-accent);
+  color: #c4391a;
 }
 
 .perm-type-icon.button {
@@ -996,7 +996,7 @@ onMounted(() => {
 
 .type-badge.api {
   background-color: rgba(139, 92, 246, 0.15);
-  color: var(--color-accent);
+  color: #c4391a;
 }
 
 .type-badge.button {

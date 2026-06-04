@@ -649,10 +649,10 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
 
 /* 区块卡片 */
 .section-card {
-  background-color: var(--color-canvas);
-  border-radius: var(--radius-lg);
-  padding: 18px 20px;
-  box-shadow: var(--shadow-card);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xl);
   margin-bottom: 16px;
 }
 
@@ -733,14 +733,14 @@ watch(() => props.purchaseNo, () => { if (props.purchaseNo) { loadOrder(); loadS
   white-space: nowrap;
 }
 
-.status-tag.pending-review { background-color: var(--color-neutral-bg); color: var(--color-muted); }
+.status-tag.pending-review { background-color: var(--color-neutral-bg); color: var(--color-body-muted); }
 .status-tag.ready-purchase { background-color: var(--color-info-bg); color: var(--color-interactive); }
-.status-tag.purchasing { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.status-tag.purchasing { background-color: var(--color-warning-bg); color: #92400e; }
 .status-tag.completed { background-color: var(--color-success-bg); color: var(--color-success); }
 .status-tag.closed { background-color: var(--color-success-bg); color: var(--color-success); }
 .status-tag.cancelled { background-color: var(--color-danger-bg); color: var(--color-danger); }
-.status-tag.none { background-color: var(--color-neutral-bg); color: var(--color-muted); }
-.status-tag.partial { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.status-tag.none { background-color: var(--color-neutral-bg); color: var(--color-body-muted); }
+.status-tag.partial { background-color: var(--color-warning-bg); color: #92400e; }
 .status-tag.full { background-color: var(--color-success-bg); color: var(--color-success); }
 
 /* 物流表单 */

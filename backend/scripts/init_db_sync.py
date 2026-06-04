@@ -93,6 +93,8 @@ def init_default_permissions(conn):
         ("role.create", "角色创建", "button,tools", 106, "role.menu"),
         ("role.edit", "角色编辑", "button,tools", 107, "role.menu"),
         ("role.delete", "角色删除", "button,tools", 108, "role.menu"),
+        ("import.view", "导入任务查看", "menu", 121, "product.menu"),
+        ("import.create", "导入任务创建", "button,tools", 122, "product.menu"),
     ]
 
     for code, name, ptype, sort_order, parent_code in button_permissions:
@@ -235,6 +237,7 @@ def init_default_user_role(conn):
         "dashboard.view", "chat.view",
         "customer.view", "customer.create", "customer.edit",
         "product.view", "product.create", "product.edit",
+        "import.view", "import.create",
         "order.view", "order.create", "order.edit", "order.confirm",
         "procurement.view", "procurement.create", "procurement.edit",
         "receivable.view", "receivable.create", "receivable.edit", "receivable.record",

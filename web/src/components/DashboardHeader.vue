@@ -147,8 +147,8 @@ const handleStorageChange = (event: StorageEvent) => {
   justify-content: space-between;
   padding: 0 24px;
   height: 64px;
-  background-color: var(--color-canvas);
-  border-bottom: 1px solid var(--color-hairline);
+  background: var(--color-header-bg);
+  border-bottom: 1px solid var(--color-header-border);
 }
 
 .header-left {
@@ -168,7 +168,7 @@ const handleStorageChange = (event: StorageEvent) => {
   height: 40px;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--color-muted);
+  color: var(--color-header-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -176,8 +176,8 @@ const handleStorageChange = (event: StorageEvent) => {
 }
 
 .header-action-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: var(--color-ink);
+  background-color: var(--color-header-btn-bg);
+  color: var(--color-header-btn-text);
 }
 
 .header-action-btn svg {
@@ -214,12 +214,12 @@ const handleStorageChange = (event: StorageEvent) => {
   padding: 6px 12px;
   border-radius: var(--radius-md);
   background-color: transparent;
-  color: var(--color-ink);
+  color: var(--color-header-text);
   transition: background-color var(--transition-fast);
 }
 
 .user-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--color-header-btn-bg);
 }
 
 .user-avatar {
@@ -248,18 +248,18 @@ const handleStorageChange = (event: StorageEvent) => {
 .user-name {
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-ink);
+  color: var(--color-header-text);
 }
 
 .user-role {
   font-size: 11px;
-  color: var(--color-muted);
+  color: var(--color-header-text-muted);
 }
 
 .dropdown-arrow {
   width: 18px;
   height: 18px;
-  color: var(--color-muted);
+  color: var(--color-header-text-muted);
   transition: transform var(--transition-fast);
 }
 
@@ -273,8 +273,9 @@ const handleStorageChange = (event: StorageEvent) => {
   right: 0;
   min-width: 180px;
   background-color: var(--color-canvas);
-  border: 1px solid var(--color-hairline);
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   z-index: 200;
   overflow: hidden;
 }

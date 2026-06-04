@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch, onBeforeUnmount, nextTick } from 'vue'
-import { salesOrderApi, customerApi, productApi, warehouseApi, customerDiscountApi, brandApi, type Customer } from '../../services/api'
+import { salesOrderApi, customerApi, productApi, warehouseApi, customerDiscountApi, brandApi, userApi, type Customer } from '../../services/api'
 import { useProvinceCity } from '../../hooks/useProvinceCity'
+import { usePermission } from '../../hooks/usePermission'
 import PushPurchaseItemSelectModal from './PushPurchaseItemSelectModal.vue'
 
 const emit = defineEmits<{
@@ -31,6 +32,7 @@ interface SalesOrderItem {
   out_qty: number
   return_qty: number
   remain_out_qty: number
+  item_remark?: string  // 商品备注
 }
 
 interface DeliverInfo {
@@ -47,6 +49,7 @@ interface InvoiceInfo {
   tax_number: string
   bank_name: string
   bank_account: string
+  address_phone?: string
   address?: string
   phone?: string
 }
@@ -130,7 +133,9 @@ const orderStatusMap: Record<string, { label: string; class: string }> = {
 const deliveryStatusMap: Record<string, { label: string; class: string }> = {
   none: { label: '未发货', class: 'none' },
   partial: { label: '部分发货', class: 'partial' },
-  full: { label: '全部发货', class: 'full' }
+  full: { label: '全部发货', class: 'full' },
+  no_need: { label: '无需发货', class: 'reconciled' },
+  has_return: { label: '有退货', class: 'partial' }
 }
 
 const pushStatusMap: Record<string, { label: string; class: string }> = {
@@ -143,14 +148,16 @@ const pushStatusMap: Record<string, { label: string; class: string }> = {
 const invoiceStatusMap: Record<string, { label: string; class: string }> = {
   none: { label: '未开票', class: 'none' },
   partial: { label: '部分开票', class: 'partial' },
-  full: { label: '全部开票', class: 'full' }
+  full: { label: '全部开票', class: 'full' },
+  no_need: { label: '无需开票', class: 'reconciled' }
 }
 
 const financeStatusMap: Record<string, { label: string; class: string }> = {
   unpaid: { label: '未付款', class: 'none' },
   partial_paid: { label: '部分付款', class: 'partial' },
   paid: { label: '已付款', class: 'full' },
-  reconciled: { label: '已对账', class: 'reconciled' }
+  reconciled: { label: '已对账', class: 'reconciled' },
+  no_need: { label: '无需付款', class: 'reconciled' }
 }
 
 const settleTypeOptions = [
@@ -159,13 +166,29 @@ const settleTypeOptions = [
   { value: '款到发货', label: '款到发货' }
 ]
 
+// 第三方平台选项
+const thirdPartyPlatformOptions = [
+  { value: '博赛乐-锐竞采购平台', label: '博赛乐-锐竞采购平台' },
+  { value: '博赛乐-虫洞空间', label: '博赛乐-虫洞空间' },
+  { value: '睿沃特-供应室', label: '睿沃特-供应室' },
+  { value: '兹罗-喀斯玛', label: '兹罗-喀斯玛' },
+  { value: '智达康-库巴扎', label: '智达康-库巴扎' },
+  { value: '兹罗-库巴扎', label: '兹罗-库巴扎' }
+]
+
 const shippingMethodOptions = [
   { value: 'direct', label: '直运' },
   { value: 'warehouse', label: '仓库发货' },
-  { value: 'warehouse_pickup', label: '仓库自提' }
+  { value: 'warehouse_pickup', label: '仓库自提' },
+  { value: 'logistics', label: '物流' },
+  { value: 'delivery', label: '送货' }
 ]
 
 const orderStatusOptions = Object.entries(orderStatusMap).map(([value, { label }]) => ({ value, label }))
+
+const invoiceStatusOptions = Object.entries(invoiceStatusMap).map(([value, { label }]) => ({ value, label }))
+
+const deliveryStatusOptions = Object.entries(deliveryStatusMap).map(([value, { label }]) => ({ value, label }))
 
 // State
 const loading = ref(false)
@@ -176,10 +199,19 @@ const pageSize = ref(20)
 const filterStatus = ref('')
 const filterCustomerId = ref('')
 const filterKeyword = ref('')
+const filterInvoiceStatus = ref('')
+const filterDeliveryStatus = ref('')
+const filterSaleUserId = ref('')
+const filterOrderDateStart = ref('')
+const filterOrderDateEnd = ref('')
 const selectedRows = ref<SalesOrder[]>([])
 const tableRef = ref<any>(null)
 const topTableRef = ref<any>(null)
 const topDummyData = ref([{}])
+
+// 权限相关
+const { userPermissions } = usePermission()
+const isAdmin = computed(() => userPermissions.value.role_codes.includes('super_admin') || userPermissions.value.role_codes.includes('admin'))
 
 // Modals
 const showOrderModal = ref(false)
@@ -189,6 +221,7 @@ const showAuditConfirm = ref(false)
 const showCloseConfirm = ref(false)
 const showCancelConfirm = ref(false)
 const showRejectConfirm = ref(false)
+const showAllDirectConfirm = ref(false)
 const showPushItemSelect = ref(false)
 const pushableItems = ref<any[]>([])
 const editingOrder = ref<SalesOrder | null>(null)
@@ -205,6 +238,7 @@ const detailLoading = ref(false)
 const customerList = ref<Customer[]>([])
 const specSearchResults = ref<SpecSearchResult[]>([])
 const warehouseList = ref<Warehouse[]>([])
+const userList = ref<{ id: string | number; name: string }[]>([])
 
 // 仓库库存数据（按规格ID缓存）
 const specStockMap = ref<Record<string, { warehouse_id: string; warehouse_name: string; quantity: number }[]>>({})
@@ -213,6 +247,7 @@ const headerShippingMethod = ref('')
 const headerWarehouseId = ref<number | string>('')
 const customersLoading = ref(false)
 const warehousesLoading = ref(false)
+const usersLoading = ref(false)
 
 // Search states
 const customerSearchKeyword = ref('')
@@ -268,6 +303,13 @@ const quickAddSelectedProvince = ref('')
 const quickAddSelectedCity = ref('')
 const quickAddCityList = ref<any[]>([])
 
+// 快速新增收货地址 AI 解析相关状态
+const showShippingAiPanel = ref(false)
+const shippingAiInputText = ref('')
+const shippingAiImageFiles = ref<File[]>([])
+const shippingAiImagePreviews = ref<string[]>([])
+const shippingAiParsing = ref(false)
+
 // 运费相关状态
 const freightAmt = ref(0)
 const isEditingFreight = ref(false)
@@ -275,6 +317,18 @@ const freightInputRef = ref<HTMLInputElement | null>(null)
 const isFreightManuallyModified = ref(false)
 const brandFreightCache = ref<Record<string, number>>({})
 const isAddOrder = ref(false)
+
+// AI 解析相关状态
+const showAiPanel = ref(false)
+const aiInputText = ref('')
+const aiImageFiles = ref<File[]>([])
+const aiImagePreviews = ref<string[]>([])
+const aiParsing = ref(false)
+const aiProgress = ref(0) // AI 解析进度 0-100
+const aiProgressStep = ref('') // 当前步骤描述
+// AI 解析结果中待确认项标记
+const aiPendingCustomer = ref(false) // 客户待确认
+const aiPendingItems = ref<Set<number>>(new Set()) // 商品行待确认索引集合
 
 // Watch quick add province change -> load cities
 watch(quickAddSelectedProvince, async (val) => {
@@ -332,6 +386,8 @@ const orderForm = ref({
   customer_id: '',
   customer_name: '',
   sale_user_id: '',
+  third_party_platform: '',
+  platform_order_no: '',
   deliver_info: {
     addr: '',
     province: '',
@@ -355,7 +411,7 @@ const orderForm = ref({
 })
 
 // Computed
-const hasActiveFilters = computed(() => !!(filterStatus.value || filterCustomerId.value || filterKeyword.value))
+const hasActiveFilters = computed(() => !!(filterStatus.value || filterCustomerId.value || filterKeyword.value || filterInvoiceStatus.value || filterDeliveryStatus.value || filterSaleUserId.value || filterOrderDateStart.value || filterOrderDateEnd.value))
 
 // Methods
 const loadOrders = async () => {
@@ -365,11 +421,16 @@ const loadOrders = async () => {
       page: page.value,
       page_size: pageSize.value
     }
-    
+
     if (filterStatus.value) params.status = filterStatus.value
     if (filterCustomerId.value) params.customer_id = filterCustomerId.value
     if (filterKeyword.value) params.keyword = filterKeyword.value
-    
+    if (filterInvoiceStatus.value) params.invoice_status = filterInvoiceStatus.value
+    if (filterDeliveryStatus.value) params.delivery_status = filterDeliveryStatus.value
+    if (filterSaleUserId.value && isAdmin.value) params.sale_user_id = filterSaleUserId.value
+    if (filterOrderDateStart.value) params.order_date_start = filterOrderDateStart.value
+    if (filterOrderDateEnd.value) params.order_date_end = filterOrderDateEnd.value
+
     const res = await salesOrderApi.list(params)
     orders.value = res?.items || []
     total.value = res?.total || 0
@@ -443,6 +504,8 @@ const selectSpecFromSearchEdit = async (index: number, specResult: SpecSearchRes
   showSpecDropdown.value = null
   specSearchResults.value = []
   specSearchKeywords.value[index] = ''
+  // 清除该行的待确认标记
+  aiPendingItems.value.delete(index)
 
   let discount = 1
   if (orderForm.value.customer_id && specResult.brand_id) {
@@ -490,6 +553,20 @@ const loadWarehouses = async () => {
     console.error('加载仓库列表失败:', error)
   } finally {
     warehousesLoading.value = false
+  }
+}
+
+// 加载用户列表（业务员下拉）
+const loadUsers = async () => {
+  if (!isAdmin.value) return
+  usersLoading.value = true
+  try {
+    const res = await userApi.list({ page_size: 100 })
+    userList.value = (res?.items || []).map((u: any) => ({ id: u.id, name: u.name || u.username }))
+  } catch (error) {
+    console.error('加载用户列表失败:', error)
+  } finally {
+    usersLoading.value = false
   }
 }
 
@@ -635,6 +712,11 @@ const resetFilters = () => {
   filterStatus.value = ''
   filterCustomerId.value = ''
   filterKeyword.value = ''
+  filterInvoiceStatus.value = ''
+  filterDeliveryStatus.value = ''
+  filterSaleUserId.value = ''
+  filterOrderDateStart.value = ''
+  filterOrderDateEnd.value = ''
   page.value = 1
   loadOrders()
 }
@@ -645,6 +727,8 @@ const resetOrderForm = () => {
     customer_id: '',
     customer_name: '',
     sale_user_id: '',
+    third_party_platform: '',
+    platform_order_no: '',
     deliver_info: {
       addr: '',
       province: '',
@@ -684,12 +768,393 @@ const resetOrderForm = () => {
   isFreightManuallyModified.value = false
   brandFreightCache.value = {}
   isAddOrder.value = false
+  // 重置 AI 解析相关状态
+  showAiPanel.value = false
+  aiInputText.value = ''
+  aiImageFiles.value = []
+  aiImagePreviews.value = []
+  aiPendingCustomer.value = false
+  aiPendingItems.value = new Set()
 }
 
 const openCreateOrder = () => {
   resetOrderForm()
   showOrderModal.value = true
 }
+
+// ========== AI 解析相关方法 ==========
+
+// 切换 AI 面板显示
+const toggleAiPanel = () => {
+  showAiPanel.value = !showAiPanel.value
+  if (showAiPanel.value) {
+    aiInputText.value = ''
+    aiImageFiles.value = []
+    aiImagePreviews.value = []
+  }
+}
+
+// 处理多图选择
+const handleAiImageSelect = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (!input.files) return
+
+  const newFiles = Array.from(input.files)
+  // 最多 3 张
+  if (aiImageFiles.value.length + newFiles.length > 3) {
+    window.showToast('最多支持3张图片', 'warning')
+    return
+  }
+
+  for (const file of newFiles) {
+    // 单图 5MB 限制
+    if (file.size > 5 * 1024 * 1024) {
+      window.showToast(`图片 ${file.name} 超过5MB限制`, 'warning')
+      continue
+    }
+    aiImageFiles.value.push(file)
+    // 生成预览
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      aiImagePreviews.value.push(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // 重置 input 以支持重复选择同一文件
+  input.value = ''
+}
+
+// 删除图片
+const removeAiImage = (index: number) => {
+  aiImageFiles.value.splice(index, 1)
+  aiImagePreviews.value.splice(index, 1)
+}
+
+// 处理粘贴图片
+const handleAiPaste = (event: ClipboardEvent) => {
+  const items = event.clipboardData?.items
+  if (!items) return
+
+  const imageFiles: File[] = []
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) imageFiles.push(file)
+    }
+  }
+
+  if (imageFiles.length === 0) return
+
+  // 有图片时阻止默认粘贴行为
+  event.preventDefault()
+
+  if (aiImageFiles.value.length + imageFiles.length > 3) {
+    window.showToast('最多支持3张图片', 'warning')
+    return
+  }
+
+  for (const file of imageFiles) {
+    if (file.size > 5 * 1024 * 1024) {
+      window.showToast(`粘贴的图片超过5MB限制`, 'warning')
+      continue
+    }
+    aiImageFiles.value.push(file)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      aiImagePreviews.value.push(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  window.showToast(`已粘贴${imageFiles.length}张图片`, 'success')
+}
+
+// 将图片文件转为 base64（不含 data:image/...;base64, 前缀）
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      // 去除 data:image/xxx;base64, 前缀
+      const base64 = dataUrl.split(',')[1]
+      resolve(base64)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+// 安全取字符串，排除 null/undefined/"null"
+const safeStr = (v: any): string => {
+  if (v === null || v === undefined) return ''
+  const s = String(v).trim()
+  return s === 'null' ? '' : s
+}
+
+// 安全取数值，支持范围限制
+const safeNum = (v: any, min?: number, max?: number): number => {
+  const n = Number(v)
+  if (isNaN(n)) return 0
+  let result = n
+  if (min !== undefined && result < min) result = min
+  if (max !== undefined && result > max) result = max
+  return result
+}
+
+// 发货方式中文转英文
+const safeShippingMethod = (v: any): 'direct' | 'warehouse' | 'warehouse_pickup' => {
+  if (v === 'direct' || v === 'warehouse' || v === 'warehouse_pickup') return v
+  const map: Record<string, 'direct' | 'warehouse' | 'warehouse_pickup'> = {
+    '直运': 'direct', '快递': 'direct', '物流': 'direct',
+    '仓库发货': 'warehouse', '仓库': 'warehouse',
+    '仓库自提': 'warehouse_pickup', '自提': 'warehouse_pickup'
+  }
+  return map[String(v)] || 'direct'
+}
+
+// 结算方式映射
+const safeSettleType = (v: any): string => {
+  const validTypes = ['月结', '货到付款', '款到发货']
+  if (v && validTypes.includes(String(v))) return String(v)
+  // 常见映射
+  const map: Record<string, string> = {
+    '月结30天': '月结', '月结60天': '月结', '月结90天': '月结',
+    '现结': '货到付款', '预付': '款到发货'
+  }
+  return map[String(v)] || '月结'
+}
+
+// AI 解析结果填充到表单
+const fillFormWithAiResult = async (result: any) => {
+  if (!result) return
+
+  const { customer, order_info, items, deliver_info, invoice_info } = result
+
+  // 清空待确认标记
+  aiPendingCustomer.value = false
+  aiPendingItems.value = new Set()
+
+  // 1. 填充客户信息
+  if (customer) {
+    if (customer.matched && customer.matched.length > 0) {
+      // 有匹配结果，自动选中第一个
+      // 注意：AI返回的是 {id, name, code}，需要映射为 selectCustomer 期望的格式
+      const matchedCustomer = customer.matched[0]
+      await selectCustomer({
+        id: matchedCustomer.id,
+        customer_name: matchedCustomer.name
+      })
+    } else {
+      // 无匹配，标记待确认
+      aiPendingCustomer.value = true
+      // 将提取的客户名称填入搜索框，方便用户搜索
+      customerSearchKeyword.value = safeStr(customer.extracted_name)
+    }
+  }
+
+  // 2. 填充订单元数据
+  if (order_info) {
+    if (order_info.order_date) {
+      orderForm.value.order_date = safeStr(order_info.order_date)
+    }
+    if (order_info.settle_type) {
+      orderForm.value.settle_type = safeSettleType(order_info.settle_type)
+    }
+    if (order_info.expect_deliver_date) {
+      orderForm.value.expect_deliver_date = safeStr(order_info.expect_deliver_date)
+    }
+    if (order_info.remark) {
+      orderForm.value.remark = safeStr(order_info.remark)
+    }
+    if (order_info.freight_amt !== undefined && order_info.freight_amt !== null) {
+      freightAmt.value = safeNum(order_info.freight_amt, 0)
+      isFreightManuallyModified.value = true
+    }
+  }
+
+  // 3. 填充商品明细
+  if (items && Array.isArray(items) && items.length > 0) {
+    orderForm.value.items = []
+    for (let i = 0; i < items.length; i++) {
+      const aiItem = items[i]
+      const rowNo = i + 1
+
+      // 基础行数据
+      const newItem: SalesOrderItem = {
+        row_no: rowNo,
+        product_id: '',
+        product_name: '',
+        product_code: '',
+        brand_id: '',
+        brand_name: '',
+        spec_id: '',
+        spec_code: '',
+        packaging: '',
+        sales_spec: '',
+        qty: safeNum(aiItem.qty, 1),
+        price: safeNum(aiItem.price, 0),
+        discount: safeNum(aiItem.discount, 0, 1) || 1,
+        discounted_price: 0,
+        amt: 0,
+        warehouse_id: '',
+        warehouse_name: '',
+        shipping_method: safeShippingMethod(aiItem.shipping_method),
+        out_qty: 0,
+        return_qty: 0,
+        remain_out_qty: 0
+      }
+
+      // 如果有匹配的规格
+      if (aiItem.matched && aiItem.matched.length > 0) {
+        const matchedSpec = aiItem.matched[0]
+        newItem.spec_id = String(matchedSpec.spec_id || matchedSpec.id)
+        newItem.spec_code = safeStr(matchedSpec.spec_code)
+        newItem.product_name = safeStr(matchedSpec.product_name)
+        newItem.product_id = String(matchedSpec.product_id || '')
+        newItem.brand_name = safeStr(matchedSpec.brand_name)
+        newItem.packaging = safeStr(matchedSpec.packaging)
+        newItem.sales_spec = safeStr(matchedSpec.spec_attrs || matchedSpec.sales_spec)
+
+        // 如果匹配结果包含价格，使用匹配的价格
+        if (matchedSpec.price !== undefined) {
+          newItem.price = safeNum(matchedSpec.price, 0)
+        }
+
+        // 加载库存信息
+        await loadSpecStock(newItem.spec_id)
+      } else {
+        // 无匹配，标记待确认
+        aiPendingItems.value.add(i)
+        // 将提取的信息暂存到 spec_code 字段供用户参考
+        newItem.spec_code = safeStr(aiItem.extracted_name)
+        if (aiItem.extracted_spec) {
+          newItem.packaging = safeStr(aiItem.extracted_spec)
+        }
+      }
+
+      // 计算折后价和金额
+      newItem.discounted_price = +(newItem.price * newItem.discount).toFixed(2)
+      newItem.amt = +(newItem.qty * newItem.discounted_price).toFixed(2)
+
+      orderForm.value.items.push(newItem)
+    }
+  }
+
+  // 4. 填充发货信息
+  if (deliver_info) {
+    orderForm.value.deliver_info = {
+      addr: safeStr(deliver_info.addr),
+      province: safeStr(deliver_info.province),
+      city: safeStr(deliver_info.city),
+      person_name: safeStr(deliver_info.person_name),
+      person_tel: safeStr(deliver_info.person_tel)
+    }
+    // 尝试匹配省份城市
+    if (deliver_info.province) {
+      selectedProvince.value = safeStr(deliver_info.province)
+      if (deliver_info.city) {
+        await nextTick()
+        selectedCity.value = safeStr(deliver_info.city)
+      }
+    }
+  }
+
+  // 5. 填充开票信息
+  if (invoice_info) {
+    orderForm.value.invoice_info = {
+      invoice_title: safeStr(invoice_info.invoice_title),
+      invoice_type: safeStr(invoice_info.invoice_type) || '增值税',
+      tax_number: safeStr(invoice_info.tax_number),
+      bank_name: safeStr(invoice_info.bank_name),
+      bank_account: safeStr(invoice_info.bank_account),
+      address: safeStr(invoice_info.address),
+      phone: safeStr(invoice_info.phone)
+    }
+  }
+}
+
+// AI 解析提交
+const handleAiSubmit = async () => {
+  const hasText = aiInputText.value && aiInputText.value.trim()
+  const hasImages = aiImageFiles.value.length > 0
+
+  if (!hasText && !hasImages) {
+    window.showToast('请输入文本描述或上传图片', 'warning')
+    return
+  }
+
+  aiParsing.value = true
+  aiProgress.value = 0
+  aiProgressStep.value = '准备解析...'
+
+  // 进度模拟定时器
+  const progressTimer = setInterval(() => {
+    if (aiProgress.value < 90) {
+      aiProgress.value += Math.random() * 5 + 2
+      // 根据进度更新步骤提示
+      if (aiProgress.value < 20) {
+        aiProgressStep.value = '正在识别文本内容...'
+      } else if (aiProgress.value < 40) {
+        aiProgressStep.value = '正在调用 AI 模型...'
+      } else if (aiProgress.value < 60) {
+        aiProgressStep.value = '正在匹配客户信息...'
+      } else if (aiProgress.value < 80) {
+        aiProgressStep.value = '正在匹配商品信息...'
+      } else {
+        aiProgressStep.value = '正在整理订单数据...'
+      }
+    }
+  }, 500)
+
+  try {
+    // 将图片转为 base64
+    const images: string[] = []
+    for (const file of aiImageFiles.value) {
+      const base64 = await fileToBase64(file)
+      images.push(base64)
+    }
+
+    aiProgress.value = 30
+    aiProgressStep.value = '正在调用 AI 模型...'
+
+    // 调用 AI 解析接口
+    const result = await salesOrderApi.parseByAi({
+      text: hasText ? aiInputText.value.trim() : undefined,
+      images: images.length > 0 ? images : undefined,
+    })
+
+    aiProgress.value = 80
+    aiProgressStep.value = '正在填充表单数据...'
+
+    // 填充表单
+    await fillFormWithAiResult(result)
+
+    aiProgress.value = 100
+    aiProgressStep.value = '解析完成！'
+
+    // 短暂显示完成状态
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    showAiPanel.value = false
+    window.showToast('AI解析完成，请核对并补充信息', 'success')
+  } catch (error: any) {
+    const msg = error?.message || 'AI解析失败，请重试或手动填写'
+    window.showToast(msg, 'error')
+  } finally {
+    clearInterval(progressTimer)
+    aiParsing.value = false
+    aiProgress.value = 0
+    aiProgressStep.value = ''
+  }
+}
+
+// 检查是否有待确认项
+const hasAiPendingItems = computed(() => {
+  return aiPendingCustomer.value || aiPendingItems.value.size > 0
+})
+
+// ========== AI 解析方法结束 ==========
 
 const openEditOrder = async (order: SalesOrder) => {
   // 先获取完整订单数据（列表数据不包含明细）
@@ -718,6 +1183,8 @@ const openEditOrder = async (order: SalesOrder) => {
     customer_id: fullOrder.customer_id,
     customer_name: fullOrder.customer_name || '',
     sale_user_id: fullOrder.sale_user_id || '',
+    third_party_platform: (fullOrder as any).third_party_platform || '',
+    platform_order_no: (fullOrder as any).platform_order_no || '',
     deliver_info: fullOrder.deliver_info ? { ...fullOrder.deliver_info } : { addr: '', province: '', city: '', person_name: '', person_tel: '' },
     expect_deliver_date: fullOrder.expect_deliver_date || '',
     settle_type: fullOrder.settle_type,
@@ -730,6 +1197,7 @@ const openEditOrder = async (order: SalesOrder) => {
       product_code: item.product_code || '',
       brand_name: item.brand_name || '',
       spec_code: item.spec_code || '',
+      item_remark: (item as any).item_remark || '',
       // 发货方式中文转英文
       shipping_method: (shippingMethodReverseMap[item.shipping_method] || item.shipping_method || 'warehouse') as 'direct' | 'warehouse' | 'warehouse_pickup'
     }))
@@ -771,7 +1239,7 @@ const openEditOrder = async (order: SalesOrder) => {
 
     // 匹配当前订单的收货地址
     const matchedAddr = customerShippingAddresses.value.find(
-      (a: any) => a.recipient_name === fullOrder.deliver_info?.person_name && a.recipient_phone === fullOrder.deliver_info?.person_tel
+      (a: any) => a.receiver === fullOrder.deliver_info?.person_name && a.phone === fullOrder.deliver_info?.person_tel
     )
     selectedShippingAddressId.value = matchedAddr?.id || ''
 
@@ -832,6 +1300,8 @@ const handleAddOrder = async (order: SalesOrder) => {
     customer_id: fullOrder.customer_id,
     customer_name: fullOrder.customer_name || '',
     sale_user_id: fullOrder.sale_user_id || '',
+    third_party_platform: (fullOrder as any).third_party_platform || '',
+    platform_order_no: '', // 平台订单号清空，新订单可能有不同的平台订单号
     deliver_info: fullOrder.deliver_info ? { ...fullOrder.deliver_info } : {
       addr: '',
       province: '',
@@ -881,7 +1351,7 @@ const handleAddOrder = async (order: SalesOrder) => {
 
     // 匹配当前订单的收货地址
     const matchedAddr = customerShippingAddresses.value.find(
-      (a: any) => a.recipient_name === fullOrder.deliver_info?.person_name && a.recipient_phone === fullOrder.deliver_info?.person_tel
+      (a: any) => a.receiver === fullOrder.deliver_info?.person_name && a.phone === fullOrder.deliver_info?.person_tel
     )
     selectedShippingAddressId.value = matchedAddr?.id || ''
 
@@ -926,9 +1396,11 @@ const handleDelete = async () => {
 
 const selectCustomer = async (customer: any) => {
   orderForm.value.customer_id = customer.id
-  orderForm.value.customer_name = customer.name
-  customerSearchKeyword.value = customer.name
+  orderForm.value.customer_name = customer.customer_name
+  customerSearchKeyword.value = customer.customer_name
   showCustomerDropdown.value = false
+  // 清除客户待确认标记
+  aiPendingCustomer.value = false
 
   try {
     // 获取客户详情（包含开票信息和收货地址）
@@ -987,8 +1459,8 @@ const applyShippingAddress = (addr: any) => {
     addr: addr.address,
     province: addr.province || '',
     city: addr.city || '',
-    person_name: addr.recipient_name,
-    person_tel: addr.recipient_phone
+    person_name: addr.receiver,
+    person_tel: addr.phone
   }
   if (addr.province) {
     selectedProvince.value = addr.province
@@ -1029,7 +1501,16 @@ const saveQuickAddShipping = async () => {
   }
   quickAddLoading.value = true
   try {
-    const res = await customerApi.addShippingAddress(orderForm.value.customer_id, quickAddShippingForm.value)
+    // 转换字段名：前端 recipient_name/recipient_phone -> 后端 receiver/phone
+    const submitData = {
+      receiver: quickAddShippingForm.value.recipient_name,
+      phone: quickAddShippingForm.value.recipient_phone,
+      province: quickAddShippingForm.value.province,
+      city: quickAddShippingForm.value.city,
+      address: quickAddShippingForm.value.address,
+      is_default: quickAddShippingForm.value.is_default
+    }
+    const res = await customerApi.addShippingAddress(orderForm.value.customer_id, submitData)
     const newAddr = res.result
     // 刷新客户地址列表
     const detailRes = await customerApi.getById(orderForm.value.customer_id)
@@ -1059,6 +1540,137 @@ const resetQuickAddShippingForm = () => {
   quickAddSelectedProvince.value = ''
   quickAddSelectedCity.value = ''
   quickAddCityList.value = []
+}
+
+// ========== 收货地址 AI 解析方法 ==========
+
+// 切换收货地址 AI 面板显示
+const toggleShippingAiPanel = () => {
+  showShippingAiPanel.value = !showShippingAiPanel.value
+  if (showShippingAiPanel.value) {
+    shippingAiInputText.value = ''
+    shippingAiImageFiles.value = []
+    shippingAiImagePreviews.value = []
+  }
+}
+
+// 处理收货地址 AI 图片选择
+const handleShippingAiImageSelect = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (!input.files) return
+
+  const newFiles = Array.from(input.files)
+  if (shippingAiImageFiles.value.length + newFiles.length > 3) {
+    window.showToast('最多支持3张图片', 'warning')
+    return
+  }
+
+  for (const file of newFiles) {
+    if (file.size > 5 * 1024 * 1024) {
+      window.showToast(`图片 ${file.name} 超过5MB限制`, 'warning')
+      continue
+    }
+    shippingAiImageFiles.value.push(file)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      shippingAiImagePreviews.value.push(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  input.value = ''
+}
+
+// 删除收货地址 AI 图片
+const removeShippingAiImage = (index: number) => {
+  shippingAiImageFiles.value.splice(index, 1)
+  shippingAiImagePreviews.value.splice(index, 1)
+}
+
+// 处理收货地址 AI 粘贴图片
+const handleShippingAiPaste = (event: ClipboardEvent) => {
+  const items = event.clipboardData?.items
+  if (!items) return
+
+  const imageFiles: File[] = []
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) imageFiles.push(file)
+    }
+  }
+
+  if (imageFiles.length === 0) return
+
+  event.preventDefault()
+
+  if (shippingAiImageFiles.value.length + imageFiles.length > 3) {
+    window.showToast('最多支持3张图片', 'warning')
+    return
+  }
+
+  for (const file of imageFiles) {
+    if (file.size > 5 * 1024 * 1024) {
+      window.showToast(`粘贴的图片超过5MB限制`, 'warning')
+      continue
+    }
+    shippingAiImageFiles.value.push(file)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      shippingAiImagePreviews.value.push(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  window.showToast(`已粘贴${imageFiles.length}张图片`, 'success')
+}
+
+// 收货地址 AI 解析提交
+const handleShippingAiSubmit = async () => {
+  const hasText = shippingAiInputText.value && shippingAiInputText.value.trim()
+  const hasImages = shippingAiImageFiles.value.length > 0
+
+  if (!hasText && !hasImages) {
+    window.showToast('请输入文本描述或上传图片', 'warning')
+    return
+  }
+
+  shippingAiParsing.value = true
+
+  try {
+    const images: string[] = []
+    for (const file of shippingAiImageFiles.value) {
+      const base64 = await fileToBase64(file)
+      images.push(base64)
+    }
+
+    const result = await customerApi.parseShippingAddressByAi({
+      text: hasText ? shippingAiInputText.value.trim() : undefined,
+      images: images.length > 0 ? images : undefined,
+    })
+
+    // 填充表单
+    if (result.receiver) quickAddShippingForm.value.recipient_name = result.receiver
+    if (result.phone) quickAddShippingForm.value.recipient_phone = result.phone
+    if (result.province) {
+      quickAddSelectedProvince.value = result.province
+      quickAddShippingForm.value.province = result.province
+    }
+    if (result.city) {
+      await nextTick()
+      quickAddSelectedCity.value = result.city
+      quickAddShippingForm.value.city = result.city
+    }
+    if (result.address) quickAddShippingForm.value.address = result.address
+
+    showShippingAiPanel.value = false
+    window.showToast('AI解析完成，请核对信息', 'success')
+  } catch (error: any) {
+    const msg = error?.message || 'AI解析失败，请重试或手动填写'
+    window.showToast(msg, 'error')
+  } finally {
+    shippingAiParsing.value = false
+  }
 }
 
 // Quick add invoice info
@@ -1145,6 +1757,10 @@ const totalAmount = computed(() => {
   return orderForm.value.items.reduce((sum, item) => sum + (item.amt || 0), 0)
 })
 
+const totalQty = computed(() => {
+  return orderForm.value.items.reduce((sum, item) => sum + (item.qty || 0), 0)
+})
+
 const totalDiscountAmount = computed(() => {
   return orderForm.value.items.reduce((sum, item) => sum + ((item.price || 0) - (item.discounted_price || 0)) * (item.qty || 0), 0)
 })
@@ -1196,6 +1812,18 @@ const finalAmount = computed(() => {
 })
 
 const handleSaveOrder = async () => {
+  // 检查是否存在 AI 解析待确认项
+  if (hasAiPendingItems.value) {
+    if (aiPendingCustomer.value) {
+      window.showToast('客户信息待确认，请选择客户', 'warning')
+      return
+    }
+    if (aiPendingItems.value.size > 0) {
+      window.showToast(`第${Array.from(aiPendingItems.value).map(i => i + 1).join('、')}行商品待确认，请选择商品规格`, 'warning')
+      return
+    }
+  }
+
   if (!orderForm.value.customer_id) {
     window.showToast('请选择客户', 'warning')
     return
@@ -1232,6 +1860,8 @@ const handleSaveOrder = async () => {
       customer_id: orderForm.value.customer_id,
       customer_name: orderForm.value.customer_name,
       sale_user_id: orderForm.value.sale_user_id || undefined,
+      third_party_platform: orderForm.value.third_party_platform || undefined,
+      platform_order_no: orderForm.value.platform_order_no || undefined,
       deliver_info: orderForm.value.deliver_info,
       invoice_info: orderForm.value.invoice_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
@@ -1247,7 +1877,8 @@ const handleSaveOrder = async () => {
         qty: item.qty,
         price: item.price,
         discount: item.discount,
-        shipping_method: item.shipping_method
+        shipping_method: item.shipping_method,
+        item_remark: item.item_remark || undefined
       }))
     }
 
@@ -1269,6 +1900,37 @@ const handleSaveOrder = async () => {
 }
 
 const handleSaveAndSubmit = async () => {
+  // 检查是否所有明细发货方式为直运
+  const allDirect = orderForm.value.items.length > 0 &&
+    orderForm.value.items.every(item => item.shipping_method === 'direct')
+
+  if (allDirect) {
+    showAllDirectConfirm.value = true
+  } else {
+    await executeSaveAndSubmit()
+  }
+}
+
+// 全直运订单确认提交
+const confirmAllDirectSubmit = async () => {
+  showAllDirectConfirm.value = false
+  await executeSaveAndSubmit()
+}
+
+// 实际执行保存并提交
+const executeSaveAndSubmit = async () => {
+  // 检查是否存在 AI 解析待确认项
+  if (hasAiPendingItems.value) {
+    if (aiPendingCustomer.value) {
+      window.showToast('客户信息待确认，请选择客户', 'warning')
+      return
+    }
+    if (aiPendingItems.value.size > 0) {
+      window.showToast(`第${Array.from(aiPendingItems.value).map(i => i + 1).join('、')}行商品待确认，请选择商品规格`, 'warning')
+      return
+    }
+  }
+
   if (!orderForm.value.customer_id) {
     window.showToast('请选择客户', 'warning')
     return
@@ -1297,6 +1959,8 @@ const handleSaveAndSubmit = async () => {
       customer_id: orderForm.value.customer_id,
       customer_name: orderForm.value.customer_name,
       sale_user_id: orderForm.value.sale_user_id || undefined,
+      third_party_platform: orderForm.value.third_party_platform || undefined,
+      platform_order_no: orderForm.value.platform_order_no || undefined,
       deliver_info: orderForm.value.deliver_info,
       invoice_info: orderForm.value.invoice_info,
       expect_deliver_date: orderForm.value.expect_deliver_date || undefined,
@@ -1312,7 +1976,8 @@ const handleSaveAndSubmit = async () => {
         qty: item.qty,
         price: item.price,
         discount: item.discount,
-        shipping_method: item.shipping_method
+        shipping_method: item.shipping_method,
+        item_remark: item.item_remark || undefined
       }))
     }
 
@@ -1434,7 +2099,8 @@ const handlePushPurchase = async (selectedRowNos: number[]) => {
   try {
     const items = selectedRowNos.map(row_no => ({ row_no }))
     const result = await salesOrderApi.pushToPurchase(actionTargetOrderNo.value, items)
-    const purchaseCount = result?.purchase_orders?.length || 0
+    // result 是采购单列表数组
+    const purchaseCount = Array.isArray(result) ? result.length : (result?.purchase_orders?.length || 0)
     window.showToast(`下推采购成功，共生成${purchaseCount}张采购单`, 'success')
     showPushItemSelect.value = false
     pushableItems.value = []
@@ -1522,6 +2188,16 @@ const refreshFlows = async (orderNo: string) => {
   }
 }
 
+// 合同按钮点击（功能预留）
+const handleContract = (order: SalesOrder) => {
+  window.showToast('合同功能开发中，敬请期待', 'info')
+}
+
+// 发货按钮点击（功能预留）
+const handleShip = (order: SalesOrder) => {
+  window.showToast('发货功能开发中，敬请期待', 'info')
+}
+
 const formatDate = (dateStr: string | undefined) => {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleDateString('zh-CN')
@@ -1554,6 +2230,7 @@ onMounted(async () => {
   loadOrders()
   loadCustomers()
   loadWarehouses()
+  loadUsers()
   // 加载省份列表
   try {
     await loadProvinceCityData()
@@ -1582,26 +2259,40 @@ onBeforeUnmount(() => {
 
     <div class="filter-section">
       <div class="filter-row">
-        <div class="filter-item">
+        <div class="filter-item search-filter">
           <input
             type="text"
             class="filter-input"
-            placeholder="搜索订单号、客户名称..."
+            placeholder="搜索订单号、客户名称、产品编号..."
             v-model="filterKeyword"
             @keyup.enter="handleSearch"
           />
         </div>
+        <select class="filter-select" v-model="filterCustomerId" @change="handleSearch">
+          <option value="">全部客户</option>
+          <option v-for="c in customerList" :key="c.id" :value="c.id">{{ c.customer_name }}</option>
+        </select>
+        <select class="filter-select" v-model="filterStatus" @change="handleSearch">
+          <option value="">订单状态</option>
+          <option v-for="s in orderStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+        </select>
+        <select class="filter-select" v-model="filterInvoiceStatus" @change="handleSearch">
+          <option value="">发票状态</option>
+          <option v-for="s in invoiceStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+        </select>
+        <select class="filter-select" v-model="filterDeliveryStatus" @change="handleSearch">
+          <option value="">发货状态</option>
+          <option v-for="s in deliveryStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+        </select>
+        <select class="filter-select" v-model="filterSaleUserId" @change="handleSearch" v-if="isAdmin">
+          <option value="">全部业务员</option>
+          <option v-for="u in userList" :key="u.id" :value="u.id">{{ u.name }}</option>
+        </select>
         <div class="filter-item">
-          <select class="filter-select" v-model="filterCustomerId" @change="handleSearch">
-            <option value="">全部客户</option>
-            <option v-for="c in customerList" :key="c.id" :value="c.id">{{ c.name }}</option>
-          </select>
+          <input type="date" class="filter-input" v-model="filterOrderDateStart" @change="handleSearch" />
         </div>
         <div class="filter-item">
-          <select class="filter-select" v-model="filterStatus" @change="handleSearch">
-            <option value="">全部状态</option>
-            <option v-for="s in orderStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-          </select>
+          <input type="date" class="filter-input" v-model="filterOrderDateEnd" @change="handleSearch" />
         </div>
         <button class="filter-btn" @click="handleSearch">搜索</button>
         <button class="filter-btn reset-btn" @click="resetFilters" v-if="hasActiveFilters">重置</button>
@@ -1636,6 +2327,7 @@ onBeforeUnmount(() => {
           <vxe-column width="50" />
           <vxe-column width="120" />
           <vxe-column min-width="150" />
+          <vxe-column min-width="180" />
           <vxe-column width="120" />
           <vxe-column width="100" />
           <vxe-column width="100" />
@@ -1683,6 +2375,8 @@ onBeforeUnmount(() => {
                     <th style="width: 100px; text-align: right">退/换/补货数量</th>
                     <th style="width: 80px; text-align: right">含税单价</th>
                     <th style="width: 80px; text-align: right">合计</th>
+                    <th style="width: 80px; text-align: right">退货方式</th>
+                    <th style="width: 80px; text-align: right">退货金额</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1704,6 +2398,8 @@ onBeforeUnmount(() => {
                     </td>
                     <td style="text-align: right">{{ formatAmount(item.discounted_price) }}</td>
                     <td style="text-align: right">{{ formatAmount(item.amt) }}</td>
+                    <td style="text-align: right">{{ (item as any).return_method || '-' }}</td>
+                    <td style="text-align: right">{{ formatAmount((item as any).return_amt || 0) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1716,6 +2412,14 @@ onBeforeUnmount(() => {
           </template>
         </vxe-column>
         <vxe-column field="customer_name" title="客户名称" min-width="150" class-name="col--center" />
+        <vxe-column field="deliver_info" title="收件信息" min-width="180" class-name="col--center">
+          <template #default="{ row }">
+            <span v-if="row.deliver_info && (row.deliver_info.person_name || row.deliver_info.person_tel)">
+              {{ row.deliver_info.person_name }} {{ row.deliver_info.person_tel ? `(${row.deliver_info.person_tel})` : '' }}
+            </span>
+            <span v-else>-</span>
+          </template>
+        </vxe-column>
         <vxe-column field="total_tax_amt" title="订单金额" width="120" class-name="col--right">
           <template #default="{ row }">
             {{ formatAmount(row.total_tax_amt) }}
@@ -1773,17 +2477,22 @@ onBeforeUnmount(() => {
             {{ row.sale_user_name || '-' }}
           </template>
         </vxe-column>
-        <vxe-column title="操作" width="200" fixed="right" class-name="col--center">
+        <vxe-column title="操作" width="320" fixed="right" class-name="col--center">
           <template #default="{ row }">
             <span class="action-btns">
               <button class="btn-link" @click="emit('navigate', 'sales-order-detail', { orderNo: row.order_no })">详情</button>
-              <button class="btn-link" @click="openEditOrder(row)" v-if="row.order_status === 'draft'">编辑</button>
+              <!-- 编辑按钮：草稿状态 或 已审核且未下推状态可见 -->
+              <button class="btn-link" @click="openEditOrder(row)" v-if="row.order_status === 'draft' || (row.order_status === 'audited' && (row.push_status === 'none' || !row.push_status))">编辑</button>
               <button class="btn-link success" @click="handleSubmitOrder(row.order_no)" v-if="row.order_status === 'draft'">提交审核</button>
               <!-- 兼容历史数据：pending 状态显示审核通过按钮 -->
               <button class="btn-link success" @click="confirmAudit(row.order_no)" v-if="row.order_status === 'pending'">审核通过</button>
               <button class="btn-link primary" @click="confirmPushPurchase(row.order_no)" v-if="(row.order_status === 'audited' || row.order_status === 'partially_pushed_to_purchase') && (row.push_status === 'none' || row.push_status === 'partial')">下推采购</button>
               <!-- 加单按钮：已审核状态可见，用于基于当前订单创建新订单 -->
               <button class="btn-link" @click="handleAddOrder(row)" v-if="row.order_status === 'audited'">加单</button>
+              <!-- 合同按钮：已审核状态可见，功能预留 -->
+              <button class="btn-link" @click="handleContract(row)" v-if="row.order_status === 'audited'">合同</button>
+              <!-- 发货按钮：已审核且未发货/部分发货状态可见，功能预留 -->
+              <button class="btn-link" @click="handleShip(row)" v-if="row.order_status === 'audited' && (row.delivery_status === 'none' || row.delivery_status === 'partial')">发货</button>
               <!-- 取消按钮仅限草稿状态 -->
               <button class="btn-link danger" @click="confirmCancel(row.order_no)" v-if="row.order_status === 'draft'">取消</button>
               <button class="btn-link danger" @click="confirmDelete(row.order_no)" v-if="row.order_status === 'draft'">删除</button>
@@ -1805,10 +2514,100 @@ onBeforeUnmount(() => {
     <div class="modal-overlay" v-if="showOrderModal">
       <div class="modal order-modal">
         <div class="modal-header">
-          <h3>{{ editingOrder ? '编辑销售订单' : '新建销售订单' }}</h3>
+          <div class="modal-header-left">
+            <h3>{{ editingOrder ? '编辑销售订单' : '新建销售订单' }}</h3>
+            <button v-if="!editingOrder" class="ai-btn" @click="toggleAiPanel" :class="{ active: showAiPanel }">
+              AI
+            </button>
+          </div>
           <button class="modal-close" @click="showOrderModal = false">&times;</button>
         </div>
-        <div class="modal-body">
+
+        <!-- AI 智能解析面板 -->
+        <div class="ai-panel" v-if="showAiPanel && !editingOrder">
+          <div class="ai-panel-header">
+            <span class="ai-panel-title">AI 智能解析</span>
+            <button class="btn-link" @click="showAiPanel = false" :disabled="aiParsing">收起</button>
+          </div>
+
+          <!-- 解析中状态 -->
+          <div class="ai-thinking" v-if="aiParsing">
+            <div class="ai-thinking-animation">
+              <div class="ai-thinking-dot"></div>
+              <div class="ai-thinking-dot"></div>
+              <div class="ai-thinking-dot"></div>
+            </div>
+            <div class="ai-thinking-text">
+              <span class="ai-thinking-label">Thinking</span>
+              <span class="ai-thinking-ellipsis">
+                <span class="ai-ellipsis-dot">.</span>
+                <span class="ai-ellipsis-dot">.</span>
+                <span class="ai-ellipsis-dot">.</span>
+              </span>
+            </div>
+            <!-- 进度条 -->
+            <div class="ai-progress-container">
+              <div class="ai-progress-bar">
+                <div class="ai-progress-fill" :style="{ width: aiProgress + '%' }"></div>
+              </div>
+              <span class="ai-progress-percent">{{ Math.round(aiProgress) }}%</span>
+            </div>
+            <p class="ai-thinking-step">{{ aiProgressStep }}</p>
+          </div>
+
+          <!-- 正常输入状态 -->
+          <div class="ai-panel-body" v-else>
+            <!-- 文本输入 -->
+            <div class="ai-section">
+              <label class="ai-label">文本描述</label>
+              <textarea
+                v-model="aiInputText"
+                class="ai-textarea"
+                placeholder="粘贴订单信息，或直接 Ctrl+V 粘贴图片..."
+                rows="4"
+                @paste="handleAiPaste"
+              ></textarea>
+            </div>
+            <!-- 图片上传 -->
+            <div class="ai-section">
+              <label class="ai-label">图片（最多3张）</label>
+              <div class="ai-image-upload-area">
+                <div class="ai-image-list">
+                  <div
+                    v-for="(preview, index) in aiImagePreviews"
+                    :key="index"
+                    class="ai-image-item"
+                  >
+                    <img :src="preview" alt="预览" class="ai-image-preview" />
+                    <button class="ai-image-remove" @click="removeAiImage(index)" title="删除">&times;</button>
+                  </div>
+                  <!-- 添加按钮（未满3张时显示） -->
+                  <label v-if="aiImageFiles.length < 3" class="ai-image-add">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      class="ai-file-input"
+                      @change="handleAiImageSelect"
+                    />
+                    <span class="ai-image-add-icon">+</span>
+                    <span class="ai-image-add-text">上传图片</span>
+                  </label>
+                </div>
+                <p class="ai-image-hint">支持订单截图、聊天记录等，最多3张，单张不超过5MB</p>
+              </div>
+            </div>
+            <!-- 提交按钮 -->
+            <div class="ai-actions">
+              <button class="btn-primary" @click="handleAiSubmit" :disabled="!aiInputText?.trim() && aiImageFiles.length === 0">
+                AI 解析
+              </button>
+              <button class="btn-secondary" @click="toggleAiPanel">取消</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-body" v-else>
           <div class="form-section">
             <div class="section-title">基本信息</div>
             <div class="form-row">
@@ -1818,14 +2617,16 @@ onBeforeUnmount(() => {
               </div>
               <div class="form-group">
                 <label>客户 *</label>
-                <div class="search-select">
+                <div class="search-select" :class="{ 'ai-pending': aiPendingCustomer }">
                   <input
                     type="text"
                     v-model="customerSearchKeyword"
                     @input="handleCustomerSearch"
                     @focus="showCustomerDropdown = true; loadCustomers(customerSearchKeyword || undefined)"
                     placeholder="输入客户名称/编码搜索"
+                    :class="{ 'ai-pending-input': aiPendingCustomer }"
                   />
+                  <span v-if="aiPendingCustomer" class="ai-pending-badge">待确认</span>
                   <div class="search-dropdown" v-if="showCustomerDropdown && filteredCustomers.length > 0">
                     <div
                       v-for="c in filteredCustomers"
@@ -1833,7 +2634,7 @@ onBeforeUnmount(() => {
                       class="search-option"
                       @click="selectCustomer(c)"
                     >
-                      {{ c.name }} ({{ c.customer_code }})
+                      {{ c.customer_name }} ({{ c.customer_code }})
                     </div>
                   </div>
                 </div>
@@ -1851,6 +2652,19 @@ onBeforeUnmount(() => {
                 </select>
               </div>
             </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>第三方平台</label>
+                <select v-model="orderForm.third_party_platform">
+                  <option value="">请选择平台</option>
+                  <option v-for="p in thirdPartyPlatformOptions" :key="p.value" :value="p.value">{{ p.label }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>平台订单号</label>
+                <input type="text" v-model="orderForm.platform_order_no" placeholder="请输入平台订单号" />
+              </div>
+            </div>
           </div>
 
           <div class="form-section">
@@ -1862,7 +2676,7 @@ onBeforeUnmount(() => {
                   <select v-model="selectedShippingAddressId" @change="onShippingAddressChange(selectedShippingAddressId)" :disabled="!orderForm.customer_id" style="flex: 1;">
                     <option value="">请选择收货地址</option>
                     <option v-for="addr in customerShippingAddresses" :key="addr.id" :value="addr.id">
-                      {{ addr.recipient_name }} - {{ addr.recipient_phone }} - {{ addr.province || '' }} {{ addr.city || '' }} {{ addr.address }}{{ addr.is_default ? ' (默认)' : '' }}
+                      {{ addr.receiver }} - {{ addr.phone }} - {{ addr.province || '' }} {{ addr.city || '' }} {{ addr.address }}{{ addr.is_default ? ' (默认)' : '' }}
                     </option>
                   </select>
                   <button type="button" class="btn-quick-add" @click="showQuickAddShippingModal = true" :disabled="!orderForm.customer_id" title="新增收货地址">+</button>
@@ -1900,6 +2714,7 @@ onBeforeUnmount(() => {
                     <th style="width: 80px">折扣</th>
                     <th style="width: 100px">折后价</th>
                     <th style="width: 100px">金额</th>
+                    <th style="width: 150px">备注</th>
                     <th style="width: 150px">
                       <div class="header-bulk-setting">
                         <span>发货方式</span>
@@ -1922,8 +2737,11 @@ onBeforeUnmount(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(item, index) in orderForm.items" :key="index">
-                    <td>{{ item.row_no }}</td>
+                  <tr v-for="(item, index) in orderForm.items" :key="index" :class="{ 'ai-pending-row': aiPendingItems.has(index) }">
+                    <td>
+                      {{ item.row_no }}
+                      <span v-if="aiPendingItems.has(index)" class="ai-pending-badge-inline">待确认</span>
+                    </td>
                     <!-- 未选择商品时：显示合并输入框 -->
                     <td v-if="!item.spec_id" colspan="10" class="merged-input-cell">
                       <div class="merged-search-wrapper">
@@ -1991,6 +2809,9 @@ onBeforeUnmount(() => {
                       <td>{{ formatAmount(item.amt) }}</td>
                     </template>
                     <td>
+                      <input type="text" v-model="item.item_remark" placeholder="备注" class="remark-input" />
+                    </td>
+                    <td>
                       <select v-model="item.shipping_method" @change="if(item.shipping_method === 'direct') { item.warehouse_id = ''; item.warehouse_name = '' }">
                         <option v-for="s in shippingMethodOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
                       </select>
@@ -2034,6 +2855,10 @@ onBeforeUnmount(() => {
           <div class="form-section">
             <div class="section-title">费用汇总</div>
             <div class="amount-summary">
+              <div class="summary-row">
+                <span>产品总数量：</span>
+                <span>{{ totalQty }} 件</span>
+              </div>
               <div class="summary-row">
                 <span>商品总金额：</span>
                 <span>{{ formatAmount(totalAmount) }}</span>
@@ -2201,6 +3026,7 @@ onBeforeUnmount(() => {
                     <th style="text-align: right">金额</th>
                     <th>仓库</th>
                     <th>发货方式</th>
+                    <th>退货信息</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2216,6 +3042,7 @@ onBeforeUnmount(() => {
                     <td style="text-align: right">{{ formatAmount(item.amt) }}</td>
                     <td>{{ item.warehouse_name }}</td>
                     <td>{{ item.shipping_method }}</td>
+                    <td>{{ (item as any).return_info || '-' }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -2334,12 +3161,65 @@ onBeforeUnmount(() => {
 
     <!-- Quick Add Shipping Address Modal -->
     <div class="modal-overlay" v-if="showQuickAddShippingModal">
-      <div class="modal" style="max-width: 500px;">
+      <div class="modal" style="max-width: 600px;">
         <div class="modal-header">
-          <h3>新增收货地址</h3>
+          <div class="modal-header-left">
+            <h3>新增收货地址</h3>
+            <button class="ai-btn" @click="toggleShippingAiPanel" :class="{ active: showShippingAiPanel }">
+              AI
+            </button>
+          </div>
           <button class="modal-close" @click="showQuickAddShippingModal = false">&times;</button>
         </div>
-        <div class="modal-body">
+
+        <!-- AI 解析面板 -->
+        <div class="ai-panel shipping-ai-panel" v-if="showShippingAiPanel">
+          <div class="ai-panel-body" v-if="!shippingAiParsing">
+            <div class="ai-section">
+              <label class="ai-label">文本描述</label>
+              <textarea
+                v-model="shippingAiInputText"
+                class="ai-textarea"
+                placeholder="粘贴收货地址信息，如：张三 13800138000 北京市海淀区中关村大街1号..."
+                rows="3"
+                @paste="handleShippingAiPaste"
+              ></textarea>
+            </div>
+            <div class="ai-section">
+              <label class="ai-label">图片（最多3张）</label>
+              <div class="ai-image-upload-area">
+                <div class="ai-image-list">
+                  <div v-for="(preview, index) in shippingAiImagePreviews" :key="index" class="ai-image-item">
+                    <img :src="preview" alt="预览" class="ai-image-preview" />
+                    <button class="ai-image-remove" @click="removeShippingAiImage(index)" title="删除">&times;</button>
+                  </div>
+                  <label v-if="shippingAiImageFiles.length < 3" class="ai-image-add">
+                    <input type="file" accept="image/*" multiple class="ai-file-input" @change="handleShippingAiImageSelect" />
+                    <span class="ai-image-add-icon">+</span>
+                    <span class="ai-image-add-text">上传图片</span>
+                  </label>
+                </div>
+                <p class="ai-image-hint">支持地址截图、名片等，最多3张，单张不超过5MB</p>
+              </div>
+            </div>
+            <div class="ai-actions">
+              <button class="btn-primary" @click="handleShippingAiSubmit" :disabled="!shippingAiInputText?.trim() && shippingAiImageFiles.length === 0">
+                AI 解析
+              </button>
+              <button class="btn-secondary" @click="showShippingAiPanel = false">取消</button>
+            </div>
+          </div>
+          <div class="ai-thinking" v-else>
+            <div class="ai-thinking-animation">
+              <div class="ai-thinking-dot"></div>
+              <div class="ai-thinking-dot"></div>
+              <div class="ai-thinking-dot"></div>
+            </div>
+            <p class="ai-thinking-hint">正在解析...</p>
+          </div>
+        </div>
+
+        <div class="modal-body" v-if="!showShippingAiPanel || shippingAiParsing">
           <div class="form-group">
             <label>收货人 *</label>
             <input type="text" v-model="quickAddShippingForm.recipient_name" placeholder="请输入收货人姓名" />
@@ -2372,7 +3252,7 @@ onBeforeUnmount(() => {
             <label><input type="checkbox" v-model="quickAddShippingForm.is_default" /> 设为默认</label>
           </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" v-if="!showShippingAiPanel || shippingAiParsing">
           <button class="btn-secondary" @click="showQuickAddShippingModal = false">取消</button>
           <button class="btn-primary" @click="saveQuickAddShipping" :disabled="quickAddLoading">{{ quickAddLoading ? '保存中...' : '保存' }}</button>
         </div>
@@ -2511,6 +3391,25 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <!-- All Direct Shipping Confirm Modal -->
+    <div class="modal-overlay" v-if="showAllDirectConfirm">
+      <div class="modal confirm-modal">
+        <div class="modal-header">
+          <h3>直运订单确认</h3>
+        </div>
+        <div class="modal-body">
+          <p>所有商品明细的发货方式均为"直运"，确认提交订单？</p>
+          <p class="confirm-hint">直运订单将直接发货，无需经过仓库出库流程。</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showAllDirectConfirm = false">取消</button>
+          <button class="btn-success" @click="confirmAllDirectSubmit" :disabled="actionLoading">
+            {{ actionLoading ? '提交中...' : '确认提交' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Push Purchase Item Select Modal -->
     <PushPurchaseItemSelectModal
       :visible="showPushItemSelect"
@@ -2557,11 +3456,8 @@ onBeforeUnmount(() => {
 .filter-section {
   background-color: var(--color-canvas);
   border-radius: var(--radius-lg);
-  padding: 16px 20px;
+  padding: 12px 16px;
   box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .filter-row {
@@ -2574,6 +3470,11 @@ onBeforeUnmount(() => {
 .filter-item {
   display: flex;
   align-items: center;
+}
+
+.filter-item.search-filter {
+  flex: 1;
+  min-width: 200px;
 }
 
 .filter-input {
@@ -2704,7 +3605,7 @@ onBeforeUnmount(() => {
 .status-tag.draft { background-color: var(--color-neutral-bg); color: var(--color-muted); }
 .status-tag.pending { background-color: var(--color-warning-bg); color: var(--color-warning); }
 .status-tag.audited { background-color: var(--color-info-bg); color: var(--color-interactive); }
-.status-tag.pushed { background-color: var(--color-accent-soft); color: var(--color-accent); }
+.status-tag.pushed { background-color: var(--color-accent-soft); color: #c4391a; }
 .status-tag.partial-pushed { background-color: var(--color-warning-bg); color: var(--color-warning); }
 .status-tag.closed { background-color: var(--color-success-bg); color: var(--color-success); }
 .status-tag.cancelled { background-color: var(--color-danger-bg); color: var(--color-danger); }
@@ -2712,14 +3613,16 @@ onBeforeUnmount(() => {
 .status-tag.none { background-color: var(--color-neutral-bg); color: var(--color-muted); }
 .status-tag.partial { background-color: var(--color-warning-bg); color: var(--color-warning); }
 .status-tag.full { background-color: var(--color-success-bg); color: var(--color-success); }
-.status-tag.reconciled { background-color: var(--color-accent-soft); color: var(--color-accent); }
+.status-tag.reconciled { background-color: var(--color-accent-soft); color: #c4391a; }
 
 .profit-positive { color: var(--color-success); }
 .profit-negative { color: var(--color-danger); }
 
 .action-btns {
   display: flex;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  justify-content: center;
 }
 
 .btn-link {
@@ -3867,5 +4770,428 @@ onBeforeUnmount(() => {
 .packaging-text {
   color: var(--color-muted);
   font-size: 13px;
+}
+
+/* ========== AI 智能解析面板样式 ========== */
+
+.modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-btn {
+  padding: 6px 12px;
+  background-color: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-xs);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ai-btn:hover {
+  opacity: 0.9;
+}
+
+.ai-btn.active {
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
+}
+
+.ai-panel {
+  padding: 20px;
+  background-color: var(--color-neutral-bg);
+  border-bottom: 1px solid var(--color-hairline);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ai-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.ai-panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.ai-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ai-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.ai-textarea {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-xs);
+  color: var(--color-ink);
+  font-size: 14px;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.ai-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.ai-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-image-upload-area {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-image-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.ai-image-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ai-image-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.ai-image-remove:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.ai-image-remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ai-image-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border: 2px dashed var(--color-hairline);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  color: var(--color-muted);
+  transition: all var(--transition-fast);
+}
+
+.ai-image-add:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.ai-file-input {
+  display: none;
+}
+
+.ai-image-add-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.ai-image-add-text {
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.ai-image-hint {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.ai-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+/* AI Thinking 动画 */
+.ai-thinking {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 16px;
+}
+
+.ai-thinking-animation {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ai-thinking-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  animation: aiDotPulse 1.4s ease-in-out infinite;
+}
+
+.ai-thinking-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.ai-thinking-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.ai-thinking-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes aiDotPulse {
+  0%, 80%, 100% {
+    transform: scale(0.4);
+    opacity: 0.3;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.ai-thinking-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-ink);
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.ai-thinking-label {
+  color: var(--color-accent);
+}
+
+.ai-thinking-ellipsis {
+  display: inline-flex;
+  overflow: hidden;
+}
+
+.ai-ellipsis-dot {
+  animation: aiEllipsis 1.4s infinite;
+  opacity: 0;
+}
+
+.ai-ellipsis-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.ai-ellipsis-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.ai-ellipsis-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes aiEllipsis {
+  0% { opacity: 0; }
+  40% { opacity: 1; }
+  80%, 100% { opacity: 0; }
+}
+
+.ai-thinking-hint {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* AI 进度条样式 */
+.ai-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 300px;
+  margin-top: 8px;
+}
+
+.ai-progress-bar {
+  flex: 1;
+  height: 6px;
+  background-color: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ai-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent), #6366f1);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.ai-progress-percent {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent);
+  min-width: 35px;
+  text-align: right;
+}
+
+.ai-thinking-step {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin: 0;
+  animation: aiStepFade 1.5s ease-in-out infinite;
+}
+
+@keyframes aiStepFade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ========== AI 待确认样式 ========== */
+
+.search-select.ai-pending {
+  position: relative;
+}
+
+.ai-pending-input {
+  border-color: var(--color-warning) !important;
+  border-width: 2px;
+}
+
+.ai-pending-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: 12px;
+  border-radius: var(--radius-xs);
+  margin-left: 8px;
+  font-weight: 500;
+}
+
+.ai-pending-badge-inline {
+  display: inline-block;
+  padding: 1px 6px;
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: 11px;
+  border-radius: var(--radius-xs);
+  margin-left: 4px;
+  font-weight: 500;
+}
+
+.ai-pending-row {
+  background-color: var(--color-warning-bg) !important;
+  border-left: 3px solid var(--color-warning);
+}
+
+.ai-pending-row:hover {
+  background-color: var(--color-warning-bg) !important;
+}
+
+.ai-pending-row td {
+  border-left-color: var(--color-warning);
+}
+
+/* 收货地址 AI 解析面板样式 */
+.shipping-ai-panel {
+  margin: -20px -20px 0 -20px;
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.shipping-ai-panel .ai-thinking {
+  padding: 30px 20px;
+}
+
+.shipping-ai-panel .ai-thinking-hint {
+  font-size: 14px;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* 商品备注输入框样式 */
+.remark-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background-color: var(--color-neutral-bg);
+  color: var(--color-ink);
+}
+
+.remark-input:focus {
+  outline: none;
+  border-color: var(--color-interactive);
+}
+
+.remark-input::placeholder {
+  color: var(--color-muted);
+}
+
+/* 全直运确认提示样式 */
+.confirm-hint {
+  color: var(--color-muted);
+  font-size: 13px;
+  margin-top: 8px;
 }
 </style>

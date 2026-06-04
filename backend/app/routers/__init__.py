@@ -12,6 +12,7 @@ from .province_city import province_city_router
 from .ws import ws_router
 from .upload import upload_router
 from .pending_outbound import pending_outbound_router
+from .import_task import import_task_router
 
 api_router = APIRouter()
 
@@ -40,3 +41,4 @@ api_router.include_router(province_city_router, tags=["省份城市"])
 api_router.include_router(pending_outbound_router, tags=["待出库单管理"])
 api_router.include_router(upload_router, tags=["文件上传"])
 api_router.include_router(ws_router, prefix="/ws")
+api_router.include_router(import_task_router, tags=["导入任务"])

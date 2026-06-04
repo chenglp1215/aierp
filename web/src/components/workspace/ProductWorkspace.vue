@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { productApi, uploadApi, categoryApi, brandApi, type Product, type ProductSpec, type ProductFormData, type ProductSpecFormData, type CategoryTreeNode, type Brand } from '../../services/api'
+import ProductImportModal from './ProductImportModal.vue'
 
 type SpanMethod = (params: { row: any; columnIndex: number }) => { rowspan: number; colspan: number } | void
 
@@ -33,6 +34,7 @@ const deleteTargetType = ref<'product' | 'spec'>('product')
 const formLoading = ref(false)
 const deleteLoading = ref(false)
 const imageUploading = ref(false)
+const showImportModal = ref(false)
 
 const categories = ref<CategoryTreeNode[]>([])
 const categoriesLoading = ref(false)
@@ -467,6 +469,15 @@ const openStockDetail = async (row: any) => {
   }
 }
 
+const openImportModal = () => {
+  showImportModal.value = true
+}
+
+const handleImportSuccess = () => {
+  loadProducts()
+  loadStats()
+}
+
 onMounted(() => {
   loadProducts()
   loadStats()
@@ -492,6 +503,7 @@ const handleEscKey = (e: KeyboardEvent) => {
     <div class="workspace-header">
       <h2 class="workspace-title">产品管理</h2>
       <div class="header-actions">
+        <button class="secondary-btn" @click="openImportModal">批量导入</button>
         <button class="primary-btn" @click="openCreateProduct">新建产品</button>
       </div>
     </div>
@@ -805,6 +817,13 @@ const handleEscKey = (e: KeyboardEvent) => {
         </div>
       </div>
     </div>
+
+    <!-- 批量导入弹窗 -->
+    <ProductImportModal
+      v-if="showImportModal"
+      @close="showImportModal = false"
+      @success="handleImportSuccess"
+    />
   </div>
 </template>
 
@@ -847,6 +866,22 @@ const handleEscKey = (e: KeyboardEvent) => {
 
 .primary-btn:hover {
   background-color: var(--color-interactive-hover);
+}
+
+.secondary-btn {
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-interactive);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--color-interactive);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.secondary-btn:hover {
+  background-color: rgba(0, 120, 212, 0.1);
 }
 
 .filter-section {

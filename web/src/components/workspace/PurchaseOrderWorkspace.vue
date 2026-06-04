@@ -1908,12 +1908,16 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
-.status-tag.draft { background-color: var(--color-neutral-bg); color: var(--color-muted); }
+.status-tag.draft { background-color: var(--color-neutral-bg); color: var(--color-body-muted); }
+.status-tag.pending-review { background-color: var(--color-neutral-bg); color: var(--color-body-muted); }
+.status-tag.ready-purchase { background-color: var(--color-info-bg); color: var(--color-interactive); }
+.status-tag.purchasing { background-color: var(--color-warning-bg); color: #92400e; }
 .status-tag.audited { background-color: var(--color-info-bg); color: var(--color-interactive); }
+.status-tag.completed { background-color: var(--color-success-bg); color: var(--color-success); }
 .status-tag.closed { background-color: var(--color-success-bg); color: var(--color-success); }
 .status-tag.cancelled { background-color: var(--color-danger-bg); color: var(--color-danger); }
-.status-tag.none { background-color: var(--color-neutral-bg); color: var(--color-muted); }
-.status-tag.partial { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.status-tag.none { background-color: var(--color-neutral-bg); color: var(--color-body-muted); }
+.status-tag.partial { background-color: var(--color-warning-bg); color: #92400e; }
 .status-tag.full { background-color: var(--color-success-bg); color: var(--color-success); }
 
 .type-tag {
